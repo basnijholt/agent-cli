@@ -291,7 +291,7 @@ def test_macos_app_supports_configurable_hold_to_transcribe_shortcut() -> None:
     assert "runner.endHoldToTranscribe()" in source
     assert "func beginHoldToTranscribe()" in source
     assert "func endHoldToTranscribe()" in source
-    assert "private var holdToTranscribeActive = false" in source
+    assert "private var holdTranscriptionState: HoldTranscriptionState = .idle" in source
     assert "private var pasteAfterRecordingCommands: Set<String> = []" in source
 
 
@@ -300,6 +300,7 @@ def test_macos_app_hides_hold_recording_ui_immediately_on_key_release() -> None:
     source = swift_source()
 
     assert "let wasRecording = isRecordingCommand(.toggleTranscription)" in source
+    assert "holdTranscriptionState = .awaitingPid" in source
     assert (
         "if wasRecording {\n"
         "            endRecordingIndicator(for: .toggleTranscription)\n"
@@ -307,19 +308,17 @@ def test_macos_app_hides_hold_recording_ui_immediately_on_key_release() -> None:
         "            stopHeldTranscriptionWhenReady()" in source
     )
     assert (
-        "if pendingHoldToTranscribeStop {\n"
-        "                endRecordingIndicator(for: command)\n"
-        "            }\n"
+        "holdTranscriptionState == .awaitingPid {\n"
+        "            endRecordingIndicator(for: command)\n"
         "            stopHeldTranscriptionWhenReady()" in source
     )
     assert (
         "if shouldStartRecording {\n"
-        "                    self.clearHoldToTranscribeStopState(for: command)" in source
+        "                    self.clearHoldTranscriptionState(for: command)" in source
     )
     assert (
         "if result.exitCode == 0 {\n"
-        "                    self.holdStopRequestActive = false\n"
-        "                    if self.pendingHoldToTranscribeStop {\n"
+        "                    if self.holdTranscriptionState == .stopping {\n"
         '                        self.statusMessage = "Transcribing..."' in source
     )
 
@@ -328,23 +327,37 @@ def test_macos_app_clears_hold_stop_state_before_showing_finished_transcript() -
     """Hold-to-type should not leave the menu stuck on Transcribing after output is ready."""
     source = swift_source()
 
-    assert "private func clearHoldToTranscribeStopState(for command: AgentCommand)" in source
+    assert "private func clearHoldTranscriptionState(for command: AgentCommand)" in source
     assert (
-        "private func clearHoldToTranscribeStopState(for command: AgentCommand) {\n"
+        "private func clearHoldTranscriptionState(for command: AgentCommand) {\n"
         "        guard command.identifier == AgentCommand.toggleTranscription.identifier else { return }\n"
-        "        pendingHoldToTranscribeStop = false\n"
-        "        holdStopRequestActive = false\n"
+        "        holdTranscriptionState = .idle\n"
         "    }" in source
     )
-    assert "self.clearHoldToTranscribeStopState(for: command)" in source
+    assert "self.clearHoldTranscriptionState(for: command)" in source
     assert (
         "if result.exitCode == 0 {\n"
-        "                    self.holdStopRequestActive = false\n"
-        "                    if self.pendingHoldToTranscribeStop {\n"
+        "                    if self.holdTranscriptionState == .stopping {\n"
         '                        self.statusMessage = "Transcribing..."\n'
         "                    }\n"
         "                    return" in source
     )
+
+
+def test_macos_app_models_hold_to_transcribe_as_explicit_state() -> None:
+    """Hold-to-type coordination should use one state machine instead of boolean soup."""
+    source = swift_source()
+
+    assert "private enum HoldTranscriptionState" in source
+    assert "case idle" in source
+    assert "case recording" in source
+    assert "case awaitingPid" in source
+    assert "case stopping" in source
+    assert "private var holdTranscriptionState: HoldTranscriptionState = .idle" in source
+    assert "holdTranscriptionState.isFinishing" in source
+    assert "holdToTranscribeActive" not in source
+    assert "pendingHoldToTranscribeStop" not in source
+    assert "holdStopRequestActive" not in source
 
 
 def test_macos_app_uses_private_runtime_dir_for_hold_to_transcribe_stop() -> None:

@@ -5,6 +5,22 @@ import Foundation
 import SwiftUI
 import UserNotifications
 
+private enum HoldTranscriptionState {
+    case idle
+    case recording
+    case awaitingPid
+    case stopping
+
+    var isFinishing: Bool {
+        switch self {
+        case .awaitingPid, .stopping:
+            return true
+        case .idle, .recording:
+            return false
+        }
+    }
+}
+
 final class AgentCommandRunner: ObservableObject {
     static let shared = AgentCommandRunner()
 
@@ -16,9 +32,7 @@ final class AgentCommandRunner: ObservableObject {
     private var recordingCommandCount = 0
     private var activeRecordingCommands: [String: Int] = [:]
     private var pendingStopRecordingCommands: Set<String> = []
-    private var holdToTranscribeActive = false
-    private var pendingHoldToTranscribeStop = false
-    private var holdStopRequestActive = false
+    private var holdTranscriptionState: HoldTranscriptionState = .idle
     private var holdToTranscribePasteTarget: FocusedTextTarget?
     private var pasteAfterRecordingCommands: Set<String> = []
 
@@ -30,7 +44,7 @@ final class AgentCommandRunner: ObservableObject {
         if isRecording {
             return "Recording"
         }
-        if pendingHoldToTranscribeStop || holdStopRequestActive {
+        if holdTranscriptionState.isFinishing {
             return "Transcribing..."
         }
         if hasLastError && statusMessage.localizedCaseInsensitiveContains("failed") {
@@ -55,9 +69,10 @@ final class AgentCommandRunner: ObservableObject {
     private static let holdStopShell = #"for attempt in {1..3000}; do if [ -s "$AGENTCLI_RUNTIME_DIR/transcribe.pid" ]; then "$AGENTCLI_AGENT_CLI" transcribe --stop --quiet; exit $?; fi; sleep 0.1; done; "$AGENTCLI_AGENT_CLI" transcribe --stop --quiet"#
 
     func beginHoldToTranscribe() {
-        guard !holdToTranscribeActive else { return }
-        guard !pendingHoldToTranscribeStop, !holdStopRequestActive else {
-            statusMessage = "Finishing previous hold-to-transcribe request"
+        guard holdTranscriptionState == .idle else {
+            if holdTranscriptionState.isFinishing {
+                statusMessage = "Finishing previous hold-to-transcribe request"
+            }
             return
         }
         guard !isRecordingCommand(.toggleTranscription), !isStopPending(for: .toggleTranscription) else {
@@ -65,16 +80,15 @@ final class AgentCommandRunner: ObservableObject {
             return
         }
 
-        holdToTranscribeActive = true
+        holdTranscriptionState = .recording
         holdToTranscribePasteTarget = FocusedTextTarget.capture()
         pasteAfterRecordingCommands.insert(AgentCommand.toggleTranscription.identifier)
         run(.toggleTranscription)
     }
 
     func endHoldToTranscribe() {
-        guard holdToTranscribeActive else { return }
-        holdToTranscribeActive = false
-        pendingHoldToTranscribeStop = true
+        guard holdTranscriptionState == .recording else { return }
+        holdTranscriptionState = .awaitingPid
 
         let wasRecording = isRecordingCommand(.toggleTranscription)
         if wasRecording {
@@ -119,7 +133,7 @@ final class AgentCommandRunner: ObservableObject {
                     if shouldStartRecording {
                         self.clearPasteAfterRecording(for: command)
                     }
-                    self.clearHoldToTranscribeStopState(for: command)
+                    self.clearHoldTranscriptionState(for: command)
                     self.activeCommandCount = max(0, self.activeCommandCount - 1)
                     self.lastOutput = bootstrap.output
                     self.recordFailure(command: command, result: bootstrap)
@@ -143,7 +157,7 @@ final class AgentCommandRunner: ObservableObject {
 
             DispatchQueue.main.async {
                 if shouldStartRecording {
-                    self.clearHoldToTranscribeStopState(for: command)
+                    self.clearHoldTranscriptionState(for: command)
                     let shouldPaste = self.shouldPasteAfterRecording(for: command) && result.exitCode == 0
                     let pasteTarget = self.holdToTranscribePasteTarget
                     self.endRecordingIndicator(for: command)
@@ -182,9 +196,9 @@ final class AgentCommandRunner: ObservableObject {
     }
 
     private func stopHeldTranscriptionWhenReady() {
-        guard pendingHoldToTranscribeStop, !holdStopRequestActive else { return }
+        guard holdTranscriptionState == .awaitingPid else { return }
 
-        holdStopRequestActive = true
+        holdTranscriptionState = .stopping
         statusMessage = "Stopping Toggle Transcription..."
 
         DispatchQueue.global(qos: .userInitiated).async {
@@ -192,15 +206,13 @@ final class AgentCommandRunner: ObservableObject {
 
             DispatchQueue.main.async {
                 if result.exitCode == 0 {
-                    self.holdStopRequestActive = false
-                    if self.pendingHoldToTranscribeStop {
+                    if self.holdTranscriptionState == .stopping {
                         self.statusMessage = "Transcribing..."
                     }
                     return
                 }
 
-                self.pendingHoldToTranscribeStop = false
-                self.holdStopRequestActive = false
+                self.holdTranscriptionState = .idle
                 let message = result.output.isEmpty
                     ? "Toggle Transcription stop failed with exit code \(result.exitCode)"
                     : "Toggle Transcription stop failed: \(result.output)"
@@ -239,10 +251,9 @@ final class AgentCommandRunner: ObservableObject {
         }
     }
 
-    private func clearHoldToTranscribeStopState(for command: AgentCommand) {
+    private func clearHoldTranscriptionState(for command: AgentCommand) {
         guard command.identifier == AgentCommand.toggleTranscription.identifier else { return }
-        pendingHoldToTranscribeStop = false
-        holdStopRequestActive = false
+        holdTranscriptionState = .idle
     }
 
     private func beginRecordingIndicator(for command: AgentCommand) {
@@ -250,10 +261,9 @@ final class AgentCommandRunner: ObservableObject {
         recordingCommandCount += 1
         isRecording = true
         VoiceLevelOverlayController.shared.show()
-        if command.identifier == AgentCommand.toggleTranscription.identifier {
-            if pendingHoldToTranscribeStop {
-                endRecordingIndicator(for: command)
-            }
+        if command.identifier == AgentCommand.toggleTranscription.identifier,
+           holdTranscriptionState == .awaitingPid {
+            endRecordingIndicator(for: command)
             stopHeldTranscriptionWhenReady()
         }
     }
