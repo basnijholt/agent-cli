@@ -226,6 +226,28 @@ class TestServiceConfig:
         assert "successfully" in msg
 
     @patch("subprocess.run")
+    def test_install_uv_pipes_binary_curl_output_to_shell(self, mock_run: MagicMock) -> None:
+        """Test uv installer output can be piped to sh as bytes."""
+
+        def fake_run(args: list[str], **kwargs: object) -> subprocess.CompletedProcess[bytes]:
+            if args[0] == "curl":
+                return subprocess.CompletedProcess(args, 0, stdout=b"echo installing uv\n")
+            if args == ["sh"]:
+                if kwargs.get("text") is True and isinstance(kwargs.get("input"), bytes):
+                    msg = "'bytes' object has no attribute 'encode'"
+                    raise AttributeError(msg)
+                return subprocess.CompletedProcess(args, 0, stdout=b"", stderr=b"")
+            msg = f"unexpected command: {args}"
+            raise AssertionError(msg)
+
+        mock_run.side_effect = fake_run
+
+        success, msg = install_uv()
+
+        assert success is True
+        assert "successfully" in msg
+
+    @patch("subprocess.run")
     def test_install_uv_failure(self, mock_run: MagicMock) -> None:
         """Test failed uv installation."""
         mock_run.side_effect = subprocess.CalledProcessError(1, "curl")
