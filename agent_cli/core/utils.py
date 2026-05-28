@@ -357,11 +357,11 @@ def _handle_process_stop(
     wait_for_start_seconds: float,
 ) -> bool:
     """Handle a process stop request."""
+    result = process.stop_process(
+        process_name,
+        wait_for_start_seconds=wait_for_start_seconds,
+    )
     if json_output:
-        result = process.stop_process(
-            process_name,
-            wait_for_start_seconds=wait_for_start_seconds,
-        )
         print(
             json.dumps(
                 _process_status_payload(
@@ -375,14 +375,7 @@ def _handle_process_stop(
         )
         return True
 
-    if wait_for_start_seconds > 0:
-        result = process.stop_process(
-            process_name,
-            wait_for_start_seconds=wait_for_start_seconds,
-        )
-        stopped = result.was_running or result.stale_cleaned
-    else:
-        stopped = process.kill_process(process_name)
+    stopped = result.was_running or result.stale_cleaned
 
     if stopped:
         if not quiet:
@@ -400,8 +393,8 @@ def _handle_process_status(
     json_output: bool,
 ) -> bool:
     """Handle a process status request."""
+    process_status = process.get_process_status(process_name)
     if json_output:
-        process_status = process.get_process_status(process_name)
         print(
             json.dumps(
                 _process_status_payload(
@@ -413,10 +406,9 @@ def _handle_process_status(
         )
         return True
 
-    if process.is_process_running(process_name):
-        pid = process.read_pid_file(process_name)
+    if process_status.running:
         if not quiet:
-            print_with_style(f"✅ {which.capitalize()} is running (PID: {pid}).")
+            print_with_style(f"✅ {which.capitalize()} is running (PID: {process_status.pid}).")
     elif not quiet:
         print_with_style(f"⚠️ {which.capitalize()} is not running.", style="yellow")
     return True
@@ -452,8 +444,10 @@ def stop_or_status_or_toggle(
         )
 
     if toggle:
-        if process.is_process_running(process_name):
-            if process.kill_process(process_name) and not quiet:
+        process_status = process.get_process_status(process_name)
+        if process_status.running:
+            result = process.stop_process(process_name)
+            if (result.was_running or result.stale_cleaned) and not quiet:
                 print_with_style(f"✅ {which.capitalize()} stopped.")
             return True
         if not quiet:

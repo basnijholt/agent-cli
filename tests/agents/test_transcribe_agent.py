@@ -96,39 +96,56 @@ def test_transcribe_start_writes_pid_before_audio_setup(
     assert events[1] == "setup_devices"
 
 
-@patch("agent_cli.agents.transcribe.process.kill_process")
-def test_transcribe_stop(mock_kill_process: MagicMock) -> None:
+@patch("agent_cli.agents.transcribe.process.stop_process")
+def test_transcribe_stop(mock_stop_process: MagicMock) -> None:
     """Test the --stop flag."""
-    mock_kill_process.return_value = True
+    mock_stop_process.return_value = process.StopProcessResult(
+        process_name="transcribe",
+        was_running=True,
+        status=process.ProcessStatus("transcribe", running=False, pid=None),
+        stale_cleaned=False,
+    )
     result = runner.invoke(app, ["transcribe", "--stop"])
     assert result.exit_code == 0
     assert "Transcribe stopped" in result.stdout
-    mock_kill_process.assert_called_once_with("transcribe")
+    mock_stop_process.assert_called_once_with("transcribe", wait_for_start_seconds=0.0)
 
 
-@patch("agent_cli.agents.transcribe.process.kill_process")
-def test_transcribe_stop_not_running(mock_kill_process: MagicMock) -> None:
+@patch("agent_cli.agents.transcribe.process.stop_process")
+def test_transcribe_stop_not_running(mock_stop_process: MagicMock) -> None:
     """Test the --stop flag when the process is not running."""
-    mock_kill_process.return_value = False
+    mock_stop_process.return_value = process.StopProcessResult(
+        process_name="transcribe",
+        was_running=False,
+        status=process.ProcessStatus("transcribe", running=False, pid=None),
+        stale_cleaned=False,
+    )
     result = runner.invoke(app, ["transcribe", "--stop"])
     assert result.exit_code == 0
     assert "No transcribe is running" in result.stdout
 
 
-@patch("agent_cli.agents.transcribe.process.is_process_running")
-def test_transcribe_status_running(mock_is_process_running: MagicMock) -> None:
+@patch("agent_cli.agents.transcribe.process.get_process_status")
+def test_transcribe_status_running(mock_get_process_status: MagicMock) -> None:
     """Test the --status flag when the process is running."""
-    mock_is_process_running.return_value = True
-    with patch("agent_cli.agents.transcribe.process.read_pid_file", return_value=123):
-        result = runner.invoke(app, ["transcribe", "--status"])
+    mock_get_process_status.return_value = process.ProcessStatus(
+        process_name="transcribe",
+        running=True,
+        pid=123,
+    )
+    result = runner.invoke(app, ["transcribe", "--status"])
     assert result.exit_code == 0
     assert "Transcribe is running" in result.stdout
 
 
-@patch("agent_cli.agents.transcribe.process.is_process_running")
-def test_transcribe_status_not_running(mock_is_process_running: MagicMock) -> None:
+@patch("agent_cli.agents.transcribe.process.get_process_status")
+def test_transcribe_status_not_running(mock_get_process_status: MagicMock) -> None:
     """Test the --status flag when the process is not running."""
-    mock_is_process_running.return_value = False
+    mock_get_process_status.return_value = process.ProcessStatus(
+        process_name="transcribe",
+        running=False,
+        pid=None,
+    )
     result = runner.invoke(app, ["transcribe", "--status"])
     assert result.exit_code == 0
     assert "Transcribe is not running" in result.stdout
