@@ -531,19 +531,22 @@ def test_macos_app_keeps_preparing_status_visible_during_command_bootstrap() -> 
     assert 'statusMessage == "Preparing voice service..."' not in source
 
 
-def test_macos_app_animates_waiting_for_voice_service_status() -> None:
-    """The waiting status should visibly indicate that setup is still progressing."""
+def test_macos_app_animates_all_preparing_statuses_with_fixed_width_timer() -> None:
+    """Every setup phase should show stable-width progress without shifting the timer."""
     source = swift_source()
 
     assert "statusMessage(animationTick: Int, elapsedSeconds: Int)" in source
-    assert "let periodCount = (animationTick % 3) + 1" in source
+    assert '["◐", "◓", "◑", "◒"]' in source
+    assert 'String(format: "%02d:%02d", minutes, seconds)' in source
+    assert '"\\(animatedStatusMessage) \\(spinner) (\\(elapsedTime))"' in source
     assert (
-        '"Waiting for voice service\\(String(repeating: ".", count: periodCount)) '
-        '(\\(elapsedSeconds)s)"' in source
+        "case .checkingRuntime, .installingRuntime, .installingVoiceService, .waitingForVoiceService, .warmingWhisperModel:"
+        in source
     )
     assert "bootstrapAnimationTimer" in source
     assert "bootstrapPhaseStartedAt" in source
     assert "bootstrapElapsedSeconds" in source
+    assert "bootstrapAnimationTick = (self.bootstrapAnimationTick + 1) % 4" in source
     assert "RunLoop.main.add(timer, forMode: .common)" in source
     assert "bootstrapPhase.statusMessage(" in source
     assert "animationTick: bootstrapAnimationTick" in source

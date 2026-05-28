@@ -45,10 +45,31 @@ enum BootstrapPhase: Equatable {
 
     func statusMessage(animationTick: Int, elapsedSeconds: Int) -> String {
         switch self {
+        case .checkingRuntime, .installingRuntime, .installingVoiceService, .waitingForVoiceService, .warmingWhisperModel:
+            let spinnerFrames = ["◐", "◓", "◑", "◒"]
+            let spinner = spinnerFrames[animationTick % spinnerFrames.count]
+            let minutes = elapsedSeconds / 60
+            let seconds = elapsedSeconds % 60
+            let elapsedTime = String(format: "%02d:%02d", minutes, seconds)
+            return "\(animatedStatusMessage) \(spinner) (\(elapsedTime))"
+        case .idle, .failed:
+            return statusMessage
+        }
+    }
+
+    private var animatedStatusMessage: String {
+        switch self {
+        case .checkingRuntime:
+            return "Checking CLI runtime"
+        case .installingRuntime:
+            return "Installing CLI runtime"
+        case .installingVoiceService:
+            return "Installing voice service"
         case .waitingForVoiceService:
-            let periodCount = (animationTick % 3) + 1
-            return "Waiting for voice service\(String(repeating: ".", count: periodCount)) (\(elapsedSeconds)s)"
-        case .idle, .checkingRuntime, .installingRuntime, .installingVoiceService, .warmingWhisperModel, .failed:
+            return "Waiting for voice service"
+        case .warmingWhisperModel:
+            return "Warming Whisper model"
+        case .idle, .failed:
             return statusMessage
         }
     }

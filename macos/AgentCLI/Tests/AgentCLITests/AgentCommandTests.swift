@@ -148,22 +148,34 @@ final class AgentCommandTests: XCTestCase {
         XCTAssertEqual(recorder.calls, [.init(requirement: .transcriptionModel, force: false)])
     }
 
-    func testWaitingForVoiceServiceStatusAnimatesEllipsis() {
+    func testPreparingStatusShowsFixedWidthSpinnerAndElapsedTime() {
+        XCTAssertEqual(
+            BootstrapPhase.checkingRuntime.statusMessage(animationTick: 0, elapsedSeconds: 0),
+            "Checking CLI runtime ◐ (00:00)"
+        )
+        XCTAssertEqual(
+            BootstrapPhase.installingRuntime.statusMessage(animationTick: 1, elapsedSeconds: 12),
+            "Installing CLI runtime ◓ (00:12)"
+        )
+        XCTAssertEqual(
+            BootstrapPhase.installingVoiceService.statusMessage(animationTick: 2, elapsedSeconds: 123),
+            "Installing voice service ◑ (02:03)"
+        )
         XCTAssertEqual(
             BootstrapPhase.waitingForVoiceService.statusMessage(animationTick: 0, elapsedSeconds: 0),
-            "Waiting for voice service. (0s)"
+            "Waiting for voice service ◐ (00:00)"
         )
         XCTAssertEqual(
             BootstrapPhase.waitingForVoiceService.statusMessage(animationTick: 1, elapsedSeconds: 12),
-            "Waiting for voice service.. (12s)"
+            "Waiting for voice service ◓ (00:12)"
         )
         XCTAssertEqual(
             BootstrapPhase.waitingForVoiceService.statusMessage(animationTick: 2, elapsedSeconds: 123),
-            "Waiting for voice service... (123s)"
+            "Waiting for voice service ◑ (02:03)"
         )
         XCTAssertEqual(
-            BootstrapPhase.waitingForVoiceService.statusMessage(animationTick: 3, elapsedSeconds: 4),
-            "Waiting for voice service. (4s)"
+            BootstrapPhase.warmingWhisperModel.statusMessage(animationTick: 3, elapsedSeconds: 4),
+            "Warming Whisper model ◒ (00:04)"
         )
     }
 }

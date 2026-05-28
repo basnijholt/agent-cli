@@ -161,7 +161,7 @@ final class AgentCommandRunner: ObservableObject {
                     self.stopBootstrapAnimationTimer()
                     return
                 }
-                self.bootstrapAnimationTick = (self.bootstrapAnimationTick + 1) % 3
+                self.bootstrapAnimationTick = (self.bootstrapAnimationTick + 1) % 4
                 if let startedAt = self.bootstrapPhaseStartedAt {
                     self.bootstrapElapsedSeconds = max(0, Int(Date().timeIntervalSince(startedAt)))
                 }
