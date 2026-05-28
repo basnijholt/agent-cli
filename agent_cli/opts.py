@@ -326,6 +326,12 @@ TTS_GEMINI_VOICE: str = typer.Option(
 
 
 # --- Process Management Options ---
+START: bool = typer.Option(
+    False,  # noqa: FBT003
+    "--start",
+    help="Start this command if it is not already running.",
+    rich_help_panel="Process Management",
+)
 STOP: bool = typer.Option(
     False,  # noqa: FBT003
     "--stop",

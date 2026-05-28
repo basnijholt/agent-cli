@@ -24,6 +24,24 @@ class _PidInfo(NamedTuple):
     uses_lock: bool
 
 
+class ProcessStatus(NamedTuple):
+    """Current state of a managed Agent CLI process."""
+
+    process_name: str
+    running: bool
+    pid: int | None
+    stale_cleaned: bool = False
+
+
+class StopProcessResult(NamedTuple):
+    """Result of a stop request for a managed Agent CLI process."""
+
+    process_name: str
+    was_running: bool
+    status: ProcessStatus
+    stale_cleaned: bool = False
+
+
 def _default_pid_dir() -> Path:
     """Return local runtime dir for process control files."""
     if runtime_dir := os.environ.get("AGENTCLI_RUNTIME_DIR"):
@@ -116,8 +134,10 @@ def _is_pid_running(pid: int) -> bool:
     try:
         os.kill(pid, 0)
         return True
-    except (ProcessLookupError, PermissionError):
+    except ProcessLookupError:
         return False
+    except PermissionError:
+        return True
 
 
 def _supports_process_locks() -> bool:
@@ -233,25 +253,46 @@ def _cleanup_process_files(process_name: str) -> None:
     clear_stop_file(process_name)
 
 
-def _get_running_pid(process_name: str) -> int | None:
-    """Get PID if process is running, None otherwise. Cleans up stale files."""
+def get_process_status(process_name: str) -> ProcessStatus:
+    """Return process state and deterministically clean stale control files."""
     if not _get_pid_file(process_name).exists():
-        return None
+        return ProcessStatus(process_name=process_name, running=False, pid=None)
 
     pid_info = _read_pid_info(process_name)
     if pid_info is None:
         _cleanup_process_files(process_name)
-        return None
+        return ProcessStatus(
+            process_name=process_name,
+            running=False,
+            pid=None,
+            stale_cleaned=True,
+        )
 
     if pid_info.uses_lock and _supports_process_locks() and not _is_process_lock_held(process_name):
         _cleanup_process_files(process_name)
-        return None
+        return ProcessStatus(
+            process_name=process_name,
+            running=False,
+            pid=None,
+            stale_cleaned=True,
+        )
 
     if _is_pid_running(pid_info.pid):
-        return pid_info.pid
+        return ProcessStatus(process_name=process_name, running=True, pid=pid_info.pid)
 
     _cleanup_process_files(process_name)
-    return None
+    return ProcessStatus(
+        process_name=process_name,
+        running=False,
+        pid=None,
+        stale_cleaned=True,
+    )
+
+
+def _get_running_pid(process_name: str) -> int | None:
+    """Get PID if process is running, None otherwise. Cleans up stale files."""
+    status = get_process_status(process_name)
+    return status.pid if status.running else None
 
 
 def is_process_running(process_name: str) -> bool:
@@ -264,27 +305,8 @@ def read_pid_file(process_name: str) -> int | None:
     return _get_running_pid(process_name)
 
 
-def kill_process(process_name: str) -> bool:
-    """Kill a process by name.
-
-    Returns True if killed or cleaned up, False if not found.
-    On Windows, creates a stop file first to allow graceful shutdown.
-    """
-    pid_file = _get_pid_file(process_name)
-
-    # If no PID file exists at all, nothing to do
-    if not pid_file.exists():
-        clear_stop_file(process_name)
-        return False
-
-    # Check if we have a running process
-    pid = _get_running_pid(process_name)
-
-    # If _get_running_pid returned None but file existed, it cleaned up a stale file
-    if pid is None:
-        clear_stop_file(process_name)
-        return True
-
+def _signal_running_process(process_name: str, pid: int) -> None:
+    """Signal a known-running process and clean control files if it exits."""
     stop_file = _get_stop_file(process_name)
     should_force_kill = sys.platform != "win32" and stop_file.exists()
 
@@ -317,7 +339,44 @@ def kill_process(process_name: str) -> bool:
     elif not should_force_kill:
         stop_file.touch()
 
-    return True
+
+def stop_process(process_name: str) -> StopProcessResult:
+    """Stop a process by name and return the resulting process state."""
+    initial_status = get_process_status(process_name)
+    if not initial_status.running or initial_status.pid is None:
+        clear_stop_file(process_name)
+        return StopProcessResult(
+            process_name=process_name,
+            was_running=False,
+            status=initial_status,
+            stale_cleaned=initial_status.stale_cleaned,
+        )
+
+    _signal_running_process(process_name, initial_status.pid)
+    status = get_process_status(process_name)
+    return StopProcessResult(
+        process_name=process_name,
+        was_running=True,
+        status=status,
+        stale_cleaned=initial_status.stale_cleaned or status.stale_cleaned,
+    )
+
+
+def kill_process(process_name: str) -> bool:
+    """Kill a process by name.
+
+    Returns True if killed or cleaned up, False if not found.
+    On Windows, creates a stop file first to allow graceful shutdown.
+    """
+    pid_file = _get_pid_file(process_name)
+
+    # If no PID file exists at all, nothing to do
+    if not pid_file.exists():
+        clear_stop_file(process_name)
+        return False
+
+    result = stop_process(process_name)
+    return result.was_running or result.stale_cleaned
 
 
 @contextmanager

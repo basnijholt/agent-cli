@@ -326,6 +326,89 @@ def signal_handling_context(
             signal.signal(signum, previous)
 
 
+def _process_status_payload(
+    *,
+    action: str,
+    process_name: str,
+    process_status: process.ProcessStatus,
+    was_running: bool | None = None,
+    stale_cleaned: bool | None = None,
+) -> dict[str, object]:
+    """Build machine-readable process control output."""
+    payload: dict[str, object] = {
+        "action": action,
+        "process": process_name,
+        "running": process_status.running,
+        "status": "running" if process_status.running else "stopped",
+        "pid": process_status.pid,
+        "stale_cleaned": (process_status.stale_cleaned if stale_cleaned is None else stale_cleaned),
+    }
+    if was_running is not None:
+        payload["was_running"] = was_running
+    return payload
+
+
+def _handle_process_stop(
+    process_name: str,
+    which: str,
+    *,
+    quiet: bool,
+    json_output: bool,
+) -> bool:
+    """Handle a process stop request."""
+    if json_output:
+        result = process.stop_process(process_name)
+        print(
+            json.dumps(
+                _process_status_payload(
+                    action="stop",
+                    process_name=process_name,
+                    process_status=result.status,
+                    was_running=result.was_running,
+                    stale_cleaned=result.stale_cleaned,
+                ),
+            ),
+        )
+        return True
+
+    if process.kill_process(process_name):
+        if not quiet:
+            print_with_style(f"✅ {which.capitalize()} stopped.")
+    elif not quiet:
+        print_with_style(f"⚠️  No {which} is running.", style="yellow")
+    return True
+
+
+def _handle_process_status(
+    process_name: str,
+    which: str,
+    *,
+    quiet: bool,
+    json_output: bool,
+) -> bool:
+    """Handle a process status request."""
+    if json_output:
+        process_status = process.get_process_status(process_name)
+        print(
+            json.dumps(
+                _process_status_payload(
+                    action="status",
+                    process_name=process_name,
+                    process_status=process_status,
+                ),
+            ),
+        )
+        return True
+
+    if process.is_process_running(process_name):
+        pid = process.read_pid_file(process_name)
+        if not quiet:
+            print_with_style(f"✅ {which.capitalize()} is running (PID: {pid}).")
+    elif not quiet:
+        print_with_style(f"⚠️ {which.capitalize()} is not running.", style="yellow")
+    return True
+
+
 def stop_or_status_or_toggle(
     process_name: str,
     which: str,
@@ -334,24 +417,24 @@ def stop_or_status_or_toggle(
     toggle: bool,
     *,
     quiet: bool = False,
+    json_output: bool = False,
 ) -> bool:
     """Handle process control for a given process name."""
     if stop:
-        if process.kill_process(process_name):
-            if not quiet:
-                print_with_style(f"✅ {which.capitalize()} stopped.")
-        elif not quiet:
-            print_with_style(f"⚠️  No {which} is running.", style="yellow")
-        return True
+        return _handle_process_stop(
+            process_name,
+            which,
+            quiet=quiet,
+            json_output=json_output,
+        )
 
     if status:
-        if process.is_process_running(process_name):
-            pid = process.read_pid_file(process_name)
-            if not quiet:
-                print_with_style(f"✅ {which.capitalize()} is running (PID: {pid}).")
-        elif not quiet:
-            print_with_style(f"⚠️ {which.capitalize()} is not running.", style="yellow")
-        return True
+        return _handle_process_status(
+            process_name,
+            which,
+            quiet=quiet,
+            json_output=json_output,
+        )
 
     if toggle:
         if process.is_process_running(process_name):

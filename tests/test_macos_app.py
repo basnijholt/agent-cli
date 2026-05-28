@@ -92,6 +92,8 @@ def test_macos_app_source_exposes_expected_agent_cli_actions() -> None:
 
     assert "MenuBarExtra" in source
     assert '"$AGENTCLI_AGENT_CLI" transcribe --toggle --quiet' in source
+    assert '"$AGENTCLI_AGENT_CLI" transcribe --stop --quiet' in source
+    assert "transcribe.pid" not in source
     assert "transcribe --toggle --llm --quiet" not in source
     assert '"$AGENTCLI_AGENT_CLI" voice-edit --toggle --quiet' in source
     assert '"$AGENTCLI_AGENT_CLI" autocorrect --quiet' in source
@@ -362,8 +364,8 @@ def test_macos_app_models_hold_to_transcribe_as_explicit_state() -> None:
     assert "holdStopRequestActive" not in source
 
 
-def test_macos_app_uses_private_runtime_dir_for_hold_to_transcribe_stop() -> None:
-    """Hold-to-type stop should watch the same PID dir that the app passes to agent-cli."""
+def test_macos_app_uses_cli_owned_hold_to_transcribe_stop() -> None:
+    """Hold-to-type stop should use CLI process control, not PID polling in Swift."""
     source = swift_source()
     launchd = (ROOT / "agent_cli" / "install" / "launchd.py").read_text()
 
@@ -374,7 +376,11 @@ def test_macos_app_uses_private_runtime_dir_for_hold_to_transcribe_stop() -> Non
         "try fileManager.createDirectory(at: runtimeURL, withIntermediateDirectories: true)"
         in source
     )
-    assert '"$AGENTCLI_RUNTIME_DIR/transcribe.pid"' in source
+    assert (
+        'private static let holdStopShell = #""$AGENTCLI_AGENT_CLI" transcribe --stop --quiet"#'
+        in source
+    )
+    assert "transcribe.pid" not in source
     assert '"$HOME/.cache/agent-cli/transcribe.pid"' not in source
     assert '"AGENTCLI_RUNTIME_DIR"' in launchd
 
