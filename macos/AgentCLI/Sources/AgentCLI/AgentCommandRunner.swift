@@ -88,7 +88,7 @@ final class AgentCommandRunner: ObservableObject {
 
         let bootstrap = self.bootstrap
         DispatchQueue.global(qos: .utility).async {
-            let result = bootstrap(.transcription, false)
+            let result = bootstrap(.transcriptionModel, false)
 
             Task { @MainActor in
                 self.activeCommandCount = max(0, self.activeCommandCount - 1)
