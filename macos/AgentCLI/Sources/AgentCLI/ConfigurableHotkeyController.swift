@@ -12,19 +12,19 @@ final class ConfigurableHotkeyController {
         guard !registered else { return }
 
         KeyboardShortcuts.onKeyUp(for: .toggleTranscription) {
-            runner.run(.toggleTranscription)
+            Task { @MainActor in runner.run(.toggleTranscription) }
         }
         KeyboardShortcuts.onKeyDown(for: .holdToTranscribe) {
-            runner.beginHoldToTranscribe()
+            Task { @MainActor in runner.beginHoldToTranscribe() }
         }
         KeyboardShortcuts.onKeyUp(for: .holdToTranscribe) {
-            runner.endHoldToTranscribe()
+            Task { @MainActor in runner.endHoldToTranscribe() }
         }
         KeyboardShortcuts.onKeyUp(for: .autocorrect) {
-            runner.run(.autocorrect)
+            Task { @MainActor in runner.run(.autocorrect) }
         }
         KeyboardShortcuts.onKeyUp(for: .voiceEdit) {
-            runner.run(.voiceEdit)
+            Task { @MainActor in runner.run(.voiceEdit) }
         }
 
         registered = true

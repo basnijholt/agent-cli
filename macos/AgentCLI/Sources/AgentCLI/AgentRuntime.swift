@@ -94,13 +94,13 @@ struct AgentRuntime {
 
         guard CommandLine.arguments.contains("--agentcli-bootstrap-self-test") else { return }
 
-        let bootstrap = ensureTranscriptionReady(force: true)
+        let bootstrap = ensureReady(for: .transcription, force: true)
         guard bootstrap.exitCode == 0 else {
             print("AgentCLI bootstrap self-test failed: \(bootstrap.output)")
             exit(1)
         }
 
-        let transcription = runShell(AgentCommand.toggleTranscription.shell)
+        let transcription = runAgentCLI(arguments: AgentCommand.toggleTranscription.arguments)
         guard transcription.exitCode == 0 else {
             print("AgentCLI transcription self-test failed: \(transcription.output)")
             exit(1)
@@ -167,12 +167,17 @@ struct AgentRuntime {
         "packageSource=\(agentCLIPackageSource)\ninstallRequirement=\(agentCLIInstallRequirement)\n"
     }
 
-    func ensureTranscriptionReady(force: Bool = false) -> CommandResult {
-        let installResult = ensureInstalled(force: force)
-        guard installResult.exitCode == 0 else {
-            return installResult
+    func ensureReady(for requirement: AgentBootstrapRequirement, force: Bool = false) -> CommandResult {
+        switch requirement {
+        case .cliRuntime:
+            return ensureInstalled(force: force)
+        case .transcription:
+            let installResult = ensureInstalled(force: force)
+            guard installResult.exitCode == 0 else {
+                return installResult
+            }
+            return ensureWhisperDaemon(force: force)
         }
-        return ensureWhisperDaemon(force: force)
     }
 
     private func ensureWhisperDaemon(force: Bool = false) -> CommandResult {
@@ -181,7 +186,7 @@ struct AgentRuntime {
             return waitForWhisperDaemonReady()
         }
 
-        let result = runShell(#""$AGENTCLI_AGENT_CLI" daemon install whisper -y"#)
+        let result = runAgentCLI(arguments: ["daemon", "install", "whisper", "-y"])
         guard result.exitCode == 0 else {
             return result
         }
@@ -203,7 +208,7 @@ struct AgentRuntime {
             Thread.sleep(forTimeInterval: 0.5)
         }
 
-        let status = runShell(#""$AGENTCLI_AGENT_CLI" daemon status whisper --logs 80"#)
+        let status = runAgentCLI(arguments: ["daemon", "status", "whisper", "--logs", "80"])
         let statusOutput = status.output.trimmingCharacters(in: .whitespacesAndNewlines)
         let output = statusOutput.isEmpty
             ? "Whisper ASR service did not become ready at localhost:10300."
@@ -289,6 +294,14 @@ struct AgentRuntime {
         Self.runProcess(
             executableURL: URL(fileURLWithPath: "/bin/zsh"),
             arguments: ["-lc", shell],
+            environment: commandEnvironment()
+        )
+    }
+
+    func runAgentCLI(arguments: [String]) -> CommandResult {
+        Self.runProcess(
+            executableURL: agentCLIURL,
+            arguments: arguments,
             environment: commandEnvironment()
         )
     }

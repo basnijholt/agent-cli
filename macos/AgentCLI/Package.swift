@@ -21,5 +21,10 @@ let package = Package(
             ],
             path: "Sources/AgentCLI"
         ),
+        .testTarget(
+            name: "AgentCLITests",
+            dependencies: ["AgentCLI"],
+            path: "Tests/AgentCLITests"
+        ),
     ]
 )
