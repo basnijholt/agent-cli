@@ -179,6 +179,8 @@ struct SettingsView: View {
     @ObservedObject private var loginItemController = LoginItemController.shared
     @AppStorage(RuntimeSettings.useUserInstalledAgentCLIKey)
     private var useUserInstalledAgentCLI = false
+    @AppStorage(RecordingSoundSettings.enabledKey)
+    private var recordingSoundsEnabled = false
     @AppStorage(TranscriptionSettings.transcriptionExtraInstructionsKey)
     private var transcriptionExtraInstructions = ""
     @State private var shortcutRevision = 0
@@ -202,10 +204,11 @@ struct SettingsView: View {
                 }
 
                 Toggle("Use User-Installed agent-cli", isOn: $useUserInstalledAgentCLI)
+                Toggle("Play Recording Sounds", isOn: $recordingSoundsEnabled)
             } header: {
                 Text("General")
             } footer: {
-                Text("Runs the agent-cli found on PATH with your normal config instead of the app's private bundled-uv runtime.")
+                Text("Runs the agent-cli found on PATH with your normal config instead of the app's private bundled-uv runtime. Recording sounds use Frog when recording starts and Funk when recording ends.")
             }
 
             Section {
