@@ -20,9 +20,11 @@ The packaged app registers native macOS global hotkeys itself:
 
 Choose **Settings...** from the menu bar app to change these shortcuts or enable
 **Start at Login**. The settings UI uses the `KeyboardShortcuts` Swift package
-for shortcut parsing, `UserDefaults` storage, and global key-up handlers. The
-login option uses Apple's login item API for the main app bundle, so macOS may
-require approval in System Settings → General → Login Items.
+for shortcut parsing and `UserDefaults` storage. Transcription shortcuts are
+handled by a small CGEvent tap so `Fn`, `Fn+Space`, and plain Space remain
+distinct; the clipboard utility shortcuts still use `KeyboardShortcuts` global
+handlers. The login option uses Apple's login item API for the main app bundle,
+so macOS may require approval in System Settings → General → Login Items.
 
 ## Build
 

@@ -111,22 +111,24 @@ final class AgentCommandRunner: ObservableObject {
         }
     }
 
-    func beginHoldToTranscribe() {
+    @discardableResult
+    func beginHoldToTranscribe() -> Bool {
         guard holdTranscriptionState == .idle else {
             if holdTranscriptionState.isFinishing {
                 statusMessage = "Finishing previous hold-to-transcribe request"
             }
-            return
+            return false
         }
         guard !recordingIndicator.isRecordingCommand(.toggleTranscription), !isStopPending(for: .toggleTranscription) else {
             statusMessage = "Transcription is already recording"
-            return
+            return false
         }
 
         holdTranscriptionState = .recording
         holdToTranscribePasteTarget = FocusedTextTarget.capture()
         pasteAfterRecordingCommands.insert(AgentCommand.toggleTranscription.identifier)
         run(.toggleTranscription)
+        return true
     }
 
     func endHoldToTranscribe() {
@@ -141,6 +143,18 @@ final class AgentCommandRunner: ObservableObject {
             statusMessage = "Stopping transcription as soon as it starts..."
         }
         stopHeldTranscriptionWhenReady()
+    }
+
+    @discardableResult
+    func stopTranscriptionFromFunctionKeyIfNeeded() -> Bool {
+        guard holdTranscriptionState == .idle,
+              recordingIndicator.isRecordingCommand(.toggleTranscription),
+              !isStopPending(for: .toggleTranscription) else {
+            return false
+        }
+
+        run(.toggleTranscription)
+        return true
     }
 
     func run(_ command: AgentCommand) {

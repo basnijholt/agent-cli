@@ -341,11 +341,10 @@ def test_macos_app_supports_configurable_hold_to_transcribe_shortcut() -> None:
     assert "default: KeyboardShortcuts.Shortcut(.function)" in source
     assert 'title: "Hold to Transcribe"' in source
     assert "name: .holdToTranscribe" in source
-    assert "KeyboardShortcuts.onKeyDown(for: .holdToTranscribe)" in source
+    assert "handleFunctionKeyChanged" in source
     assert "runner.beginHoldToTranscribe()" in source
-    assert "KeyboardShortcuts.onKeyUp(for: .holdToTranscribe)" in source
     assert "runner.endHoldToTranscribe()" in source
-    assert "func beginHoldToTranscribe()" in source
+    assert "func beginHoldToTranscribe() -> Bool" in source
     assert "func endHoldToTranscribe()" in source
     assert "private var holdTranscriptionState: HoldTranscriptionState = .idle" in source
     assert "private var pasteAfterRecordingCommands: Set<String> = []" in source
@@ -499,6 +498,48 @@ def test_macos_app_defaults_clipboard_transcription_to_fn_space() -> None:
     assert "carbonModifiers |= kEventKeyModifierFnMask" in source
     assert ".flagsChanged" in source
     assert "Fn+Space" in source
+
+
+def test_macos_app_uses_fn_aware_event_tap_for_transcription_shortcuts() -> None:
+    """Fn transcription shortcuts must not be registered as plain Space Carbon hotkeys."""
+    source = swift_source()
+
+    assert "CGEvent.tapCreate" in source
+    assert "CGEventType.keyDown" in source
+    assert "CGEventType.keyUp" in source
+    assert "CGEventType.flagsChanged" in source
+    assert "CGEventFlags.maskSecondaryFn" in source
+    assert "handleFunctionAwareHotkey" in source
+    assert "KeyboardShortcuts.onKeyUp(for: .toggleTranscription)" not in source
+    assert "KeyboardShortcuts.onKeyDown(for: .holdToTranscribe)" not in source
+    assert "KeyboardShortcuts.onKeyUp(for: .holdToTranscribe)" not in source
+
+
+def test_macos_app_disambiguates_fn_hold_from_fn_space_toggle() -> None:
+    """Bare Fn should be delayed so an Fn+Space chord can start hands-free mode."""
+    source = swift_source()
+
+    assert "holdToTranscribeDelay" in source
+    assert "pendingHoldToTranscribeWorkItem" in source
+    assert "cancelPendingHoldToTranscribe()" in source
+    assert "handleToggleTranscriptionShortcut" in source
+    assert "handleFunctionKeyChanged" in source
+    assert "stopTranscriptionFromFunctionKeyIfNeeded" in source
+    assert "runner.beginHoldToTranscribe()" in source
+    assert "runner.endHoldToTranscribe()" in source
+
+
+def test_macos_app_event_tap_preserves_custom_hold_to_transcribe_shortcuts() -> None:
+    """Moving off KeyboardShortcuts handlers should still support non-Fn hold shortcuts."""
+    source = swift_source()
+
+    assert "handleHoldToTranscribeShortcut" in source
+    assert "isBareFunctionShortcut" in source
+    assert "guard !isBareFunctionShortcut(shortcut)" in source
+    assert "type == .keyDown" in source
+    assert "type == .keyUp" in source
+    assert "runner.beginHoldToTranscribe()" in source
+    assert "runner.endHoldToTranscribe()" in source
 
 
 def test_macos_app_migrates_old_default_shortcuts_to_fn_defaults() -> None:
@@ -739,7 +780,7 @@ def test_macos_app_makes_command_errors_discoverable() -> None:
 
 
 def test_macos_app_registers_configurable_native_global_hotkeys() -> None:
-    """KeyboardShortcuts source documents setShortcut/getShortcut and onKeyUp handlers."""
+    """Shortcuts should be recorded in settings and registered by native hotkey handlers."""
     source = swift_source()
 
     assert "import KeyboardShortcuts" in source
@@ -747,7 +788,8 @@ def test_macos_app_registers_configurable_native_global_hotkeys() -> None:
     assert "KeyboardShortcuts.Shortcut(event:" in source
     assert "KeyboardShortcuts.setShortcut" in source
     assert "KeyboardShortcuts.getShortcut" in source
-    assert "KeyboardShortcuts.onKeyDown" in source
+    assert "CGEvent.tapCreate" in source
+    assert "handleFunctionAwareHotkey" in source
     assert "KeyboardShortcuts.onKeyUp" in source
     assert "ShortcutRecorderButton" in source
     assert "Fn+Space" in source
