@@ -1,11 +1,5 @@
 import Foundation
 
-enum AgentBootstrapRequirement: Equatable {
-    case cliRuntime
-    case transcription
-    case transcriptionModel
-}
-
 struct AgentCommand {
     let identifier: String
     let title: String

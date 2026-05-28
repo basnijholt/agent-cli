@@ -156,7 +156,11 @@ private final class BootstrapRecorder {
         lock.withLock { storedCalls }
     }
 
-    func bootstrap(requirement: AgentBootstrapRequirement, force: Bool) -> CommandResult {
+    func bootstrap(
+        requirement: AgentBootstrapRequirement,
+        force: Bool,
+        progress: AgentBootstrapProgress
+    ) -> CommandResult {
         lock.withLock {
             storedCalls.append(.init(requirement: requirement, force: force))
         }

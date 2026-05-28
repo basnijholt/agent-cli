@@ -170,7 +170,10 @@ struct AgentRuntime {
         exit(0)
     }
 
-    func ensureInstalled(force: Bool = false) -> CommandResult {
+    func ensureInstalled(
+        force: Bool = false,
+        progress: AgentBootstrapProgress = { _ in }
+    ) -> CommandResult {
         let mode = runtimeMode
         do {
             try prepareDirectories(for: mode)
@@ -179,6 +182,7 @@ struct AgentRuntime {
         }
 
         if mode == .userInstalled {
+            progress(.checkingRuntime)
             return ensureUserInstalledCLIAvailable()
         }
 
@@ -188,6 +192,7 @@ struct AgentRuntime {
             return CommandResult(exitCode: 0, output: "")
         }
 
+        progress(.installingRuntime)
         guard fileManager.isExecutableFile(atPath: bundledUVURL.path) else {
             return CommandResult(
                 exitCode: 127,
@@ -243,36 +248,54 @@ struct AgentRuntime {
         "packageSource=\(agentCLIPackageSource)\ninstallRequirement=\(agentCLIInstallRequirement)\n"
     }
 
-    func ensureReady(for requirement: AgentBootstrapRequirement, force: Bool = false) -> CommandResult {
+    func ensureReady(
+        for requirement: AgentBootstrapRequirement,
+        force: Bool = false,
+        progress: AgentBootstrapProgress = { _ in }
+    ) -> CommandResult {
         Self.bootstrapQueue.sync {
-            ensureReadyUnsynchronized(for: requirement, force: force)
+            ensureReadyUnsynchronized(for: requirement, force: force, progress: progress)
         }
     }
 
-    private func ensureReadyUnsynchronized(for requirement: AgentBootstrapRequirement, force: Bool = false) -> CommandResult {
+    private func ensureReadyUnsynchronized(
+        for requirement: AgentBootstrapRequirement,
+        force: Bool = false,
+        progress: AgentBootstrapProgress
+    ) -> CommandResult {
         switch requirement {
         case .cliRuntime:
-            return ensureInstalled(force: force)
+            return ensureInstalled(force: force, progress: progress)
         case .transcription:
-            let installResult = ensureInstalled(force: force)
+            let installResult = ensureInstalled(force: force, progress: progress)
             guard installResult.exitCode == 0 else {
                 return installResult
             }
-            return ensureWhisperDaemon(force: force)
+            return ensureWhisperDaemon(force: force, progress: progress)
         case .transcriptionModel:
-            let daemonResult = ensureReadyUnsynchronized(for: .transcription, force: force)
+            let daemonResult = ensureReadyUnsynchronized(
+                for: .transcription,
+                force: force,
+                progress: progress
+            )
             guard daemonResult.exitCode == 0 else {
                 return daemonResult
             }
+            progress(.warmingWhisperModel)
             return warmUpWhisperModel()
         }
     }
 
-    private func ensureWhisperDaemon(force: Bool = false) -> CommandResult {
+    private func ensureWhisperDaemon(
+        force: Bool = false,
+        progress: AgentBootstrapProgress
+    ) -> CommandResult {
         if !force, (try? String(contentsOf: whisperDaemonMarkerURL)) == whisperDaemonMarkerContents {
+            progress(.waitingForVoiceService)
             return waitForWhisperDaemonReady()
         }
 
+        progress(.installingVoiceService)
         let result = runAgentCLI(arguments: ["daemon", "install", "whisper", "-y"])
         guard result.exitCode == 0 else {
             return result
@@ -283,6 +306,7 @@ struct AgentRuntime {
             atomically: true,
             encoding: .utf8
         )
+        progress(.waitingForVoiceService)
         return waitForWhisperDaemonReady()
     }
 
