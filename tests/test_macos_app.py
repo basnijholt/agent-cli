@@ -47,10 +47,7 @@ def test_macos_app_package_files_exist() -> None:
     for filename in (
         "AgentCLIApp.swift",
         "AgentCommand.swift",
-        "AgentCommandExecutor.swift",
         "AgentCommandRunner.swift",
-        "AgentErrorStore.swift",
-        "AgentNotificationPresenter.swift",
         "AgentRuntime.swift",
         "AppDelegate.swift",
         "CommandResult.swift",
@@ -553,16 +550,13 @@ def test_macos_app_suppresses_start_notification_for_recording_stop_toggle() -> 
     )
     assert "let shouldStartRecording = command.showsRecordingIndicator && !isStopRequest" in source
     assert "if shouldStartRecording" in source
-    assert "self.notificationPresenter.notifyStart(for: command)" in source
+    assert "self.notifyStart(for: command)" in source
     assert "if isStopRequest && result.exitCode == 0" in source
     assert 'self.statusMessage = "Stop requested for \\(command.title)"' in source
     assert "func isRecordingCommand(_ command: AgentCommand) -> Bool" in source
     assert 'identifier: "transcribe"' in source
     assert 'identifier: "voice-edit"' in source
-    assert (
-        "self.notificationPresenter.notify(title: notificationTitle, body: notificationBody)"
-        in source
-    )
+    assert "self.notify(title: notificationTitle, body: notificationBody)" in source
     assert (
         "if command.showsRecordingIndicator {\n"
         "                DispatchQueue.main.async {\n"
@@ -590,16 +584,13 @@ def test_macos_app_splits_runner_collaborators_and_uses_main_actor() -> None:
     source = swift_source()
 
     assert "@MainActor\nfinal class AgentCommandRunner" in source
-    assert "final class AgentCommandExecutor" in source
     assert "final class RecordingIndicatorController" in source
     assert "struct TranscriptPasteController" in source
-    assert "struct AgentErrorStore" in source
-    assert "struct AgentNotificationPresenter" in source
-    assert "private let commandExecutor: AgentCommandExecutor" in source
     assert "private var recordingIndicator = RecordingIndicatorController()" in source
     assert "private let pasteController: TranscriptPasteController" in source
-    assert "private let errorStore: AgentErrorStore" in source
-    assert "private let notificationPresenter: AgentNotificationPresenter" in source
+    assert "AgentCommandExecutor" not in source
+    assert "AgentNotificationPresenter" not in source
+    assert "AgentErrorStore" not in source
 
 
 def test_macos_app_sends_visible_transcription_notifications() -> None:

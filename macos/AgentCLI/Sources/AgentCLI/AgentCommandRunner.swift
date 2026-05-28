@@ -1,6 +1,4 @@
 import AppKit
-import ApplicationServices
-import Carbon.HIToolbox
 import Foundation
 import SwiftUI
 import UserNotifications
@@ -30,11 +28,8 @@ final class AgentCommandRunner: ObservableObject {
     @Published private(set) var hasLastError = false
     @Published private(set) var isRecording = false
     @Published private var activeCommandCount = 0
-    private let commandExecutor: AgentCommandExecutor
     private var recordingIndicator = RecordingIndicatorController()
     private let pasteController: TranscriptPasteController
-    private let errorStore: AgentErrorStore
-    private let notificationPresenter: AgentNotificationPresenter
     private var pendingStopRecordingCommands: Set<String> = []
     private var holdTranscriptionState: HoldTranscriptionState = .idle
     private var holdToTranscribePasteTarget: FocusedTextTarget?
@@ -58,16 +53,10 @@ final class AgentCommandRunner: ObservableObject {
     }
 
     private init(
-        commandExecutor: AgentCommandExecutor = AgentCommandExecutor(),
-        pasteController: TranscriptPasteController = TranscriptPasteController(),
-        errorStore: AgentErrorStore = AgentErrorStore(),
-        notificationPresenter: AgentNotificationPresenter = AgentNotificationPresenter()
+        pasteController: TranscriptPasteController = TranscriptPasteController()
     ) {
-        self.commandExecutor = commandExecutor
         self.pasteController = pasteController
-        self.errorStore = errorStore
-        self.notificationPresenter = notificationPresenter
-        hasLastError = errorStore.hasLastError()
+        hasLastError = FileManager.default.fileExists(atPath: AgentRuntime.shared.lastErrorURL.path)
     }
 
     nonisolated private static let menuStatusMaxLength = 72
@@ -79,6 +68,8 @@ final class AgentCommandRunner: ObservableObject {
         URL(string: "x-apple.systempreferences:com.apple.Security-Privacy.extension?Privacy_Accessibility")!,
         URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!
     ]
+    nonisolated private static let holdStopShell = #""$AGENTCLI_AGENT_CLI" transcribe --stop --quiet --wait-for-start"#
+
     func beginHoldToTranscribe() {
         guard holdTranscriptionState == .idle else {
             if holdTranscriptionState.isFinishing {
@@ -129,9 +120,8 @@ final class AgentCommandRunner: ObservableObject {
             ? "Stopping \(command.title)..."
             : "Running \(command.title)..."
 
-        let commandExecutor = commandExecutor
         DispatchQueue.global(qos: .userInitiated).async {
-            let bootstrap = commandExecutor.prepare(command)
+            let bootstrap = AgentRuntime.shared.ensureReady(for: command.bootstrapRequirement, force: command.forceBootstrap)
             guard bootstrap.exitCode == 0 else {
                 let message = Self.statusMessage(for: command, result: bootstrap)
                 let notificationTitle = Self.notificationTitle(for: command, result: bootstrap)
@@ -148,7 +138,7 @@ final class AgentCommandRunner: ObservableObject {
                     self.lastOutput = bootstrap.output
                     self.recordFailure(command: command, result: bootstrap)
                     self.statusMessage = message
-                    self.notificationPresenter.notify(title: notificationTitle, body: notificationBody)
+                    self.notify(title: notificationTitle, body: notificationBody)
                 }
                 return
             }
@@ -156,11 +146,11 @@ final class AgentCommandRunner: ObservableObject {
             if shouldStartRecording {
                 Task { @MainActor in
                     self.beginRecordingIndicator(for: command)
-                    self.notificationPresenter.notifyStart(for: command)
+                    self.notifyStart(for: command)
                 }
             }
 
-            let result = commandExecutor.run(command)
+            let result = AgentRuntime.shared.runAgentCLI(arguments: command.arguments)
             let message = Self.statusMessage(for: command, result: result)
             let notificationTitle = Self.notificationTitle(for: command, result: result)
             let notificationBody = Self.notificationBody(for: command, result: result, statusMessage: message)
@@ -197,9 +187,14 @@ final class AgentCommandRunner: ObservableObject {
                     self.recordFailure(command: command, result: result)
                 }
                 self.statusMessage = message
-                self.notificationPresenter.notify(title: notificationTitle, body: notificationBody)
+                self.notify(title: notificationTitle, body: notificationBody)
             }
         }
+    }
+
+    private func notifyStart(for command: AgentCommand) {
+        guard let title = command.startNotificationTitle else { return }
+        notify(title: title, body: command.startNotificationBody ?? "")
     }
 
     private func stopHeldTranscriptionWhenReady() {
@@ -208,9 +203,8 @@ final class AgentCommandRunner: ObservableObject {
         holdTranscriptionState = .stopping
         statusMessage = "Stopping Toggle Transcription..."
 
-        let commandExecutor = commandExecutor
         DispatchQueue.global(qos: .userInitiated).async {
-            let result = commandExecutor.stopHeldTranscription()
+            let result = AgentRuntime.shared.runShell(Self.holdStopShell)
 
             Task { @MainActor in
                 if result.exitCode == 0 {
@@ -227,7 +221,7 @@ final class AgentCommandRunner: ObservableObject {
                 self.lastOutput = result.output
                 self.recordFailure(title: "Toggle Transcription Stop", result: result)
                 self.statusMessage = message
-                self.notificationPresenter.notify(title: "Toggle Transcription Failed", body: Self.errorNotificationBody(message))
+                self.notify(title: "Toggle Transcription Failed", body: Self.errorNotificationBody(message))
             }
         }
     }
@@ -282,13 +276,13 @@ final class AgentCommandRunner: ObservableObject {
     }
 
     func openLastError() {
-        guard errorStore.hasLastError() else {
+        guard FileManager.default.fileExists(atPath: AgentRuntime.shared.lastErrorURL.path) else {
             hasLastError = false
             statusMessage = "No last error recorded"
             return
         }
 
-        if errorStore.openLastError() {
+        if NSWorkspace.shared.open(AgentRuntime.shared.lastErrorURL) {
             statusMessage = "Opened last error"
         } else {
             statusMessage = "Could not open last error"
@@ -296,7 +290,8 @@ final class AgentCommandRunner: ObservableObject {
     }
 
     func copyLastError() {
-        guard let details = errorStore.readLastError() else {
+        guard let details = try? String(contentsOf: AgentRuntime.shared.lastErrorURL),
+              !details.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             hasLastError = false
             statusMessage = "No last error recorded"
             return
@@ -361,11 +356,29 @@ final class AgentCommandRunner: ObservableObject {
 
     @discardableResult
     private func recordFailure(title: String, result: CommandResult) -> String {
-        let details = errorStore.recordFailure(title: title, result: result)
-        hasLastError = errorStore.hasLastError()
-        if !hasLastError {
+        let output = result.output.trimmingCharacters(in: .whitespacesAndNewlines)
+        let details = """
+        Agent CLI Error
+        Time: \(ISO8601DateFormatter().string(from: Date()))
+        Context: \(title)
+        Exit code: \(result.exitCode)
+
+        Output:
+        \(output.isEmpty ? "(no output)" : output)
+        """
+
+        do {
+            try FileManager.default.createDirectory(
+                at: AgentRuntime.shared.appSupportURL,
+                withIntermediateDirectories: true
+            )
+            try details.write(to: AgentRuntime.shared.lastErrorURL, atomically: true, encoding: .utf8)
+            hasLastError = true
+        } catch {
             lastOutput = details
+            hasLastError = false
         }
+
         return details
     }
 
@@ -457,4 +470,24 @@ final class AgentCommandRunner: ObservableObject {
         return "Last output available"
     }
 
+    private func notify(title: String, body: String) {
+        let content = UNMutableNotificationContent()
+        content.title = title
+        content.body = body
+
+        if let logoURL = AgentRuntime.shared.notificationLogoURL,
+           let attachment = try? UNNotificationAttachment(
+               identifier: "agentcli-logo",
+               url: logoURL
+           ) {
+            content.attachments = [attachment]
+        }
+
+        let request = UNNotificationRequest(
+            identifier: UUID().uuidString,
+            content: content,
+            trigger: nil
+        )
+        UNUserNotificationCenter.current().add(request)
+    }
 }
