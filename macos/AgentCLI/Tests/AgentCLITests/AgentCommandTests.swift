@@ -41,6 +41,13 @@ final class AgentCommandTests: XCTestCase {
         )
     }
 
+    func testVisuallyBlankExtraInstructionsAreIgnored() {
+        XCTAssertEqual(
+            AgentCommand.toggleTranscription.resolvedArguments(extraInstructions: "\u{2060}\u{FEFF}"),
+            AgentCommand.toggleTranscription.arguments
+        )
+    }
+
     func testExtraInstructionsOnlyApplyToTranscription() {
         XCTAssertEqual(
             AgentCommand.autocorrect.resolvedArguments(extraInstructions: "Remember Bas."),
