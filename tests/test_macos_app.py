@@ -21,7 +21,22 @@ MENU_BAR_LOGO_SVG = ROOT / "docs" / "logo-avatar.svg"
 
 def swift_source() -> str:
     """Return all AgentCLI Swift source for source-shape assertions."""
-    return "\n".join(path.read_text() for path in sorted(SWIFT_SOURCE_DIR.glob("*.swift")))
+    return "\n".join(
+        read_swift_source_file(path) for path in sorted(SWIFT_SOURCE_DIR.glob("*.swift"))
+    )
+
+
+def read_swift_source_file(path: Path) -> str:
+    """Read Swift source independently of the platform default text encoding."""
+    return path.read_text(encoding="utf-8")
+
+
+def test_swift_source_reader_decodes_utf8_text(tmp_path: Path) -> None:
+    """Swift source assertions should not depend on the platform default codec."""
+    source = tmp_path / "Example.swift"
+    source.write_text('let spinnerFrames = ["◐", "◓", "◑", "◒"]\n', encoding="utf-8")
+
+    assert read_swift_source_file(source) == 'let spinnerFrames = ["◐", "◓", "◑", "◒"]\n'
 
 
 def assert_script_executable(path: Path) -> None:
@@ -69,7 +84,7 @@ def test_macos_app_package_files_exist() -> None:
 
 def test_macos_app_depends_on_keyboardshortcuts_package() -> None:
     """KeyboardShortcuts README documents SPM install from this URL."""
-    package = (MACOS_APP / "Package.swift").read_text()
+    package = (MACOS_APP / "Package.swift").read_text(encoding="utf-8")
 
     assert "https://github.com/sindresorhus/KeyboardShortcuts" in package
     assert 'exact: "1.10.0"' in package
@@ -78,9 +93,11 @@ def test_macos_app_depends_on_keyboardshortcuts_package() -> None:
 
 def test_macos_app_has_swift_unit_test_target() -> None:
     """Pure macOS app behavior should have an XCTest target, not only source-shape tests."""
-    package = (MACOS_APP / "Package.swift").read_text()
-    tests = (MACOS_APP / "Tests" / "AgentCLITests" / "AgentCommandTests.swift").read_text()
-    workflow = (ROOT / ".github" / "workflows" / "pytest.yml").read_text()
+    package = (MACOS_APP / "Package.swift").read_text(encoding="utf-8")
+    tests = (MACOS_APP / "Tests" / "AgentCLITests" / "AgentCommandTests.swift").read_text(
+        encoding="utf-8"
+    )
+    workflow = (ROOT / ".github" / "workflows" / "pytest.yml").read_text(encoding="utf-8")
 
     assert ".testTarget(" in package
     assert 'name: "AgentCLITests"' in package
@@ -109,7 +126,7 @@ def test_macos_app_signing_declares_audio_input_entitlement() -> None:
     entitlements_path = MACOS_APP / "Resources" / "AgentCLI.entitlements"
     with entitlements_path.open("rb") as f:
         entitlements = plistlib.load(f)
-    script = BUILD_SCRIPT.read_text()
+    script = BUILD_SCRIPT.read_text(encoding="utf-8")
 
     assert entitlements["com.apple.security.device.audio-input"] is True
     assert 'ENTITLEMENTS_PLIST="$PACKAGE_DIR/Resources/AgentCLI.entitlements"' in script
@@ -252,10 +269,10 @@ def test_macos_app_formats_voice_service_status_for_notifications() -> None:
 def test_macos_app_uses_avatar_svg_as_menu_bar_icon() -> None:
     """The menu bar icon should use the checked-in avatar-only AgentCLI SVG."""
     source = swift_source()
-    build_script = BUILD_SCRIPT.read_text()
-    e2e_script = E2E_SCRIPT.read_text()
+    build_script = BUILD_SCRIPT.read_text(encoding="utf-8")
+    e2e_script = E2E_SCRIPT.read_text(encoding="utf-8")
     assert MENU_BAR_LOGO_SVG.is_file()
-    avatar_svg = MENU_BAR_LOGO_SVG.read_text()
+    avatar_svg = MENU_BAR_LOGO_SVG.read_text(encoding="utf-8")
 
     assert "AgentCLIMenuBarIcon(state: runner.menuBarIconState)" in source
     assert "Self.logoImage(state: state)" in source
@@ -456,7 +473,7 @@ def test_macos_app_models_hold_to_transcribe_as_explicit_state() -> None:
 def test_macos_app_uses_cli_owned_hold_to_transcribe_stop() -> None:
     """Hold-to-type stop should use CLI process control, not PID polling in Swift."""
     source = swift_source()
-    launchd = (ROOT / "agent_cli" / "install" / "launchd.py").read_text()
+    launchd = (ROOT / "agent_cli" / "install" / "launchd.py").read_text(encoding="utf-8")
 
     assert "let runtimeURL: URL" in source
     assert 'appendingPathComponent("runtime", isDirectory: true)' in source
@@ -963,7 +980,7 @@ def test_macos_app_does_not_record_function_row_keys_as_fn_chords() -> None:
 def test_macos_app_shows_actual_persisted_shortcuts_and_can_reset_them() -> None:
     """The menu should reflect stored shortcuts instead of claiming static defaults."""
     source = swift_source()
-    readme = (MACOS_APP / "README.md").read_text()
+    readme = (MACOS_APP / "README.md").read_text(encoding="utf-8")
 
     assert "ShortcutSummaryState" in source
     assert "@StateObject private var shortcutSummary = ShortcutSummaryState.shared" in source
@@ -981,7 +998,7 @@ def test_macos_app_shows_actual_persisted_shortcuts_and_can_reset_them() -> None
 
 def test_macos_build_script_creates_signed_app_bundle() -> None:
     """The build script should produce a Finder-installable .app bundle."""
-    script = BUILD_SCRIPT.read_text()
+    script = BUILD_SCRIPT.read_text(encoding="utf-8")
 
     assert_script_executable(BUILD_SCRIPT)
     assert "swift build" in script
@@ -1014,7 +1031,7 @@ def test_macos_build_script_creates_signed_app_bundle() -> None:
 
 def test_macos_build_script_stamps_release_version_into_app_bundle() -> None:
     """Released app bundles should not keep the static template plist version."""
-    script = BUILD_SCRIPT.read_text()
+    script = BUILD_SCRIPT.read_text(encoding="utf-8")
 
     assert "APP_VERSION" in script
     assert "BUILD_VERSION" in script
@@ -1032,7 +1049,7 @@ def test_macos_build_script_stamps_release_version_into_app_bundle() -> None:
 
 def test_macos_build_script_can_notarize_release_dmg() -> None:
     """Release builds should notarize and staple a Developer ID-signed DMG."""
-    script = BUILD_SCRIPT.read_text()
+    script = BUILD_SCRIPT.read_text(encoding="utf-8")
 
     assert "NOTARIZE" in script
     assert "APPLE_ID" in script
@@ -1055,7 +1072,7 @@ def test_macos_build_script_can_notarize_release_dmg() -> None:
 
 def test_macos_build_script_signs_bundled_executables_before_notarization() -> None:
     """Every executable shipped inside the app bundle must be signed for notarization."""
-    script = BUILD_SCRIPT.read_text()
+    script = BUILD_SCRIPT.read_text(encoding="utf-8")
 
     assert "sign_bundled_executables" in script
     assert 'sign_executable "$APP_DIR/Contents/Resources/bin/uv"' in script
@@ -1066,7 +1083,7 @@ def test_macos_build_script_signs_bundled_executables_before_notarization() -> N
 
 def test_macos_build_script_creates_drag_install_dmg() -> None:
     """The release DMG should open as a drag-to-Applications installer window."""
-    script = BUILD_SCRIPT.read_text()
+    script = BUILD_SCRIPT.read_text(encoding="utf-8")
 
     assert 'DMG_STAGING_DIR="$DIST_DIR/dmg-staging"' in script
     assert 'DMG_RW_PATH="$DIST_DIR/$APP_NAME-rw.dmg"' in script
@@ -1094,7 +1111,7 @@ def test_macos_build_script_creates_drag_install_dmg() -> None:
 
 def test_release_workflow_publishes_macos_app_asset() -> None:
     """Publishing a GitHub release should attach the notarized macOS DMG."""
-    workflow = RELEASE_WORKFLOW.read_text()
+    workflow = RELEASE_WORKFLOW.read_text(encoding="utf-8")
 
     assert workflow.startswith("name: Publish Release\n")
     assert "name: Upload Python Package" not in workflow
@@ -1180,7 +1197,7 @@ def test_macos_app_waits_for_whisper_daemon_readiness() -> None:
 
 def test_macos_app_has_end_to_end_packaging_test() -> None:
     """The installable artifact should have a repeatable local E2E gate."""
-    script = E2E_SCRIPT.read_text()
+    script = E2E_SCRIPT.read_text(encoding="utf-8")
 
     assert_script_executable(E2E_SCRIPT)
     assert "build-macos-app.sh --dmg" in script
