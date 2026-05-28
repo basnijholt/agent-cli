@@ -28,6 +28,10 @@ Environment:
   APPLE_APP_SPECIFIC_PASSWORD
                      App-specific password used by xcrun notarytool.
   APPLE_TEAM_ID      Apple Developer Team ID used for notarization.
+  NOTARY_TIMEOUT_SECONDS
+                     Notarization wait timeout. Defaults to 1800.
+  NOTARY_POLL_INTERVAL_SECONDS
+                     Notarization polling interval. Defaults to 30.
 EOF
 }
 
@@ -68,6 +72,8 @@ CODESIGN_IDENTITY=${CODESIGN_IDENTITY:--}
 UV_BINARY=${UV_BINARY:-$(command -v uv || true)}
 INSTALL_DIR=${INSTALL_DIR:-/Applications}
 NOTARIZE=${NOTARIZE:-0}
+NOTARY_TIMEOUT_SECONDS=${NOTARY_TIMEOUT_SECONDS:-1800}
+NOTARY_POLL_INTERVAL_SECONDS=${NOTARY_POLL_INTERVAL_SECONDS:-30}
 
 if [[ "$(uname -s)" != "Darwin" ]]; then
     echo "This script builds a macOS .app bundle and must run on macOS." >&2
@@ -155,9 +161,31 @@ require_notarization_env() {
     done
 }
 
+notary_json_field() {
+    local json_path="$1"
+    local field="$2"
+
+    python3 -c 'import json, sys; print(json.load(open(sys.argv[1])).get(sys.argv[2], ""))' "$json_path" "$field"
+}
+
+print_notary_log() {
+    local submission_id="$1"
+
+    if [[ -z "$submission_id" ]]; then
+        return
+    fi
+
+    xcrun notarytool log "$submission_id" \
+        --apple-id "$APPLE_ID" \
+        --password "$APPLE_APP_SPECIFIC_PASSWORD" \
+        --team-id "$APPLE_TEAM_ID" >&2 || true
+}
+
 notarize_dmg() {
     local dmg_path="$1"
     local notary_result="$DIST_DIR/notary-submit.json"
+    local notary_info="$DIST_DIR/notary-info.json"
+    local elapsed=0
     local submission_id
     local status
 
@@ -167,24 +195,53 @@ notarize_dmg() {
         --apple-id "$APPLE_ID" \
         --password "$APPLE_APP_SPECIFIC_PASSWORD" \
         --team-id "$APPLE_TEAM_ID" \
-        --wait \
         --output-format json | tee "$notary_result"; then
         echo "Apple notarization submission failed." >&2
         exit 1
     fi
 
-    submission_id=$(python3 -c 'import json, sys; print(json.load(open(sys.argv[1])).get("id", ""))' "$notary_result")
-    status=$(python3 -c 'import json, sys; print(json.load(open(sys.argv[1])).get("status", ""))' "$notary_result")
-    if [[ "$status" != "Accepted" ]]; then
-        echo "Apple notarization failed with status: ${status:-unknown}." >&2
-        if [[ -n "$submission_id" ]]; then
-            xcrun notarytool log "$submission_id" \
-                --apple-id "$APPLE_ID" \
-                --password "$APPLE_APP_SPECIFIC_PASSWORD" \
-                --team-id "$APPLE_TEAM_ID" >&2 || true
-        fi
+    submission_id=$(notary_json_field "$notary_result" id)
+    if [[ -z "$submission_id" ]]; then
+        echo "Apple notarization submission did not return an id." >&2
         exit 1
     fi
+
+    while true; do
+        xcrun notarytool info "$submission_id" \
+            --apple-id "$APPLE_ID" \
+            --password "$APPLE_APP_SPECIFIC_PASSWORD" \
+            --team-id "$APPLE_TEAM_ID" \
+            --output-format json >"$notary_info"
+
+        status=$(notary_json_field "$notary_info" status)
+        echo "Apple notarization status for $submission_id: ${status:-unknown} (${elapsed}s elapsed)"
+        case "$status" in
+            Accepted)
+                break
+                ;;
+            Invalid|Rejected)
+                echo "Apple notarization failed with status: $status." >&2
+                print_notary_log "$submission_id"
+                exit 1
+                ;;
+            "In Progress"|"")
+                ;;
+            *)
+                echo "Apple notarization returned unexpected status: $status." >&2
+                print_notary_log "$submission_id"
+                exit 1
+                ;;
+        esac
+
+        if (( elapsed >= NOTARY_TIMEOUT_SECONDS )); then
+            echo "Timed out waiting for Apple notarization after ${NOTARY_TIMEOUT_SECONDS}s." >&2
+            print_notary_log "$submission_id"
+            exit 1
+        fi
+
+        sleep "$NOTARY_POLL_INTERVAL_SECONDS"
+        elapsed=$((elapsed + NOTARY_POLL_INTERVAL_SECONDS))
+    done
 
     xcrun stapler staple "$dmg_path"
     xcrun stapler validate "$dmg_path"

@@ -747,10 +747,14 @@ def test_macos_build_script_can_notarize_release_dmg() -> None:
     assert "APPLE_ID" in script
     assert "APPLE_APP_SPECIFIC_PASSWORD" in script
     assert "APPLE_TEAM_ID" in script
+    assert "NOTARY_TIMEOUT_SECONDS" in script
+    assert "NOTARY_POLL_INTERVAL_SECONDS" in script
     assert "xcrun notarytool submit" in script
-    assert "--wait" in script
+    assert "xcrun notarytool info" in script
     assert "xcrun notarytool log" in script
     assert "Accepted" in script
+    assert "In Progress" in script
+    assert "--wait" not in script
     assert "xcrun stapler staple" in script
     assert "xcrun stapler validate" in script
     assert "--timestamp" in script
@@ -782,6 +786,7 @@ def test_release_workflow_publishes_macos_app_asset() -> None:
         r"build_macos_app:\n\s+name: Build and publish macOS app\n\s+runs-on: macos-latest",
         workflow,
     )
+    assert "timeout-minutes: 45" in workflow
     assert "contents: write" in workflow
     assert "MACOS_CODESIGN_CERTIFICATE_BASE64" in workflow
     assert "MACOS_CODESIGN_CERTIFICATE_PASSWORD" in workflow
