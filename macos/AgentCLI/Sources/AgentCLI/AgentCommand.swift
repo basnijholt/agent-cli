@@ -3,6 +3,7 @@ import Foundation
 enum AgentBootstrapRequirement: Equatable {
     case cliRuntime
     case transcription
+    case transcriptionModel
 }
 
 struct AgentCommand {

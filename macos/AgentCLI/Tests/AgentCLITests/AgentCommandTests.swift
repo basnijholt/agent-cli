@@ -52,7 +52,7 @@ final class AgentCommandTests: XCTestCase {
 
         wait(for: [recorder.expectation], timeout: 2)
 
-        XCTAssertEqual(recorder.calls, [.init(requirement: .transcription, force: false)])
+        XCTAssertEqual(recorder.calls, [.init(requirement: .transcriptionModel, force: false)])
     }
 }
 

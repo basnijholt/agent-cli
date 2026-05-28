@@ -20,6 +20,7 @@ struct AgentRuntime {
     let agentCLIURL: URL
     let agentCLIInstallMarkerURL: URL
     let whisperDaemonMarkerURL: URL
+    let whisperWarmUpAudioURL: URL
     let accessibilityPromptMarkerURL: URL
     let notificationLogoURL: URL?
     let lastErrorURL: URL
@@ -48,6 +49,7 @@ struct AgentRuntime {
         agentCLIURL = binURL.appendingPathComponent("agent-cli")
         agentCLIInstallMarkerURL = appSupportURL.appendingPathComponent(".agent-cli-installed")
         whisperDaemonMarkerURL = appSupportURL.appendingPathComponent(".whisper-daemon-installed")
+        whisperWarmUpAudioURL = runtimeURL.appendingPathComponent("whisper-model-warmup.wav")
         accessibilityPromptMarkerURL = appSupportURL.appendingPathComponent(".accessibility-prompted")
         notificationLogoURL = bundle.url(forResource: "logo-avatar", withExtension: "png")
         lastErrorURL = appSupportURL.appendingPathComponent("last-error.txt")
@@ -184,6 +186,12 @@ struct AgentRuntime {
                 return installResult
             }
             return ensureWhisperDaemon(force: force)
+        case .transcriptionModel:
+            let daemonResult = ensureReadyUnsynchronized(for: .transcription, force: force)
+            guard daemonResult.exitCode == 0 else {
+                return daemonResult
+            }
+            return warmUpWhisperModel()
         }
     }
 
@@ -204,6 +212,86 @@ struct AgentRuntime {
             encoding: .utf8
         )
         return waitForWhisperDaemonReady()
+    }
+
+    private func warmUpWhisperModel() -> CommandResult {
+        let warmUpAudioURL: URL
+        do {
+            warmUpAudioURL = try writeWhisperWarmUpAudio()
+        } catch {
+            return CommandResult(
+                exitCode: 1,
+                output: "Could not prepare Whisper model warm-up audio: \(error.localizedDescription)"
+            )
+        }
+
+        let result = runAgentCLI(arguments: [
+            "transcribe",
+            "--from-file",
+            warmUpAudioURL.path,
+            "--asr-provider",
+            "wyoming",
+            "--asr-wyoming-ip",
+            "127.0.0.1",
+            "--asr-wyoming-port",
+            "10300",
+            "--no-llm",
+            "--no-clipboard",
+            "--quiet"
+        ])
+        guard result.exitCode == 0 else {
+            return result
+        }
+        return CommandResult(exitCode: 0, output: "")
+    }
+
+    private func writeWhisperWarmUpAudio() throws -> URL {
+        let sampleRate: UInt32 = 16_000
+        let channelCount: UInt16 = 1
+        let bitsPerSample: UInt16 = 16
+        let sampleCount: UInt32 = sampleRate / 4
+        let bytesPerSample = bitsPerSample / 8
+        let byteRate = sampleRate * UInt32(channelCount) * UInt32(bytesPerSample)
+        let blockAlign = channelCount * bytesPerSample
+        let dataSize = sampleCount * UInt32(blockAlign)
+        let riffSize = 36 + dataSize
+
+        var data = Data()
+        appendASCII("RIFF", to: &data)
+        appendUInt32(riffSize, to: &data)
+        appendASCII("WAVE", to: &data)
+        appendASCII("fmt ", to: &data)
+        appendUInt32(16, to: &data)
+        appendUInt16(1, to: &data)
+        appendUInt16(channelCount, to: &data)
+        appendUInt32(sampleRate, to: &data)
+        appendUInt32(byteRate, to: &data)
+        appendUInt16(blockAlign, to: &data)
+        appendUInt16(bitsPerSample, to: &data)
+        appendASCII("data", to: &data)
+        appendUInt32(dataSize, to: &data)
+        data.append(Data(repeating: 0, count: Int(dataSize)))
+
+        try data.write(to: whisperWarmUpAudioURL, options: .atomic)
+        return whisperWarmUpAudioURL
+    }
+
+    private func appendASCII(_ string: String, to data: inout Data) {
+        data.append(string.data(using: .ascii) ?? Data())
+    }
+
+    private func appendUInt16(_ value: UInt16, to data: inout Data) {
+        var littleEndianValue = value.littleEndian
+        withUnsafeBytes(of: &littleEndianValue) { bytes in
+            data.append(contentsOf: bytes)
+        }
+    }
+
+    private func appendUInt32(_ value: UInt32, to data: inout Data) {
+        var littleEndianValue = value.littleEndian
+        withUnsafeBytes(of: &littleEndianValue) { bytes in
+            data.append(contentsOf: bytes)
+        }
     }
 
     private func waitForWhisperDaemonReady(timeout: TimeInterval = 180) -> CommandResult {

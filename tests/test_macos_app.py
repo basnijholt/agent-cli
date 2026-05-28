@@ -449,6 +449,7 @@ def test_macos_app_uses_bootstrap_requirement_model() -> None:
     assert "enum AgentBootstrapRequirement" in source
     assert "case cliRuntime" in source
     assert "case transcription" in source
+    assert "case transcriptionModel" in source
     assert "let bootstrapRequirement: AgentBootstrapRequirement" in source
     assert "AgentRuntime.shared.ensureReady(for: requirement, force: force)" in source
     assert "bootstrap(command.bootstrapRequirement, command.forceBootstrap)" in source
@@ -462,9 +463,27 @@ def test_macos_app_warms_transcription_on_launch() -> None:
     assert "AgentCommandRunner.shared.warmUpTranscription()" in source
     assert "private var hasStartedTranscriptionWarmUp = false" in source
     assert 'statusMessage = "Preparing voice service..."' in source
-    assert "let result = bootstrap(.transcription, false)" in source
+    assert "let result = bootstrap(.transcriptionModel, false)" in source
     assert 'recordFailure(title: "Startup Voice Service Warm-Up", result: result)' in source
     assert 'DispatchQueue(label: "lt.nijho.agent-cli.bootstrap")' in source
+
+
+def test_macos_app_warms_whisper_model_on_launch() -> None:
+    """Startup warm-up should force Whisper's lazily loaded model to initialize."""
+    source = swift_source()
+
+    assert "case transcriptionModel" in source
+    assert "let result = bootstrap(.transcriptionModel, false)" in source
+    assert "warmUpWhisperModel()" in source
+    assert "writeWhisperWarmUpAudio()" in source
+    assert 'appendingPathComponent("whisper-model-warmup.wav")' in source
+    assert '"transcribe",' in source
+    assert '"--from-file",' in source
+    assert '"--asr-provider",' in source
+    assert '"wyoming",' in source
+    assert '"--no-llm",' in source
+    assert '"--no-clipboard",' in source
+    assert '"--quiet"' in source
 
 
 def test_macos_app_defaults_clipboard_transcription_to_fn_space() -> None:
