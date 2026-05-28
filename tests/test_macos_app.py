@@ -805,8 +805,11 @@ def test_macos_build_script_creates_drag_install_dmg() -> None:
     assert "-format UDRW" in script
     assert "hdiutil attach" in script
     assert "-mountpoint" not in script
-    assert 'volume_path=$(printf' in script
-    assert 'set background picture of theViewOptions to file ".background:dmg-background.png"' in script
+    assert "volume_path=$(printf" in script
+    assert (
+        'set background picture of theViewOptions to file ".background:dmg-background.png"'
+        in script
+    )
     assert 'set position of item "AgentCLI.app" of container window to {150, 180}' in script
     assert 'set position of item "Applications" of container window to {450, 180}' in script
     assert 'if ! set_dmg_finder_layout "$volume_path"; then' in script
