@@ -696,6 +696,8 @@ def test_macos_build_script_can_notarize_release_dmg() -> None:
     assert "APPLE_TEAM_ID" in script
     assert "xcrun notarytool submit" in script
     assert "--wait" in script
+    assert "xcrun notarytool log" in script
+    assert "Accepted" in script
     assert "xcrun stapler staple" in script
     assert "xcrun stapler validate" in script
     assert "--timestamp" in script
@@ -703,12 +705,30 @@ def test_macos_build_script_can_notarize_release_dmg() -> None:
     assert "Developer ID signing identity" in script
 
 
+def test_macos_build_script_signs_bundled_executables_before_notarization() -> None:
+    """Every executable shipped inside the app bundle must be signed for notarization."""
+    script = BUILD_SCRIPT.read_text()
+
+    assert "sign_bundled_executables" in script
+    assert 'sign_executable "$APP_DIR/Contents/Resources/bin/uv"' in script
+    assert script.index('sign_executable "$APP_DIR/Contents/Resources/bin/uv"') < script.index(
+        'sign_app "$APP_DIR"',
+    )
+
+
 def test_release_workflow_publishes_macos_app_asset() -> None:
     """Publishing a GitHub release should attach the notarized macOS DMG."""
     workflow = RELEASE_WORKFLOW.read_text()
 
+    assert workflow.startswith("name: Publish Release\n")
+    assert "name: Upload Python Package" not in workflow
+    assert "name: Publish Python package" in workflow
+    assert "name: Build and publish macOS app" in workflow
     assert "build_macos_app" in workflow
-    assert re.search(r"build_macos_app:\n\s+runs-on: macos-latest", workflow)
+    assert re.search(
+        r"build_macos_app:\n\s+name: Build and publish macOS app\n\s+runs-on: macos-latest",
+        workflow,
+    )
     assert "contents: write" in workflow
     assert "MACOS_CODESIGN_CERTIFICATE_BASE64" in workflow
     assert "MACOS_CODESIGN_CERTIFICATE_PASSWORD" in workflow
