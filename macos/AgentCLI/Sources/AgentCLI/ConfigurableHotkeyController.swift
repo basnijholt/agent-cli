@@ -22,6 +22,7 @@ final class ConfigurableHotkeyController {
         guard !registered else { return }
 
         self.runner = runner
+        registerStandardTranscriptionHotkeys(runner: runner)
         registerFunctionAwareTranscriptionHotkeys(runner: runner)
 
         KeyboardShortcuts.onKeyUp(for: .autocorrect) {
@@ -34,6 +35,35 @@ final class ConfigurableHotkeyController {
         }
 
         registered = true
+    }
+
+    private func registerStandardTranscriptionHotkeys(runner: AgentCommandRunner) {
+        KeyboardShortcuts.onKeyUp(for: .toggleTranscription) {
+            guard !ShortcutRecordingState.shared.isRecording,
+                  let shortcut = KeyboardShortcuts.getShortcut(for: .toggleTranscription),
+                  !self.usesFunctionShortcut(shortcut) else {
+                return
+            }
+            Task { @MainActor in runner.run(.toggleTranscription) }
+        }
+        KeyboardShortcuts.onKeyDown(for: .holdToTranscribe) {
+            guard !ShortcutRecordingState.shared.isRecording,
+                  let shortcut = KeyboardShortcuts.getShortcut(for: .holdToTranscribe),
+                  !self.usesFunctionShortcut(shortcut) else {
+                return
+            }
+            Task { @MainActor in
+                _ = runner.beginHoldToTranscribe()
+            }
+        }
+        KeyboardShortcuts.onKeyUp(for: .holdToTranscribe) {
+            guard !ShortcutRecordingState.shared.isRecording,
+                  let shortcut = KeyboardShortcuts.getShortcut(for: .holdToTranscribe),
+                  !self.usesFunctionShortcut(shortcut) else {
+                return
+            }
+            Task { @MainActor in runner.endHoldToTranscribe() }
+        }
     }
 
     private func registerFunctionAwareTranscriptionHotkeys(runner: AgentCommandRunner) {
@@ -106,13 +136,14 @@ final class ConfigurableHotkeyController {
 
     private func handleToggleTranscriptionShortcut(type: CGEventType, event: CGEvent) -> Bool {
         guard let shortcut = KeyboardShortcuts.getShortcut(for: .toggleTranscription),
+              usesFunctionShortcut(shortcut),
               shortcutMatches(type: type, event: event, shortcut: shortcut) else {
             return false
         }
 
         if type == .keyDown {
             cancelPendingHoldToTranscribe()
-            suppressNextFunctionKeyRelease = usesFunctionModifier(shortcut)
+            suppressNextFunctionKeyRelease = usesFunctionShortcut(shortcut)
 
             if !isAutorepeat(event) && !holdToTranscribeIsRecording {
                 Task { @MainActor in
@@ -129,6 +160,7 @@ final class ConfigurableHotkeyController {
             return false
         }
         guard !isBareFunctionShortcut(shortcut),
+              usesFunctionShortcut(shortcut),
               shortcutMatches(type: type, event: event, shortcut: shortcut) else {
             return false
         }
@@ -244,8 +276,8 @@ final class ConfigurableHotkeyController {
         return carbonModifiers(from: event.flags) == shortcut.carbonModifiers
     }
 
-    private func usesFunctionModifier(_ shortcut: KeyboardShortcuts.Shortcut) -> Bool {
-        shortcut.carbonModifiers & kEventKeyModifierFnMask != 0
+    private func usesFunctionShortcut(_ shortcut: KeyboardShortcuts.Shortcut) -> Bool {
+        isBareFunctionShortcut(shortcut) || shortcut.carbonModifiers & kEventKeyModifierFnMask != 0
     }
 
     private func isBareFunctionShortcut(_ shortcut: KeyboardShortcuts.Shortcut) -> Bool {

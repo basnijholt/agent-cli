@@ -545,9 +545,19 @@ def test_macos_app_uses_fn_aware_event_tap_for_transcription_shortcuts() -> None
     assert "CGEventType.flagsChanged" in source
     assert "CGEventFlags.maskSecondaryFn" in source
     assert "handleFunctionAwareHotkey" in source
-    assert "KeyboardShortcuts.onKeyUp(for: .toggleTranscription)" not in source
-    assert "KeyboardShortcuts.onKeyDown(for: .holdToTranscribe)" not in source
-    assert "KeyboardShortcuts.onKeyUp(for: .holdToTranscribe)" not in source
+    assert "usesFunctionShortcut(shortcut)" in source
+
+
+def test_macos_app_preserves_carbon_transcription_hotkeys_without_fn() -> None:
+    """Non-Fn transcription shortcuts should work without Accessibility event-tap permission."""
+    source = swift_source()
+
+    assert "registerStandardTranscriptionHotkeys(runner: runner)" in source
+    assert "KeyboardShortcuts.onKeyUp(for: .toggleTranscription)" in source
+    assert "KeyboardShortcuts.onKeyDown(for: .holdToTranscribe)" in source
+    assert "KeyboardShortcuts.onKeyUp(for: .holdToTranscribe)" in source
+    assert "guard let shortcut = KeyboardShortcuts.getShortcut(for: .toggleTranscription)" in source
+    assert "!self.usesFunctionShortcut(shortcut)" in source
 
 
 def test_macos_app_disambiguates_fn_hold_from_fn_space_toggle() -> None:
