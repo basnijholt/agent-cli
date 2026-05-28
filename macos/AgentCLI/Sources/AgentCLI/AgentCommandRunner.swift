@@ -353,6 +353,12 @@ final class AgentCommandRunner: ObservableObject {
         statusMessage = "Copied last output"
     }
 
+    func copyRecentTranscription(_ transcription: RecentTranscription) {
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(transcription.text, forType: .string)
+        statusMessage = "Copied recent transcription"
+    }
+
     func openLastError() {
         guard FileManager.default.fileExists(atPath: AgentRuntime.shared.lastErrorURL.path) else {
             hasLastError = false

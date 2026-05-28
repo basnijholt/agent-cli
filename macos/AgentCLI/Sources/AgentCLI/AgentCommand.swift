@@ -54,7 +54,13 @@ struct AgentCommand {
     static let toggleTranscription = AgentCommand(
         identifier: "transcribe",
         title: "Toggle Transcription",
-        arguments: ["transcribe", "--toggle", "--quiet"],
+        arguments: [
+            "transcribe",
+            "--toggle",
+            "--quiet",
+            "--transcription-log",
+            RecentTranscriptionReader.defaultLogPath,
+        ],
         appliesTranscriptionExtraInstructions: true,
         bootstrapRequirement: .transcription,
         showsRecordingIndicator: true,

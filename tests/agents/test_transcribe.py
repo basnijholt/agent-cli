@@ -230,6 +230,19 @@ def test_log_transcription(tmp_path: Path) -> None:
     assert "hostname" in second_entry
 
 
+def test_log_transcription_creates_parent_dirs(tmp_path: Path) -> None:
+    """Transcription logging should create missing parent directories."""
+    log_file = tmp_path / "missing" / "parents" / "transcriptions.jsonl"
+
+    transcribe.log_transcription(
+        log_file=log_file,
+        role="user",
+        raw_transcript="hello world",
+    )
+
+    assert log_file.exists()
+
+
 def test_gather_recent_transcription_context(tmp_path: Path) -> None:
     """Ensure only recent log entries are used for context."""
     log_file = tmp_path / "transcriptions.jsonl"

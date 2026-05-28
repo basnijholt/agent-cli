@@ -4,7 +4,16 @@ import XCTest
 
 final class AgentCommandTests: XCTestCase {
     func testToggleTranscriptionUsesTypedArgumentsAndTranscriptionBootstrap() {
-        XCTAssertEqual(AgentCommand.toggleTranscription.arguments, ["transcribe", "--toggle", "--quiet"])
+        XCTAssertEqual(
+            AgentCommand.toggleTranscription.arguments,
+            [
+                "transcribe",
+                "--toggle",
+                "--quiet",
+                "--transcription-log",
+                "~/.config/agent-cli/transcriptions.jsonl",
+            ]
+        )
         XCTAssertEqual(AgentCommand.toggleTranscription.bootstrapRequirement, .transcription)
     }
 
@@ -17,6 +26,8 @@ final class AgentCommandTests: XCTestCase {
                 "transcribe",
                 "--toggle",
                 "--quiet",
+                "--transcription-log",
+                "~/.config/agent-cli/transcriptions.jsonl",
                 "--extra-instructions",
                 "Remember Bas and Henk.\nPrefer project names.",
             ]

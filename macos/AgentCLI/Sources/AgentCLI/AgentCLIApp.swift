@@ -39,6 +39,25 @@ struct AgentCLIApp: App {
 
             Divider()
 
+            Menu {
+                let recentTranscriptions = RecentTranscriptionReader.recentTranscriptions()
+                if recentTranscriptions.isEmpty {
+                    Text("No recent transcriptions")
+                } else {
+                    ForEach(recentTranscriptions) { transcription in
+                        Button {
+                            runner.copyRecentTranscription(transcription)
+                        } label: {
+                            Label(transcription.menuTitle, systemImage: "doc.on.clipboard")
+                        }
+                    }
+                }
+            } label: {
+                Label("Recent Recordings", systemImage: "clock.arrow.circlepath")
+            }
+
+            Divider()
+
             Button {
                 loginItemController.toggle()
             } label: {
