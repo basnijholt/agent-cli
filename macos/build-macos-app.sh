@@ -222,7 +222,12 @@ if [[ "$INSTALL" == true ]]; then
     INSTALL_PATH="$INSTALL_DIR/$APP_NAME.app"
     mkdir -p "$INSTALL_DIR"
     rm -rf "$INSTALL_PATH"
-    cp -R "$APP_DIR" "$INSTALL_PATH"
+    ditto "$APP_DIR" "$INSTALL_PATH"
+    test -f "$INSTALL_PATH/Contents/Resources/logo-avatar.png" || {
+        echo "Installed AgentCLI notification logo is missing: $INSTALL_PATH/Contents/Resources/logo-avatar.png" >&2
+        exit 1
+    }
+    codesign --verify --deep --strict "$INSTALL_PATH"
     if [[ "${AGENTCLI_SKIP_OPEN:-0}" != "1" ]]; then
         open "$INSTALL_PATH"
         echo "Installed and opened $INSTALL_PATH"

@@ -20,7 +20,7 @@ struct AgentCLIApp: App {
             Button {
                 runner.run(.toggleTranscription)
             } label: {
-                Label("Toggle Transcription", systemImage: "waveform")
+                Label("Record to Clipboard", systemImage: "waveform")
             }
 
             Button {
@@ -37,25 +37,11 @@ struct AgentCLIApp: App {
 
             Divider()
 
-            Button {
-                runner.run(.voiceServiceStatus)
-            } label: {
-                Label("Voice Service Status", systemImage: "waveform.path.ecg")
-            }
+            Text("Voice: \(runner.menuStatusMessage)")
+                .lineLimit(1)
 
-            Menu("Setup") {
-                Button {
-                    runner.run(.installOrUpdateCLI)
-                } label: {
-                    Label("Install or Update CLI", systemImage: "arrow.down.circle")
-                }
-
-                Button {
-                    runner.run(.installVoiceService)
-                } label: {
-                    Label("Install Voice Service", systemImage: "waveform.badge.plus")
-                }
-            }
+            Text(shortcutSummary.summary)
+                .lineLimit(1)
 
             Divider()
 
@@ -66,65 +52,83 @@ struct AgentCLIApp: App {
                 Label("Keyboard Shortcuts...", systemImage: "command")
             }
 
-            Button {
-                ShortcutSummaryState.shared.resetDefaults()
-                runner.statusMessage = "Reset keyboard shortcuts to defaults"
+            Menu {
+                Button {
+                    runner.run(.voiceServiceStatus)
+                } label: {
+                    Label("Voice Service Status", systemImage: "waveform.path.ecg")
+                }
+
+                Button {
+                    runner.run(.installOrUpdateCLI)
+                } label: {
+                    Label("Update CLI Runtime", systemImage: "arrow.down.circle")
+                }
+
+                Button {
+                    runner.run(.installVoiceService)
+                } label: {
+                    Label("Reinstall Voice Service", systemImage: "waveform.badge.plus")
+                }
+
+                Divider()
+
+                if !runner.lastOutput.isEmpty {
+                    Button {
+                        runner.copyLastOutput()
+                    } label: {
+                        Label("Copy Last Output", systemImage: "doc.on.doc")
+                    }
+                }
+
+                if runner.hasLastError {
+                    Button {
+                        runner.openLastError()
+                    } label: {
+                        Label("Open Last Error", systemImage: "exclamationmark.triangle")
+                    }
+
+                    Button {
+                        runner.copyLastError()
+                    } label: {
+                        Label("Copy Last Error", systemImage: "doc.on.doc")
+                    }
+                }
+
+                Button {
+                    runner.openLogsFolder()
+                } label: {
+                    Label("Open Logs Folder", systemImage: "doc.text.magnifyingglass")
+                }
+
+                Button {
+                    runner.openConfigFolder()
+                } label: {
+                    Label("Open Config Folder", systemImage: "folder")
+                }
+
+                Divider()
+
+                Button {
+                    runner.openNotificationSettings()
+                } label: {
+                    Label("Open Notification Settings", systemImage: "bell.badge")
+                }
+
+                Button {
+                    runner.openAccessibilitySettings()
+                } label: {
+                    Label("Open Accessibility Settings", systemImage: "figure.wave")
+                }
+
+                Button {
+                    ShortcutSummaryState.shared.resetDefaults()
+                    runner.statusMessage = "Reset keyboard shortcuts to defaults"
+                } label: {
+                    Label("Reset Keyboard Shortcuts", systemImage: "arrow.counterclockwise")
+                }
             } label: {
-                Label("Reset Keyboard Shortcuts", systemImage: "arrow.counterclockwise")
-            }
-
-            Divider()
-
-            Text(shortcutSummary.summary)
-
-            Divider()
-
-            Text(runner.statusMessage)
-                .lineLimit(3)
-
-            Button {
-                runner.copyLastOutput()
-            } label: {
-                Label("Copy Last Output", systemImage: "doc.on.doc")
-            }
-            .disabled(runner.lastOutput.isEmpty)
-
-            Button {
-                runner.openLastError()
-            } label: {
-                Label("Open Last Error", systemImage: "exclamationmark.triangle")
-            }
-            .disabled(!runner.hasLastError)
-
-            Button {
-                runner.copyLastError()
-            } label: {
-                Label("Copy Last Error", systemImage: "doc.on.doc")
-            }
-            .disabled(!runner.hasLastError)
-
-            Button {
-                runner.openLogsFolder()
-            } label: {
-                Label("Open Logs Folder", systemImage: "doc.text.magnifyingglass")
-            }
-
-            Button {
-                runner.openConfigFolder()
-            } label: {
-                Label("Open Config Folder", systemImage: "folder")
-            }
-
-            Button {
-                runner.openNotificationSettings()
-            } label: {
-                Label("Open Notification Settings", systemImage: "bell.badge")
-            }
-
-            Button {
-                runner.openAccessibilitySettings()
-            } label: {
-                Label("Open Accessibility Settings", systemImage: "figure.wave")
+                Label("Troubleshooting", systemImage: "wrench.and.screwdriver")
             }
 
             Divider()
@@ -1167,10 +1171,24 @@ final class AgentCommandRunner: ObservableObject {
         activeCommandCount > 0
     }
 
+    var menuStatusMessage: String {
+        if isRecording {
+            return "Recording"
+        }
+        if pendingHoldToTranscribeStop || holdStopRequestActive {
+            return "Transcribing..."
+        }
+        if hasLastError && statusMessage.localizedCaseInsensitiveContains("failed") {
+            return "Last command failed"
+        }
+        return Self.compactMenuStatus(statusMessage)
+    }
+
     private init() {
         hasLastError = FileManager.default.fileExists(atPath: AgentRuntime.shared.lastErrorURL.path)
     }
 
+    private static let menuStatusMaxLength = 72
     private static let notificationSettingsURLs: [URL] = [
         URL(string: "x-apple.systempreferences:com.apple.Notifications-Settings.extension")!,
         URL(string: "x-apple.systempreferences:com.apple.preference.notifications")!
@@ -1624,6 +1642,17 @@ final class AgentCommandRunner: ObservableObject {
             .filter { !$0.isEmpty }
             .suffix(4)
             .joined(separator: " ")
+    }
+
+    private static func compactMenuStatus(_ status: String) -> String {
+        let summary = summarize(status)
+        guard !summary.isEmpty else {
+            return "Ready"
+        }
+        guard summary.count > menuStatusMaxLength else {
+            return summary
+        }
+        return "Last output available"
     }
 
     private func notify(title: String, body: String) {

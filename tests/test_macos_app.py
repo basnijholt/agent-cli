@@ -66,12 +66,33 @@ def test_macos_app_source_exposes_expected_agent_cli_actions() -> None:
     assert "daemon install rag" not in source
 
 
-def test_macos_app_setup_menu_is_voice_only() -> None:
-    """The installable app should not expose broad non-voice service setup."""
+def test_macos_app_menu_prioritizes_daily_voice_actions() -> None:
+    """Daily actions should stay top-level; diagnostics belong in troubleshooting."""
     source = (MACOS_APP / "Sources" / "AgentCLI" / "AgentCLIApp.swift").read_text()
 
+    record_index = source.index('Label("Record to Clipboard", systemImage: "waveform")')
+    voice_edit_index = source.index('Label("Voice Edit Clipboard", systemImage: "mic")')
+    autocorrect_index = source.index(
+        'Label("Autocorrect Clipboard", systemImage: "text.badge.checkmark")',
+    )
+    troubleshooting_menu_index = source.index("            Menu {", autocorrect_index)
+    troubleshooting_label_index = source.index(
+        'Label("Troubleshooting", systemImage: "wrench.and.screwdriver")',
+    )
+    copy_output_index = source.index('Label("Copy Last Output", systemImage: "doc.on.doc")')
+
+    assert record_index < voice_edit_index < autocorrect_index < troubleshooting_menu_index
+    assert troubleshooting_menu_index < copy_output_index < troubleshooting_label_index
+    assert 'Menu("Setup")' not in source
+    assert 'Text("Voice: \\(runner.menuStatusMessage)")' in source
+    assert "var menuStatusMessage: String" in source
+    assert "menuStatusMaxLength" in source
+    assert "Text(runner.statusMessage)" not in source
+    assert "if !runner.lastOutput.isEmpty" in source
+    assert "if runner.hasLastError" in source
+    assert 'Label("Update CLI Runtime", systemImage: "arrow.down.circle")' in source
+    assert 'Label("Reinstall Voice Service", systemImage: "waveform.badge.plus")' in source
     assert 'Label("Voice Service Status", systemImage: "waveform.path.ecg")' in source
-    assert 'Label("Install Voice Service", systemImage: "waveform.badge.plus")' in source
     assert 'identifier: "voice-service-status"' in source
     assert 'identifier: "install-voice-service"' in source
     assert 'Label("Daemon Status", systemImage: "server.rack")' not in source
@@ -540,6 +561,8 @@ def test_macos_build_script_creates_signed_app_bundle() -> None:
     assert "command -v uv" in script
     assert "INSTALL_DIR" in script
     assert "AGENTCLI_SKIP_OPEN" in script
+    assert 'ditto "$APP_DIR" "$INSTALL_PATH"' in script
+    assert "Installed AgentCLI notification logo is missing" in script
     assert "codesign" in script
     assert "--deep" in script
     assert "--install" in script
