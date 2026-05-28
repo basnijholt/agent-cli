@@ -1,4 +1,5 @@
 import AppKit
+import ApplicationServices
 import Foundation
 import SwiftUI
 import UserNotifications
@@ -393,23 +394,96 @@ final class AgentCommandRunner: ObservableObject {
     }
 
     func notificationsDisabled() {
-        statusMessage = "Notifications are disabled. Use Open Notification Settings to enable Agent CLI notifications."
+        statusMessage = "Notifications are disabled. Use Fix Notification Permission to enable Agent CLI notifications."
     }
 
-    func openNotificationSettings() {
+    func repairNotificationPermission() {
+        let center = UNUserNotificationCenter.current()
+        center.getNotificationSettings { settings in
+            switch settings.authorizationStatus {
+            case .notDetermined:
+                UNUserNotificationCenter.current().requestAuthorization(options: [.alert]) { granted, _ in
+                    Task { @MainActor in
+                        self.statusMessage = granted
+                            ? "Notification permission enabled"
+                            : "Notifications are disabled. Enable Agent CLI in Notification Settings."
+                    }
+                }
+            case .denied:
+                Task { @MainActor in
+                    _ = self.openNotificationSettings()
+                    self.statusMessage = "Notifications are disabled. Enable Agent CLI in Notification Settings."
+                }
+            default:
+                Task { @MainActor in
+                    self.statusMessage = "Notification permission is already enabled"
+                }
+            }
+        }
+    }
+
+    @discardableResult
+    func openNotificationSettings() -> Bool {
         for url in Self.notificationSettingsURLs where NSWorkspace.shared.open(url) {
             statusMessage = "Opened Notification Settings"
-            return
+            return true
         }
         statusMessage = "Could not open Notification Settings"
+        return false
     }
 
-    func openAccessibilitySettings() {
-        for url in Self.accessibilitySettingsURLs where NSWorkspace.shared.open(url) {
-            statusMessage = "Opened Accessibility Settings. Accessibility permission controls auto-inserting transcripts."
+    func resetAccessibilityPermission() {
+        let result = runTCCReset(service: "Accessibility")
+        try? FileManager.default.removeItem(at: AgentRuntime.shared.accessibilityPromptMarkerURL)
+        requestAccessibilityPermissionPrompt()
+        _ = openAccessibilitySettings()
+
+        guard result.exitCode == 0 else {
+            let output = result.output.trimmingCharacters(in: .whitespacesAndNewlines)
+            statusMessage = output.isEmpty
+                ? "Could not reset Accessibility permission"
+                : "Could not reset Accessibility permission: \(output)"
             return
         }
+
+        statusMessage = "Accessibility permission reset. Enable Agent CLI in Accessibility, then reopen AgentCLI if auto-insert still fails."
+    }
+
+    @discardableResult
+    func openAccessibilitySettings() -> Bool {
+        for url in Self.accessibilitySettingsURLs where NSWorkspace.shared.open(url) {
+            statusMessage = "Opened Accessibility Settings. Accessibility permission controls auto-inserting transcripts."
+            return true
+        }
         statusMessage = "Could not open Accessibility Settings"
+        return false
+    }
+
+    private func requestAccessibilityPermissionPrompt() {
+        let promptOption = kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String
+        let options = [promptOption: true] as CFDictionary
+        _ = AXIsProcessTrustedWithOptions(options)
+    }
+
+    private func runTCCReset(service: String) -> CommandResult {
+        let bundleIdentifier = Bundle.main.bundleIdentifier ?? "lt.nijho.agent-cli.menubar"
+        let process = Process()
+        let pipe = Pipe()
+
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/tccutil")
+        process.arguments = ["reset", service, bundleIdentifier]
+        process.standardOutput = pipe
+        process.standardError = pipe
+
+        do {
+            try process.run()
+            process.waitUntilExit()
+            let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            let output = String(data: data, encoding: .utf8) ?? ""
+            return CommandResult(exitCode: process.terminationStatus, output: output)
+        } catch {
+            return CommandResult(exitCode: 1, output: error.localizedDescription)
+        }
     }
 
     @discardableResult

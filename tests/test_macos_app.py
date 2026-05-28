@@ -669,27 +669,32 @@ def test_macos_app_sends_visible_transcription_notifications() -> None:
     assert "content.attachments = [attachment]" in source
 
 
-def test_macos_app_can_open_notification_settings() -> None:
-    """Users should get an in-app path to fix previously denied notification permission."""
+def test_macos_app_can_repair_notification_permission() -> None:
+    """Users should get an in-app path to request or fix notification permission."""
     source = swift_source()
 
-    assert 'Label("Open Notification Settings", systemImage: "bell.badge")' in source
-    assert "openNotificationSettings()" in source
+    assert 'Label("Fix Notification Permission...", systemImage: "bell.badge")' in source
+    assert "repairNotificationPermission()" in source
+    assert "requestAuthorization(options: [.alert])" in source
     assert "notificationSettingsURLs" in source
     assert "x-apple.systempreferences:com.apple.Notifications-Settings.extension" in source
     assert "x-apple.systempreferences:com.apple.preference.notifications" in source
     assert "Notifications are disabled" in source
 
 
-def test_macos_app_can_open_accessibility_settings() -> None:
-    """Users should get an explicit path to grant paste insertion permission."""
+def test_macos_app_can_reset_accessibility_permission() -> None:
+    """Users should get an explicit path to clear stale paste insertion permission."""
     source = swift_source()
 
-    assert 'Label("Open Accessibility Settings", systemImage: "figure.wave")' in source
-    assert "openAccessibilitySettings()" in source
+    assert 'Label("Reset Accessibility Permission...", systemImage: "figure.wave")' in source
+    assert "resetAccessibilityPermission()" in source
+    assert 'runTCCReset(service: "Accessibility")' in source
+    assert 'process.arguments = ["reset", service, bundleIdentifier]' in source
+    assert "accessibilityPromptMarkerURL" in source
+    assert "AXIsProcessTrustedWithOptions(options)" in source
     assert "accessibilitySettingsURLs" in source
     assert "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility" in source
-    assert "Accessibility permission controls auto-inserting transcripts" in source
+    assert "Enable Agent CLI in Accessibility" in source
 
 
 def test_macos_app_makes_command_errors_discoverable() -> None:

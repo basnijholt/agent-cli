@@ -114,15 +114,15 @@ struct AgentCLIApp: App {
                 Divider()
 
                 Button {
-                    runner.openNotificationSettings()
+                    runner.repairNotificationPermission()
                 } label: {
-                    Label("Open Notification Settings", systemImage: "bell.badge")
+                    Label("Fix Notification Permission...", systemImage: "bell.badge")
                 }
 
                 Button {
-                    runner.openAccessibilitySettings()
+                    runner.resetAccessibilityPermission()
                 } label: {
-                    Label("Open Accessibility Settings", systemImage: "figure.wave")
+                    Label("Reset Accessibility Permission...", systemImage: "figure.wave")
                 }
 
                 Button {
