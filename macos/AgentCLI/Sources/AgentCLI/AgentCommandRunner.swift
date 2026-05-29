@@ -18,6 +18,11 @@ private enum HoldTranscriptionState {
     }
 }
 
+private struct ActiveCommandActivity {
+    let title: String
+    let startedAt: Date
+}
+
 @MainActor
 final class AgentCommandRunner: ObservableObject {
     static let shared = AgentCommandRunner()
@@ -32,6 +37,10 @@ final class AgentCommandRunner: ObservableObject {
     private let pasteController: TranscriptPasteController
     private let bootstrap: AgentBootstrap
     private var bootstrapPhaseStartedAt: Date?
+    private var recordingStartedAt: Date?
+    private var transcribingStartedAt: Date?
+    private var activeCommandActivities: [String: ActiveCommandActivity] = [:]
+    private var activeCommandActivityOrder: [String] = []
     private var pendingStopRecordingCommands: Set<String> = []
     private var holdTranscriptionState: HoldTranscriptionState = .idle
     private var holdToTranscribePasteTarget: FocusedTextTarget?
@@ -43,22 +52,34 @@ final class AgentCommandRunner: ObservableObject {
     }
 
     var menuStatusMessage: String {
-        if isRecording {
-            return "Recording"
-        }
+        menuActivityStatus.message
+    }
+
+    var menuActivityStatus: MenuActivityStatus {
+        menuActivityStatus(now: Date())
+    }
+
+    func menuActivityStatus(now: Date) -> MenuActivityStatus {
         if bootstrapPhase.isPreparing {
-            return bootstrapPhase.statusMessage(
-                animationTick: bootstrapAnimationTick(now: Date()),
-                elapsedSeconds: bootstrapElapsedSeconds(now: Date())
+            return MenuActivityStatus.active(
+                title: bootstrapPhase.activityTitle,
+                startedAt: bootstrapPhaseStartedAt ?? now,
+                now: now
             )
         }
-        if holdTranscriptionState.isFinishing {
-            return "Transcribing..."
+        if let transcribingStartedAt {
+            return MenuActivityStatus.active(title: "Transcribing", startedAt: transcribingStartedAt, now: now)
+        }
+        if isRecording {
+            return MenuActivityStatus.active(title: "Recording", startedAt: recordingStartedAt ?? now, now: now)
+        }
+        if let activity = currentCommandActivity {
+            return MenuActivityStatus.active(title: activity.title, startedAt: activity.startedAt, now: now)
         }
         if hasLastError && statusMessage.localizedCaseInsensitiveContains("failed") {
-            return "Last command failed"
+            return MenuActivityStatus.inactive(message: "Last command failed")
         }
-        return Self.compactMenuStatus(statusMessage)
+        return MenuActivityStatus.completed(title: Self.compactMenuStatus(statusMessage))
     }
 
     var menuBarIconState: MenuBarIconState {
@@ -140,15 +161,6 @@ final class AgentCommandRunner: ObservableObject {
         }
     }
 
-    private func bootstrapAnimationTick(now: Date) -> Int {
-        bootstrapElapsedSeconds(now: now) % 4
-    }
-
-    private func bootstrapElapsedSeconds(now: Date) -> Int {
-        guard let startedAt = bootstrapPhaseStartedAt else { return 0 }
-        return max(0, Int(now.timeIntervalSince(startedAt)))
-    }
-
     @discardableResult
     func beginHoldToTranscribe() -> Bool {
         guard holdTranscriptionState == .idle else {
@@ -174,6 +186,7 @@ final class AgentCommandRunner: ObservableObject {
         holdTranscriptionState = .stopping
 
         let wasRecording = recordingIndicator.isRecordingCommand(.toggleTranscription)
+        beginTranscribingActivity()
         if wasRecording {
             endRecordingIndicator(for: .toggleTranscription)
             statusMessage = "Transcribing..."
@@ -206,9 +219,11 @@ final class AgentCommandRunner: ObservableObject {
 
         if isStopRequest {
             markStopRequested(for: command)
+            beginTranscribingActivity()
         }
 
         activeCommandCount += 1
+        beginCommandActivity(for: command)
         if !self.bootstrapPhase.isPreparing {
             statusMessage = isStopRequest
                 ? "Stopping \(command.title)..."
@@ -233,6 +248,8 @@ final class AgentCommandRunner: ObservableObject {
                         self.clearPasteAfterRecording(for: command)
                     }
                     self.clearHoldTranscriptionState(for: command)
+                    self.clearTranscribingActivityIfFinished()
+                    self.finishCommandActivity(for: command)
                     self.activeCommandCount = max(0, self.activeCommandCount - 1)
                     self.lastOutput = bootstrapResult.output
                     self.recordFailure(command: command, result: bootstrapResult)
@@ -272,7 +289,9 @@ final class AgentCommandRunner: ObservableObject {
                         }
                     }
                     self.clearPasteAfterRecording(for: command)
+                    self.clearTranscribingActivityIfFinished()
                 }
+                self.finishCommandActivity(for: command)
                 self.activeCommandCount = max(0, self.activeCommandCount - 1)
 
                 if isStopRequest && result.exitCode == 0 {
@@ -285,6 +304,7 @@ final class AgentCommandRunner: ObservableObject {
 
                 if isStopRequest {
                     self.clearStopRequested(for: command)
+                    self.clearTranscribingActivityIfFinished()
                 }
                 self.lastOutput = result.output
                 if result.exitCode != 0 {
@@ -319,6 +339,7 @@ final class AgentCommandRunner: ObservableObject {
                 Task { @MainActor in
                     self.reportBootstrapPhase(.failed)
                     self.holdTranscriptionState = .idle
+                    self.clearTranscribingActivityIfFinished()
                     self.lastOutput = bootstrapResult.output
                     self.recordFailure(command: AgentCommand.stopTranscription, result: bootstrapResult)
                     self.statusMessage = message
@@ -345,6 +366,7 @@ final class AgentCommandRunner: ObservableObject {
                 }
 
                 self.holdTranscriptionState = .idle
+                self.clearTranscribingActivityIfFinished()
                 let message = result.output.isEmpty
                     ? "Toggle Transcription stop failed with exit code \(result.exitCode)"
                     : "Toggle Transcription stop failed: \(result.output)"
@@ -366,6 +388,37 @@ final class AgentCommandRunner: ObservableObject {
 
     private func clearStopRequested(for command: AgentCommand) {
         pendingStopRecordingCommands.remove(command.identifier)
+    }
+
+    private var currentCommandActivity: ActiveCommandActivity? {
+        activeCommandActivityOrder.reversed().compactMap { activeCommandActivities[$0] }.first
+    }
+
+    private func beginCommandActivity(for command: AgentCommand) {
+        if activeCommandActivities[command.identifier] == nil {
+            activeCommandActivityOrder.append(command.identifier)
+        }
+        activeCommandActivities[command.identifier] = ActiveCommandActivity(
+            title: command.menuActivityTitle,
+            startedAt: Date()
+        )
+    }
+
+    private func finishCommandActivity(for command: AgentCommand) {
+        activeCommandActivities.removeValue(forKey: command.identifier)
+        activeCommandActivityOrder.removeAll { $0 == command.identifier }
+    }
+
+    private func beginTranscribingActivity() {
+        if transcribingStartedAt == nil {
+            transcribingStartedAt = Date()
+        }
+    }
+
+    private func clearTranscribingActivityIfFinished() {
+        if pendingStopRecordingCommands.isEmpty && !holdTranscriptionState.isFinishing {
+            transcribingStartedAt = nil
+        }
     }
 
     private func shouldPasteAfterRecording(for command: AgentCommand) -> Bool {
@@ -390,14 +443,21 @@ final class AgentCommandRunner: ObservableObject {
             return false
         }
 
+        let wasRecording = isRecording
         recordingIndicator.begin(for: command)
         isRecording = recordingIndicator.isRecording
+        if !wasRecording && isRecording {
+            recordingStartedAt = Date()
+        }
         return true
     }
 
     private func endRecordingIndicator(for command: AgentCommand) {
         recordingIndicator.end(for: command)
         isRecording = recordingIndicator.isRecording
+        if !isRecording {
+            recordingStartedAt = nil
+        }
     }
 
     func copyLastOutput() {
