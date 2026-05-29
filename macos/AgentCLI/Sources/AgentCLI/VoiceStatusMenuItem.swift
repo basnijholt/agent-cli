@@ -1,27 +1,60 @@
-import Foundation
+import AppKit
 import SwiftUI
 
-struct VoiceStatusMenuItem: View {
+@MainActor
+struct VoiceStatusMenuItem: NSViewRepresentable {
     let runner: AgentCommandRunner
 
-    @State private var statusMessage: String
-    private let statusRefreshTimer = Timer.publish(every: 0.8, on: .main, in: .common).autoconnect()
-
-    init(runner: AgentCommandRunner) {
-        self.runner = runner
-        _statusMessage = State(initialValue: runner.menuStatusMessage)
+    func makeCoordinator() -> Coordinator {
+        Coordinator(runner: runner)
     }
 
-    var body: some View {
-        Text("Voice: \(statusMessage)")
-            .lineLimit(1)
-            .onAppear(perform: refreshStatusMessage)
-            .onReceive(statusRefreshTimer) { _ in
-                refreshStatusMessage()
+    func makeNSView(context: Context) -> NSTextField {
+        let textField = NSTextField(labelWithString: "")
+        textField.lineBreakMode = .byTruncatingTail
+        textField.maximumNumberOfLines = 1
+        textField.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        context.coordinator.attach(textField)
+        return textField
+    }
+
+    func updateNSView(_ textField: NSTextField, context: Context) {
+        context.coordinator.attach(textField)
+    }
+
+    @MainActor
+    final class Coordinator {
+        private let runner: AgentCommandRunner
+        private weak var textField: NSTextField?
+        private var timer: Timer?
+
+        init(runner: AgentCommandRunner) {
+            self.runner = runner
+        }
+
+        deinit {
+            timer?.invalidate()
+        }
+
+        func attach(_ textField: NSTextField) {
+            self.textField = textField
+            refreshStatus()
+            startTimer()
+        }
+
+        private func startTimer() {
+            guard timer == nil else { return }
+            let timer = Timer(timeInterval: 0.8, repeats: true) { [weak self] _ in
+                Task { @MainActor in
+                    self?.refreshStatus()
+                }
             }
-    }
+            RunLoop.main.add(timer, forMode: .common)
+            self.timer = timer
+        }
 
-    private func refreshStatusMessage() {
-        statusMessage = runner.menuStatusMessage
+        private func refreshStatus() {
+            textField?.stringValue = "Voice: \(runner.menuStatusMessage)"
+        }
     }
 }
