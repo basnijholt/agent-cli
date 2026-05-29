@@ -381,23 +381,24 @@ def test_macos_app_shows_bottom_voice_level_overlay_while_recording() -> None:
     assert ".frame(width: 3.5, height: max(5, 25 * amplitude))" in source
 
 
-def test_macos_app_voice_level_meter_uses_live_microphone_power_without_saving_audio() -> None:
-    """The overlay bars should come from live mic metering and release capture afterward."""
+def test_macos_app_voice_level_meter_uses_live_audio_engine_without_saving_audio() -> None:
+    """The overlay bars should come from live mic samples and release capture afterward."""
     source = swift_source()
 
     assert "final class VoiceLevelMeter" in source
     assert "@Published private(set) var amplitudes" in source
     assert "AVCaptureDevice.authorizationStatus(for: .audio)" in source
     assert "AVCaptureDevice.requestAccess(for: .audio)" in source
-    assert 'URL(fileURLWithPath: "/dev/null")' in source
-    assert "AVAudioRecorder(url: url, settings: settings)" in source
-    assert "recorder.isMeteringEnabled = true" in source
-    assert "recorder.record()" in source
-    assert "recorder.updateMeters()" in source
-    assert "averagePower(forChannel: 0)" in source
-    assert "Timer.scheduledTimer" in source
-    assert "timer?.invalidate()" in source
-    assert "recorder?.stop()" in source
+    assert "AVAudioEngine()" in source
+    assert "engine.inputNode" in source
+    assert "input.installTap(onBus: 0, bufferSize: 1_024, format: format)" in source
+    assert "try engine.start()" in source
+    assert "process(buffer: buffer)" in source
+    assert "VoiceSpectrumAnalyzer(" in source
+    assert "engine?.inputNode.removeTap(onBus: 0)" in source
+    assert "engine?.stop()" in source
+    assert "engine = nil" in source
+    assert "AVAudioRecorder" not in source
 
 
 def test_macos_app_voice_level_meter_smooths_fast_meter_changes() -> None:
@@ -405,11 +406,12 @@ def test_macos_app_voice_level_meter_smooths_fast_meter_changes() -> None:
     source = swift_source()
 
     assert ".animation(.easeOut(duration: 0.11), value: amplitude)" in source
-    assert "private var smoothedLevel = CGFloat(0.16)" in source
-    assert "withTimeInterval: 0.06" in source
-    assert "phase += 0.22" in source
-    assert "smoothedLevel = (smoothedLevel * 0.55) + (normalized * 0.45)" in source
-    assert "let displayLevel = smoothedLevel" in source
+    assert "private var smoothedAmplitudes = VoiceLevelMeter.idleAmplitudes" in source
+    assert "private static let minimumDisplayAmplitude = CGFloat(0.12)" in source
+    assert "self.amplitudes = self.smoothedDisplayAmplitudes(from: rawAmplitudes)" in source
+    assert "smoothedAmplitudes = zip(smoothedAmplitudes, rawAmplitudes).map" in source
+    assert "let smoothed = (previous * 0.62) + (current * 0.38)" in source
+    assert "return max(Self.minimumDisplayAmplitude, min(1, smoothed))" in source
 
 
 def test_macos_app_supports_configurable_hold_to_transcribe_shortcut() -> None:
