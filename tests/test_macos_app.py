@@ -1107,10 +1107,12 @@ def test_macos_build_script_creates_drag_install_dmg() -> None:
     assert 'ln -s /Applications "$DMG_STAGING_DIR/Applications"' in script
     assert '"$DMG_STAGING_DIR/$APP_NAME.app"' in script
     assert 'hdiutil create "$DMG_RW_PATH"' in script
-    assert "-format UDRW" in script
+    assert '-size "${image_size_mb}m"' in script
+    assert "-fs HFS+" in script
     assert "hdiutil attach" in script
     assert "-mountpoint" not in script
     assert "volume_path=$(printf" in script
+    assert 'ditto "$DMG_STAGING_DIR" "$volume_path"' in script
     assert (
         'set background picture of theViewOptions to file ".background:dmg-background.png"'
         in script
