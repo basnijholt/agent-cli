@@ -24,6 +24,9 @@ Environment:
                      Defaults to the built wheel version.
   BUILD_VERSION      CFBundleVersion to stamp into the app. Defaults to
                      GITHUB_RUN_NUMBER, then the git commit count.
+  SPARKLE_PUBLIC_ED_KEY
+                     Public EdDSA key for Sparkle updates. If unset, the app
+                     builds without enabling Sparkle update checks.
   UV_BINARY          uv binary to bundle. Defaults to the uv found on PATH.
   INSTALL_DIR        Install destination. Defaults to /Applications.
   AGENTCLI_SKIP_OPEN Set to 1 to skip opening the app after --install.
@@ -85,6 +88,7 @@ INSTALL_DIR=${INSTALL_DIR:-/Applications}
 NOTARIZE=${NOTARIZE:-0}
 NOTARY_TIMEOUT_SECONDS=${NOTARY_TIMEOUT_SECONDS:-1800}
 NOTARY_POLL_INTERVAL_SECONDS=${NOTARY_POLL_INTERVAL_SECONDS:-30}
+SPARKLE_PUBLIC_ED_KEY=${SPARKLE_PUBLIC_ED_KEY:-}
 
 if [[ "$(uname -s)" != "Darwin" ]]; then
     echo "This script builds a macOS .app bundle and must run on macOS." >&2
@@ -223,6 +227,12 @@ stamp_info_plist() {
         "$APP_DIR/Contents/Info.plist"
     /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $build_version" \
         "$APP_DIR/Contents/Info.plist"
+    if [[ -n "$SPARKLE_PUBLIC_ED_KEY" ]]; then
+        /usr/libexec/PlistBuddy -c "Delete :SUPublicEDKey" \
+            "$APP_DIR/Contents/Info.plist" >/dev/null 2>&1 || true
+        /usr/libexec/PlistBuddy -c "Add :SUPublicEDKey string $SPARKLE_PUBLIC_ED_KEY" \
+            "$APP_DIR/Contents/Info.plist"
+    fi
     echo "Stamped app bundle version $app_version ($build_version)"
 }
 
@@ -413,6 +423,8 @@ APPLESCRIPT
 create_drag_install_dmg() {
     local dmg_path="$1"
     local attach_output
+    local image_size_mb
+    local staging_size_kb
     local volume_path
 
     hdiutil detach "/Volumes/$DISPLAY_NAME" >/dev/null 2>&1 || true
@@ -424,11 +436,13 @@ create_drag_install_dmg() {
     render_dmg_background || return
     cp "$DMG_BACKGROUND_PNG" "$DMG_STAGING_DIR/.background/dmg-background.png" || return
 
+    staging_size_kb=$(du -sk "$DMG_STAGING_DIR" | awk '{ print $1 }')
+    image_size_mb=$((staging_size_kb / 1024 + 64))
     hdiutil create "$DMG_RW_PATH" \
         -volname "$DISPLAY_NAME" \
-        -srcfolder "$DMG_STAGING_DIR" \
-        -ov \
-        -format UDRW || return
+        -size "${image_size_mb}m" \
+        -fs HFS+ \
+        -ov || return
     attach_output=$(hdiutil attach "$DMG_RW_PATH" \
         -nobrowse \
         -noautoopen) || return
@@ -438,11 +452,15 @@ create_drag_install_dmg() {
         printf '%s\n' "$attach_output" >&2
         return 1
     fi
-    if ! set_dmg_finder_layout "$volume_path"; then
+    ditto "$DMG_STAGING_DIR" "$volume_path" || {
         hdiutil detach "$volume_path" >/dev/null 2>&1 || true
         return 1
+    }
+    if ! set_dmg_finder_layout "$volume_path"; then
+        hdiutil detach "$volume_path" -force >/dev/null 2>&1 || true
+        return 1
     fi
-    hdiutil detach "$volume_path" >/dev/null || return
+    hdiutil detach "$volume_path" -force >/dev/null || return
     hdiutil convert "$DMG_RW_PATH" \
         -format UDZO \
         -imagekey zlib-level=9 \
@@ -501,11 +519,19 @@ build_app_icon
 rm -rf "$APP_DIR"
 mkdir -p \
     "$APP_DIR/Contents/MacOS" \
+    "$APP_DIR/Contents/Frameworks" \
     "$APP_DIR/Contents/Resources/bin" \
     "$APP_DIR/Contents/Resources/wheels"
 
+SPARKLE_FRAMEWORK="$BIN_DIR/Sparkle.framework"
+if [[ ! -d "$SPARKLE_FRAMEWORK" ]]; then
+    echo "Built Sparkle framework not found: $SPARKLE_FRAMEWORK" >&2
+    exit 1
+fi
+
 cp "$BINARY" "$APP_DIR/Contents/MacOS/$APP_NAME"
 cp "$INFO_PLIST" "$APP_DIR/Contents/Info.plist"
+ditto "$SPARKLE_FRAMEWORK" "$APP_DIR/Contents/Frameworks/Sparkle.framework"
 cp "$UV_BINARY" "$APP_DIR/Contents/Resources/bin/uv"
 cp "$WHEEL_PATH" "$APP_DIR/Contents/Resources/wheels/"
 cp "$MENU_BAR_LOGO_SVG" "$APP_DIR/Contents/Resources/logo-avatar.svg"
@@ -513,9 +539,19 @@ cp "$NOTIFICATION_LOGO_PNG" "$APP_DIR/Contents/Resources/logo-avatar.png"
 cp "$APP_ICON_ICNS" "$APP_DIR/Contents/Resources/AgentCLI.icns"
 chmod 755 "$APP_DIR/Contents/MacOS/$APP_NAME"
 chmod 755 "$APP_DIR/Contents/Resources/bin/uv"
+if ! otool -l "$APP_DIR/Contents/MacOS/$APP_NAME" |
+    grep -q '@executable_path/../Frameworks'; then
+    install_name_tool -add_rpath "@executable_path/../Frameworks" \
+        "$APP_DIR/Contents/MacOS/$APP_NAME"
+fi
 
 test -x "$APP_DIR/Contents/Resources/bin/uv" || {
     echo "Bundled uv is missing or not executable: $APP_DIR/Contents/Resources/bin/uv" >&2
+    exit 1
+}
+
+test -d "$APP_DIR/Contents/Frameworks/Sparkle.framework" || {
+    echo "Bundled Sparkle framework is missing: $APP_DIR/Contents/Frameworks/Sparkle.framework" >&2
     exit 1
 }
 
