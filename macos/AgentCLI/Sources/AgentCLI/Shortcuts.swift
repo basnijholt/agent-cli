@@ -276,6 +276,7 @@ enum ShortcutDefaultsMigrator {
 
 struct SettingsView: View {
     @ObservedObject private var loginItemController = LoginItemController.shared
+    @ObservedObject private var appUpdater = AppUpdater.shared
     @AppStorage(RuntimeSettings.useUserInstalledAgentCLIKey)
     private var useUserInstalledAgentCLI = false
     @AppStorage(RecordingSoundSettings.enabledKey)
@@ -319,6 +320,28 @@ struct SettingsView: View {
                 Text("Transcription Instructions")
             } footer: {
                 Text("Names, vocabulary, and guidance to pass as initial transcription context.")
+            }
+
+            Section {
+                HStack {
+                    Text("Version")
+                    Spacer()
+                    Text(AppMetadata.versionDisplayString)
+                        .foregroundStyle(.secondary)
+                }
+
+                Button("Check for Updates...") {
+                    appUpdater.checkForUpdates()
+                }
+                .disabled(!appUpdater.canCheckForUpdates)
+            } header: {
+                Text("Updates")
+            } footer: {
+                Text(
+                    appUpdater.canCheckForUpdates
+                        ? "Uses Sparkle to install signed Agent CLI app updates."
+                        : "App updates are not configured for this build."
+                )
             }
 
             Section {

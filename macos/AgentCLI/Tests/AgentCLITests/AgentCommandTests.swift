@@ -201,6 +201,41 @@ final class AgentCommandTests: XCTestCase {
         XCTAssertEqual(phases, [.waitingForVoiceService, .installingVoiceService, .waitingForVoiceService])
     }
 
+    func testAppVersionDisplayIncludesShortVersionAndBuild() {
+        XCTAssertEqual(
+            AppMetadata.versionDisplayString(infoDictionary: [
+                "CFBundleShortVersionString": "0.95.9",
+                "CFBundleVersion": "528",
+            ]),
+            "0.95.9 (528)"
+        )
+    }
+
+    func testAppVersionDisplayOmitsDuplicateBuildVersion() {
+        XCTAssertEqual(
+            AppMetadata.versionDisplayString(infoDictionary: [
+                "CFBundleShortVersionString": "0.95.9",
+                "CFBundleVersion": "0.95.9",
+            ]),
+            "0.95.9"
+        )
+    }
+
+    func testSparkleConfigurationRequiresFeedURLAndPublicKey() {
+        XCTAssertFalse(AppMetadata.sparkleConfiguration(infoDictionary: [:]).isConfigured)
+        XCTAssertFalse(
+            AppMetadata.sparkleConfiguration(infoDictionary: [
+                "SUFeedURL": "https://raw.githubusercontent.com/basnijholt/agent-cli/main/macos/appcast.xml",
+            ]).isConfigured
+        )
+        XCTAssertTrue(
+            AppMetadata.sparkleConfiguration(infoDictionary: [
+                "SUFeedURL": "https://raw.githubusercontent.com/basnijholt/agent-cli/main/macos/appcast.xml",
+                "SUPublicEDKey": "base64-public-key",
+            ]).isConfigured
+        )
+    }
+
     @MainActor
     func testStartupWarmUpBootstrapsTranscriptionOnce() {
         let recorder = BootstrapRecorder()

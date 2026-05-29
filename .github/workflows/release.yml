@@ -58,34 +58,76 @@ jobs:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
           APP_VERSION: ${{ github.event.release.tag_name }}
           BUILD_VERSION: ${{ github.run_number }}
-        run: NOTARIZE=1 macos/build-macos-app.sh --dmg
+          SPARKLE_PUBLIC_ED_KEY: ${{ vars.SPARKLE_PUBLIC_ED_KEY }}
+        run: |
+          if [[ -z "$SPARKLE_PUBLIC_ED_KEY" ]]; then
+            echo "SPARKLE_PUBLIC_ED_KEY repository variable is required to enable Sparkle updates." >&2
+            exit 1
+          fi
+          NOTARIZE=1 macos/build-macos-app.sh --dmg
+          ditto -c -k --keepParent dist/macos/AgentCLI.app dist/macos/AgentCLI.zip
       - name: Upload macOS app to GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
           TAG_NAME: ${{ github.event.release.tag_name }}
-        run: gh release upload "$TAG_NAME" dist/macos/AgentCLI.dmg --clobber
-      - name: Update Homebrew cask
+        run: gh release upload "$TAG_NAME" dist/macos/AgentCLI.dmg dist/macos/AgentCLI.zip --clobber
+      - name: Update Sparkle appcast
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG_NAME: ${{ github.event.release.tag_name }}
+          SPARKLE_PRIVATE_ED_KEY: ${{ secrets.SPARKLE_PRIVATE_ED_KEY }}
+        run: |
+          git fetch origin main
+          git switch --force-create release-metadata origin/main
+
+          if [[ -z "$SPARKLE_PRIVATE_ED_KEY" ]]; then
+            echo "SPARKLE_PRIVATE_ED_KEY is required to sign Sparkle updates." >&2
+            exit 1
+          fi
+
+          SPARKLE_GENERATE_APPCAST="macos/AgentCLI/.build/artifacts/sparkle/Sparkle/bin/generate_appcast"
+          if [[ ! -x "$SPARKLE_GENERATE_APPCAST" ]]; then
+            echo "Sparkle generate_appcast not found: $SPARKLE_GENERATE_APPCAST" >&2
+            exit 1
+          fi
+
+          APPCAST_DIR="$RUNNER_TEMP/agentcli-appcast"
+          rm -rf "$APPCAST_DIR"
+          mkdir -p "$APPCAST_DIR"
+          cp dist/macos/AgentCLI.zip "$APPCAST_DIR/AgentCLI.zip"
+          cp macos/appcast.xml "$APPCAST_DIR/appcast.xml"
+          gh release view "$TAG_NAME" --json body --jq .body >"$APPCAST_DIR/AgentCLI.md"
+
+          printf '%s' "$SPARKLE_PRIVATE_ED_KEY" |
+            "$SPARKLE_GENERATE_APPCAST" \
+              --ed-key-file - \
+              --download-url-prefix "https://github.com/basnijholt/agent-cli/releases/download/${TAG_NAME}/" \
+              --link "https://github.com/basnijholt/agent-cli" \
+              --embed-release-notes \
+              --maximum-versions 10 \
+              -o "$APPCAST_DIR/appcast.xml" \
+              "$APPCAST_DIR"
+
+          cp "$APPCAST_DIR/appcast.xml" macos/appcast.xml
+      - name: Update Homebrew cask and Sparkle appcast
         env:
           TAG_NAME: ${{ github.event.release.tag_name }}
         run: |
           VERSION="${TAG_NAME#v}"
           SHA256=$(shasum -a 256 dist/macos/AgentCLI.dmg | awk '{ print $1 }')
 
-          git fetch origin main
-          git switch --force-create cask-update origin/main
-
           python3 .github/scripts/update_cask.py \
             --version "$VERSION" \
             --sha256 "$SHA256"
 
-          if git diff --quiet -- Casks/agent-cli.rb; then
-            echo "Casks/agent-cli.rb is already up to date."
+          if git diff --quiet -- Casks/agent-cli.rb macos/appcast.xml; then
+            echo "Casks/agent-cli.rb and macos/appcast.xml are already up to date."
             exit 0
           fi
 
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add Casks/agent-cli.rb
-          git commit -m "Update AgentCLI cask to ${TAG_NAME}"
+          git add Casks/agent-cli.rb macos/appcast.xml
+          git commit -m "Update AgentCLI release metadata to ${TAG_NAME}"
           git pull --rebase origin main
           git push origin HEAD:main

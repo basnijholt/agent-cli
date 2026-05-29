@@ -30,6 +30,12 @@ clipboard utility shortcuts still use `KeyboardShortcuts` global handlers. The
 login option uses Apple's login item API for the main app bundle, so macOS may
 require approval in System Settings → General → Login Items.
 
+The app uses Sparkle for direct app updates. Release builds stamp
+`SUPublicEDKey` into `Info.plist`, publish signed updates in `macos/appcast.xml`,
+upload `AgentCLI.zip` for Sparkle, and expose **Check for Updates...** from the
+menu bar and Settings. Local builds without a Sparkle public key still run, but
+update checks are disabled.
+
 ## Build
 
 From the repository root:
@@ -86,6 +92,7 @@ NOTARIZE=1 \
 APPLE_ID="you@example.com" \
 APPLE_APP_SPECIFIC_PASSWORD="xxxx-xxxx-xxxx-xxxx" \
 APPLE_TEAM_ID="TEAMID" \
+SPARKLE_PUBLIC_ED_KEY="public-ed25519-key" \
 ./macos/build-macos-app.sh --dmg
 ```
 
@@ -103,3 +110,8 @@ workflow expects these repository secrets:
 - `APPLE_ID`: Apple ID email for notarization
 - `APPLE_APP_SPECIFIC_PASSWORD`: app-specific password for `notarytool`
 - `APPLE_TEAM_ID`: Apple Developer Team ID
+- `SPARKLE_PRIVATE_ED_KEY`: private Sparkle EdDSA key for signing updates
+
+The workflow also expects the repository variable `SPARKLE_PUBLIC_ED_KEY`.
+Generate the key pair with Sparkle's `generate_keys` tool and store only the
+private key as a GitHub secret.

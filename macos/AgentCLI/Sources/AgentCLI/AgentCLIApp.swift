@@ -6,6 +6,7 @@ struct AgentCLIApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @Environment(\.openWindow) private var openWindow
     @StateObject private var runner = AgentCommandRunner.shared
+    @StateObject private var appUpdater = AppUpdater.shared
     @StateObject private var loginItemController = LoginItemController.shared
     @StateObject private var shortcutSummary = ShortcutSummaryState.shared
     @AppStorage(RuntimeSettings.useUserInstalledAgentCLIKey)
@@ -75,6 +76,13 @@ struct AgentCLIApp: App {
             } label: {
                 Label("Settings...", systemImage: "gearshape")
             }
+
+            Button {
+                appUpdater.checkForUpdates()
+            } label: {
+                Label("Check for Updates...", systemImage: "arrow.down.circle")
+            }
+            .disabled(!appUpdater.canCheckForUpdates)
 
             Menu {
                 Button {
