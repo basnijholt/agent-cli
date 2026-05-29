@@ -7,6 +7,12 @@ from pathlib import Path
 from typing import Annotated, Any
 
 import typer
+from rich.table import Table
+
+from . import __version__
+from .config import load_config, normalize_provider_defaults
+from .core.process import set_process_title
+from .core.utils import console
 
 _HELP = """\
 AI-powered voice, text, and development tools.
@@ -43,11 +49,6 @@ app = typer.Typer(
 
 def _version_callback(value: bool) -> None:
     if value:
-        from rich.table import Table  # noqa: PLC0415
-
-        from . import __version__  # noqa: PLC0415
-        from .core.utils import console  # noqa: PLC0415
-
         path = Path(__file__).parent
         data = [
             ("agent-cli version", __version__),
@@ -80,15 +81,11 @@ def main(
 ) -> None:
     """AI-powered voice, text, and development tools."""
     if ctx.invoked_subcommand is None:
-        from .core.utils import console  # noqa: PLC0415
-
         console.print("[bold red]No command specified.[/bold red]")
         console.print("[bold yellow]Running --help for your convenience.[/bold yellow]")
         console.print(ctx.get_help())
         raise typer.Exit
     import dotenv  # noqa: PLC0415
-
-    from .core.process import set_process_title  # noqa: PLC0415
 
     dotenv.load_dotenv()
 
@@ -98,8 +95,6 @@ def main(
 
 def set_config_defaults(ctx: typer.Context, config_file: str | None) -> dict[str, Any]:
     """Set the default values for the CLI based on the config file."""
-    from .config import load_config, normalize_provider_defaults  # noqa: PLC0415
-
     config = load_config(config_file)
     wildcard_config = normalize_provider_defaults(config.get("defaults", {}))
 
