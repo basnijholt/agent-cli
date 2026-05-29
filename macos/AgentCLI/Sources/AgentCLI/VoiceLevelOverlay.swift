@@ -4,6 +4,7 @@ import Foundation
 import SwiftUI
 
 struct VoiceLevelOverlayView: View {
+    @Environment(\.colorScheme) private var colorScheme
     @ObservedObject var meter: VoiceLevelMeter
 
     var body: some View {
@@ -13,8 +14,8 @@ struct VoiceLevelOverlayView: View {
                     .fill(
                         LinearGradient(
                             colors: [
-                                Color(red: 0.18, green: 0.82, blue: 0.92),
-                                Color(red: 0.64, green: 0.96, blue: 0.58)
+                                barGradientStart,
+                                barGradientEnd
                             ],
                             startPoint: .bottom,
                             endPoint: .top
@@ -25,13 +26,40 @@ struct VoiceLevelOverlayView: View {
             }
         }
         .frame(width: 147, height: 38)
-        .background(.ultraThinMaterial, in: Capsule())
+        .background(
+            Capsule()
+                .fill(backgroundColor)
+        )
         .overlay(
             Capsule()
-                .stroke(Color.white.opacity(0.22), lineWidth: 1)
+                .stroke(borderColor, lineWidth: 1)
         )
-        .shadow(color: Color.black.opacity(0.24), radius: 13, y: 6)
+        .shadow(color: shadowColor, radius: 13, y: 6)
         .accessibilityLabel(Text("Voice level"))
+    }
+
+    private var isLightMode: Bool {
+        colorScheme == .light
+    }
+
+    private var backgroundColor: Color {
+        isLightMode ? Color.white.opacity(0.88) : Color.black.opacity(0.42)
+    }
+
+    private var borderColor: Color {
+        isLightMode ? Color.black.opacity(0.12) : Color.white.opacity(0.22)
+    }
+
+    private var shadowColor: Color {
+        Color.black.opacity(isLightMode ? 0.16 : 0.24)
+    }
+
+    private var barGradientStart: Color {
+        isLightMode ? Color(red: 0.04, green: 0.45, blue: 0.95) : Color(red: 0.18, green: 0.82, blue: 0.92)
+    }
+
+    private var barGradientEnd: Color {
+        isLightMode ? Color(red: 0.07, green: 0.72, blue: 0.68) : Color(red: 0.64, green: 0.96, blue: 0.58)
     }
 }
 
