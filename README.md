@@ -303,12 +303,12 @@ This script automatically:
   - **`Cmd+Shift+V`** - Voice edit clipboard text
 
 > [!NOTE]
-> After setup, you may need to grant Accessibility permissions to skhd in System Settings → Privacy & Security → Accessibility
+> After setup, you may need to grant Accessibility permissions to skhd in System Settings → Privacy & Security → Accessibility. The transcription hotkey may also prompt for Microphone access for skhd the first time it records.
 
 > [!TIP]
 > To keep the recording-status notification visible for the whole flow, open System Settings → Notifications → *terminal-notifier* and set the Alert style to **Persistent** (or choose **Alerts** on older macOS versions).
 > Also enable "Allow notification when mirroring or sharing the display".
-> The hotkey scripts keep only the recording notification pinned; status and result toasts auto-dismiss.
+> The hotkey scripts keep only the recording notification pinned; status and result toasts auto-dismiss. Transcription hotkey diagnostics are written to `~/.cache/agent-cli/transcribe-hotkey.log` and `~/.cache/agent-cli/transcribe-hotkey-agent.log`.
 
 ### Linux Hotkeys
 
