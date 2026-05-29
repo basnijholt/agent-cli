@@ -9,7 +9,7 @@ final class VoiceLevelMeterTests: XCTestCase {
 
         let level = VoiceLevelMeter.normalizedLevel(from: quietTone)
 
-        XCTAssertGreaterThan(level, 0.2)
+        XCTAssertGreaterThan(level, 0.5)
     }
 
     func testSilenceUsesIdleLevel() {
