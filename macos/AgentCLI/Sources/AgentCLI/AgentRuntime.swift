@@ -12,6 +12,21 @@ private enum AgentCLIRuntimeMode: Equatable {
     }
 }
 
+private final class UserInstalledCLICheckCache {
+    private let lock = NSLock()
+    private var isAvailable = false
+
+    func hasSuccessfulCheck() -> Bool {
+        lock.withLock { isAvailable }
+    }
+
+    func update(with result: CommandResult) {
+        lock.withLock {
+            isAvailable = result.exitCode == 0
+        }
+    }
+}
+
 typealias AgentProcessRunner = (URL, [String], [String: String]) -> CommandResult
 typealias LocalhostConnector = (UInt16) -> Bool
 
@@ -42,6 +57,7 @@ struct AgentRuntime {
     private let userDefaults: UserDefaults
     private let processRunner: AgentProcessRunner
     private let localhostConnector: LocalhostConnector
+    private let userInstalledCLICheckCache: UserInstalledCLICheckCache
     private let whisperReadyTimeout: TimeInterval
     let appSupportURL: URL
     let bundledUVURL: URL
@@ -73,6 +89,7 @@ struct AgentRuntime {
         self.userDefaults = userDefaults
         self.processRunner = processRunner
         self.localhostConnector = localhostConnector
+        self.userInstalledCLICheckCache = UserInstalledCLICheckCache()
         self.whisperReadyTimeout = whisperReadyTimeout
 
         if let override = environment["AGENTCLI_APP_SUPPORT_DIR"], !override.isEmpty {
@@ -196,8 +213,13 @@ struct AgentRuntime {
         }
 
         if mode == .userInstalled {
+            if !force, userInstalledCLICheckCache.hasSuccessfulCheck() {
+                return CommandResult(exitCode: 0, output: "")
+            }
             progress(.checkingRuntime)
-            return ensureUserInstalledCLIAvailable()
+            let result = ensureUserInstalledCLIAvailable()
+            userInstalledCLICheckCache.update(with: result)
+            return result
         }
 
         if !force,
