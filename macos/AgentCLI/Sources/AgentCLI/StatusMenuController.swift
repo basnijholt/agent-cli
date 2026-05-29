@@ -113,6 +113,13 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
         recentRecordingsMenu.removeAllItems()
         recentActivityStatusRow = activityStatusRow(in: recentRecordingsMenu)
 
+        recentRecordingsMenu.addItem(actionItem(
+            "Open Transcription Log",
+            symbolName: "doc.text.magnifyingglass",
+            action: #selector(openTranscriptionLog)
+        ))
+        recentRecordingsMenu.addItem(.separator())
+
         let recentTranscriptions = RecentTranscriptionReader.recentTranscriptions()
         if recentTranscriptions.isEmpty {
             recentRecordingsMenu.addItem(disabledItem("No recent transcriptions"))
@@ -355,6 +362,10 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(text, forType: .string)
         runner.statusMessage = "Copied recent transcription"
+    }
+
+    @objc private func openTranscriptionLog() {
+        runner.openTranscriptionLog()
     }
 
     @objc private func quit() {

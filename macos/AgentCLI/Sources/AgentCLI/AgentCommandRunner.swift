@@ -476,6 +476,24 @@ final class AgentCommandRunner: ObservableObject {
         }
     }
 
+    func openTranscriptionLog() {
+        let url = RecentTranscriptionReader.defaultLogURL
+
+        do {
+            try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+            if !FileManager.default.fileExists(atPath: url.path) {
+                _ = FileManager.default.createFile(atPath: url.path, contents: nil)
+            }
+            if NSWorkspace.shared.open(url) {
+                statusMessage = "Opened transcription log"
+            } else {
+                statusMessage = "Could not open transcription log"
+            }
+        } catch {
+            statusMessage = "Could not open transcription log: \(error.localizedDescription)"
+        }
+    }
+
     func openConfigFolder() {
         let url = AgentRuntime.shared.appSupportURL.appendingPathComponent("config", isDirectory: true)
 

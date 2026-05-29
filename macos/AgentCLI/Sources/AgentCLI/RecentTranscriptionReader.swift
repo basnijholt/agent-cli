@@ -29,9 +29,12 @@ struct RecentTranscription: Equatable, Identifiable {
 enum RecentTranscriptionReader {
     static let defaultLimit = 20
     static let defaultLogPath = "~/.config/agent-cli/transcriptions.jsonl"
+    static var defaultLogURL: URL {
+        URL(fileURLWithPath: NSString(string: defaultLogPath).expandingTildeInPath)
+    }
 
     static func recentTranscriptions(limit: Int = defaultLimit) -> [RecentTranscription] {
-        recentTranscriptions(from: defaultLogURL(), limit: limit)
+        recentTranscriptions(from: defaultLogURL, limit: limit)
     }
 
     static func recentTranscriptions(from logURL: URL, limit: Int = defaultLimit) -> [RecentTranscription] {
@@ -52,10 +55,6 @@ enum RecentTranscriptionReader {
         }
 
         return entries
-    }
-
-    private static func defaultLogURL() -> URL {
-        URL(fileURLWithPath: NSString(string: defaultLogPath).expandingTildeInPath)
     }
 
     private static func parseLine(_ line: String, lineIndex: Int) -> RecentTranscription? {
