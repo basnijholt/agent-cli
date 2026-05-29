@@ -5,6 +5,24 @@
         <link>https://github.com/basnijholt/agent-cli</link>
         <description>Signed Agent CLI macOS app updates.</description>
         <item>
+            <title>0.96.1</title>
+            <pubDate>Fri, 29 May 2026 05:47:47 +0000</pubDate>
+            <link>https://github.com/basnijholt/agent-cli</link>
+            <sparkle:version>175</sparkle:version>
+            <sparkle:shortVersionString>0.96.1</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[## What’s Changed
+
+* Clean up macOS menu lifecycle wiring (#545) @basnijholt
+* Remove uv Python 3.13 install workarounds (#521) @basnijholt
+* Remove brittle macOS source-shape tests (#547) @basnijholt
+* Fix macOS voice meter source assertions (#546) @basnijholt
+
+]]></description>
+            <enclosure url="https://github.com/basnijholt/agent-cli/releases/download/v0.96.1/AgentCLI.zip" length="22729845" type="application/octet-stream" sparkle:edSignature="YYq/64CSi+pxZD2NZ02GWIPAdusUf3mesEQ4MltVUOSheuOwimOZpHs81brT4g8rFBa2PRfnobfrfcTtfONqCQ=="/>
+        </item>
+        <item>
             <title>0.96.0</title>
             <pubDate>Fri, 29 May 2026 05:30:42 +0000</pubDate>
             <link>https://github.com/basnijholt/agent-cli</link>
