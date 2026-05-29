@@ -27,6 +27,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         releaseInstanceLock()
     }
 
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
+        false
+    }
+
     private func terminateIfAnotherInstanceIsRunning() -> Bool {
         let lockURL = Self.instanceLockURL()
         instanceLockFD = Darwin.open(lockURL.path, O_CREAT | O_RDWR, S_IRUSR | S_IWUSR)

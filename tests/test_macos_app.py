@@ -84,6 +84,26 @@ def test_macos_app_package_files_exist() -> None:
     assert MENU_BAR_LOGO_SVG.is_file()
 
 
+def test_macos_app_settings_window_does_not_own_app_lifecycle() -> None:
+    """The menu bar app should not auto-open or quit with the settings window."""
+    app_source = read_swift_source_file(SWIFT_SOURCE_DIR / "AgentCLIApp.swift")
+    delegate_source = read_swift_source_file(SWIFT_SOURCE_DIR / "AppDelegate.swift")
+    settings_window_source = read_swift_source_file(
+        SWIFT_SOURCE_DIR / "SettingsWindowController.swift"
+    )
+
+    assert 'Window("Agent CLI Settings"' not in app_source
+    assert "SettingsView()" not in app_source
+    assert "Settings {" in app_source
+    assert "EmptyView()" in app_source
+    assert "applicationShouldTerminateAfterLastWindowClosed" in delegate_source
+    assert "return false" in delegate_source
+    assert "NSHostingController(rootView: SettingsView()" in settings_window_source
+    assert "let contentSize = NSSize(width: 460, height: 640)" in settings_window_source
+    assert "window.setContentSize(contentSize)" in settings_window_source
+    assert "window.isReleasedWhenClosed = false" in settings_window_source
+
+
 def test_macos_app_depends_on_keyboardshortcuts_package() -> None:
     """KeyboardShortcuts README documents SPM install from this URL."""
     package = (MACOS_APP / "Package.swift").read_text(encoding="utf-8")
@@ -596,6 +616,7 @@ def test_macos_app_updates_bootstrap_status_without_rebuilding_menu_tree() -> No
     assert "private func startStatusRefreshTimer()" in source
     assert "Timer(timeInterval: 0.8, repeats: true)" in source
     assert "RunLoop.main.add(timer, forMode: .common)" in source
+    assert "RunLoop.main.add(timer, forMode: .eventTracking)" in source
     assert "self?.refreshDynamicStatus()" in source
     assert 'voiceStatusItem?.title = "Voice: \\(runner.menuStatusMessage)"' in source
     assert (
