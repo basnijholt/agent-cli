@@ -12,7 +12,7 @@ struct AgentCLIMenuBarIcon: View {
     let state: MenuBarIconState
 
     var body: some View {
-        if let image = Self.logoImage(state: state) {
+        if let image = MenuBarIconImage.logoImage(state: state) {
             Image(nsImage: image)
                 .resizable()
                 .aspectRatio(contentMode: .fit)
@@ -47,8 +47,10 @@ struct AgentCLIMenuBarIcon: View {
             return "record.circle.fill"
         }
     }
+}
 
-    private static func logoImage(state: MenuBarIconState) -> NSImage? {
+enum MenuBarIconImage {
+    static func logoImage(state: MenuBarIconState) -> NSImage? {
         switch state {
         case .idle:
             return idleLogoImage

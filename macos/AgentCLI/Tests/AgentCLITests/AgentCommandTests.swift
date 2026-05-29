@@ -280,6 +280,34 @@ final class AgentCommandTests: XCTestCase {
         )
     }
 
+    @MainActor
+    func testMenuStatusComputesElapsedPreparationTimeWhenRead() {
+        let bootstrapStarted = expectation(description: "bootstrap started")
+        let releaseBootstrap = DispatchSemaphore(value: 0)
+        let runner = AgentCommandRunner { _, _, _ in
+            bootstrapStarted.fulfill()
+            releaseBootstrap.wait()
+            return CommandResult(exitCode: 0, output: "")
+        }
+
+        runner.warmUpTranscription()
+        defer { releaseBootstrap.signal() }
+
+        XCTAssertEqual(runner.menuStatusMessage, "Checking CLI runtime ◐ (00:00)")
+        wait(for: [bootstrapStarted], timeout: 2)
+        RunLoop.current.run(until: Date().addingTimeInterval(1.1))
+
+        let elapsedStatus = runner.menuStatusMessage
+        XCTAssertTrue(
+            elapsedStatus.contains("Checking CLI runtime"),
+            "Expected checking status, got: \(elapsedStatus)"
+        )
+        XCTAssertTrue(
+            elapsedStatus.contains("(00:01)") || elapsedStatus.contains("(00:02)"),
+            "Expected elapsed counter, got: \(elapsedStatus)"
+        )
+    }
+
 }
 
 private struct BootstrapCall: Equatable {

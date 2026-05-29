@@ -29,12 +29,9 @@ final class AgentCommandRunner: ObservableObject {
     @Published private(set) var isRecording = false
     @Published private(set) var bootstrapPhase: BootstrapPhase = .idle
     @Published private var activeCommandCount = 0
-    private var bootstrapAnimationTick = 0
-    private var bootstrapElapsedSeconds = 0
     private var recordingIndicator = RecordingIndicatorController()
     private let pasteController: TranscriptPasteController
     private let bootstrap: AgentBootstrap
-    private var bootstrapAnimationTimer: Timer?
     private var bootstrapPhaseStartedAt: Date?
     private var pendingStopRecordingCommands: Set<String> = []
     private var holdTranscriptionState: HoldTranscriptionState = .idle
@@ -52,8 +49,8 @@ final class AgentCommandRunner: ObservableObject {
         }
         if bootstrapPhase.isPreparing {
             return bootstrapPhase.statusMessage(
-                animationTick: bootstrapAnimationTick,
-                elapsedSeconds: bootstrapElapsedSeconds
+                animationTick: bootstrapAnimationTick(now: Date()),
+                elapsedSeconds: bootstrapElapsedSeconds(now: Date())
             )
         }
         if holdTranscriptionState.isFinishing {
@@ -134,13 +131,10 @@ final class AgentCommandRunner: ObservableObject {
         bootstrapPhase = phase
         if phase.isPreparing {
             if !wasPreparing || phaseChanged {
-                bootstrapAnimationTick = 0
-                bootstrapElapsedSeconds = 0
                 bootstrapPhaseStartedAt = Date()
             }
-            startBootstrapAnimationTimer()
         } else {
-            stopBootstrapAnimationTimer()
+            bootstrapPhaseStartedAt = nil
         }
     }
 
@@ -152,31 +146,13 @@ final class AgentCommandRunner: ObservableObject {
         }
     }
 
-    private func startBootstrapAnimationTimer() {
-        guard bootstrapAnimationTimer == nil else { return }
-        let timer = Timer(timeInterval: 0.8, repeats: true) { [weak self] _ in
-            Task { @MainActor in
-                guard let self else { return }
-                guard self.bootstrapPhase.isPreparing else {
-                    self.stopBootstrapAnimationTimer()
-                    return
-                }
-                self.bootstrapAnimationTick = (self.bootstrapAnimationTick + 1) % 4
-                if let startedAt = self.bootstrapPhaseStartedAt {
-                    self.bootstrapElapsedSeconds = max(0, Int(Date().timeIntervalSince(startedAt)))
-                }
-            }
-        }
-        RunLoop.main.add(timer, forMode: .common)
-        bootstrapAnimationTimer = timer
+    private func bootstrapAnimationTick(now: Date) -> Int {
+        bootstrapElapsedSeconds(now: now) % 4
     }
 
-    private func stopBootstrapAnimationTimer() {
-        bootstrapAnimationTimer?.invalidate()
-        bootstrapAnimationTimer = nil
-        bootstrapAnimationTick = 0
-        bootstrapElapsedSeconds = 0
-        bootstrapPhaseStartedAt = nil
+    private func bootstrapElapsedSeconds(now: Date) -> Int {
+        guard let startedAt = bootstrapPhaseStartedAt else { return 0 }
+        return max(0, Int(now.timeIntervalSince(startedAt)))
     }
 
     @discardableResult

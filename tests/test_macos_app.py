@@ -71,9 +71,10 @@ def test_macos_app_package_files_exist() -> None:
         "FocusedTextTarget.swift",
         "MenuBarIcon.swift",
         "RecordingIndicatorController.swift",
+        "SettingsWindowController.swift",
         "Shortcuts.swift",
+        "StatusMenuController.swift",
         "TranscriptPasteController.swift",
-        "VoiceStatusMenuItem.swift",
         "VoiceLevelOverlay.swift",
     ):
         assert (SWIFT_SOURCE_DIR / filename).is_file()
@@ -140,7 +141,7 @@ def test_macos_app_source_exposes_expected_agent_cli_actions() -> None:
     """The wrapper should invoke the existing CLI surface through its private runtime."""
     source = swift_source()
 
-    assert "MenuBarExtra" in source
+    assert "NSStatusBar.system.statusItem" in source
     assert 'arguments: ["transcribe", "--stop", "--quiet", "--wait-for-start"]' in source
     assert "holdStopShell" not in source
     assert "runShell(Self.holdStopShell)" not in source
@@ -216,34 +217,37 @@ def test_macos_app_menu_prioritizes_daily_voice_actions() -> None:
     """Daily actions should stay top-level; diagnostics belong in troubleshooting."""
     source = swift_source()
 
-    record_index = source.index('Label("Record to Clipboard", systemImage: "waveform")')
-    voice_edit_index = source.index('Label("Voice Edit Clipboard", systemImage: "mic")')
-    autocorrect_index = source.index(
-        'Label("Autocorrect Clipboard", systemImage: "text.badge.checkmark")',
-    )
-    troubleshooting_menu_index = source.index("            Menu {", autocorrect_index)
-    troubleshooting_label_index = source.index(
-        'Label("Troubleshooting", systemImage: "wrench.and.screwdriver")',
-    )
-    copy_output_index = source.index('Label("Copy Last Output", systemImage: "doc.on.doc")')
+    record_index = source.index('actionItem("Record to Clipboard"')
+    voice_edit_index = source.index('actionItem("Voice Edit Clipboard"')
+    autocorrect_index = source.index('actionItem("Autocorrect Clipboard"')
+    troubleshooting_menu_index = source.index("rebuildTroubleshootingMenu", autocorrect_index)
+    root_menu_block = source[
+        source.index("private func rebuildRootMenu()") : source.index(
+            "private func rebuildRecentRecordingsMenu()"
+        )
+    ]
+    troubleshooting_block = source[
+        source.index("private func rebuildTroubleshootingMenu()") : source.index(
+            "private func startStatusRefreshTimer()"
+        )
+    ]
 
     assert record_index < voice_edit_index < autocorrect_index < troubleshooting_menu_index
-    assert troubleshooting_menu_index < copy_output_index < troubleshooting_label_index
+    assert '"Troubleshooting"' in root_menu_block
+    assert '"Copy Last Output"' in troubleshooting_block
     assert 'Menu("Setup")' not in source
-    assert "VoiceStatusMenuItem(runner: runner)" in source
+    assert "voiceStatusItem" in source
     assert "var menuBarIconState: MenuBarIconState" in source
-    assert "AgentCLIMenuBarIcon(state: runner.menuBarIconState)" in source
+    assert "StatusMenuController.shared.start()" in source
     assert "var menuStatusMessage: String" in source
     assert "menuStatusMaxLength" in source
     assert "Text(runner.statusMessage)" not in source
     assert "if !runner.lastOutput.isEmpty" in source
     assert "if runner.hasLastError" in source
-    assert 'useUserInstalledAgentCLI ? "Check User CLI" : "Update CLI Runtime"' in source
-    assert (
-        'systemImage: useUserInstalledAgentCLI ? "checkmark.circle" : "arrow.down.circle"' in source
-    )
-    assert 'Label("Reinstall Voice Service", systemImage: "waveform.badge.plus")' in source
-    assert 'Label("Voice Service Status", systemImage: "waveform.path.ecg")' in source
+    assert 'usesUserInstalledAgentCLI ? "Check User CLI" : "Update CLI Runtime"' in source
+    assert 'usesUserInstalledAgentCLI ? "checkmark.circle" : "arrow.down.circle"' in source
+    assert '"Reinstall Voice Service"' in source
+    assert '"Voice Service Status"' in source
     assert 'identifier: "voice-service-status"' in source
     assert 'identifier: "install-voice-service"' in source
     assert 'Label("Daemon Status", systemImage: "server.rack")' not in source
@@ -274,11 +278,11 @@ def test_macos_app_uses_avatar_svg_as_menu_bar_icon() -> None:
     assert MENU_BAR_LOGO_SVG.is_file()
     avatar_svg = MENU_BAR_LOGO_SVG.read_text(encoding="utf-8")
 
-    assert "AgentCLIMenuBarIcon(state: runner.menuBarIconState)" in source
-    assert "Self.logoImage(state: state)" in source
+    assert "MenuBarIconImage.logoImage(state: runner.menuBarIconState)" in source
+    assert "MenuBarIconImage.logoImage(state: state)" in source
     assert "Image(nsImage: image)" in source
     assert ".id(state)" in source
-    assert "private static func logoImage(state: MenuBarIconState) -> NSImage?" in source
+    assert "static func logoImage(state: MenuBarIconState) -> NSImage?" in source
     assert "private static let idleLogoImage" in source
     assert "private static let recordingLogoImage" in source
     assert "makeRecordingLogoImage" in source
@@ -539,8 +543,8 @@ def test_macos_app_keeps_preparing_status_visible_during_command_bootstrap() -> 
     assert "var statusMessage: String" in source
     assert "if bootstrapPhase.isPreparing {" in source
     assert "return bootstrapPhase.statusMessage(" in source
-    assert "animationTick: bootstrapAnimationTick" in source
-    assert "elapsedSeconds: bootstrapElapsedSeconds" in source
+    assert "animationTick: bootstrapAnimationTick(now: Date())" in source
+    assert "elapsedSeconds: bootstrapElapsedSeconds(now: Date())" in source
     assert (
         "if !self.bootstrapPhase.isPreparing {\n            statusMessage = isStopRequest" in source
     )
@@ -548,9 +552,10 @@ def test_macos_app_keeps_preparing_status_visible_during_command_bootstrap() -> 
     assert 'statusMessage == "Preparing voice service..."' not in source
 
 
-def test_macos_app_animates_all_preparing_statuses_with_fixed_width_timer() -> None:
-    """Every setup phase should show stable-width progress without shifting the timer."""
+def test_macos_app_animates_all_preparing_statuses_from_elapsed_wall_time() -> None:
+    """Every setup phase should show stable-width progress without ticking the menu tree."""
     source = swift_source()
+    runner_source = read_swift_source_file(SWIFT_SOURCE_DIR / "AgentCommandRunner.swift")
 
     assert "statusMessage(animationTick: Int, elapsedSeconds: Int)" in source
     assert '["◐", "◓", "◑", "◒"]' in source
@@ -560,43 +565,53 @@ def test_macos_app_animates_all_preparing_statuses_with_fixed_width_timer() -> N
         "case .checkingRuntime, .installingRuntime, .installingVoiceService, .waitingForVoiceService, .warmingWhisperModel:"
         in source
     )
-    assert "bootstrapAnimationTimer" in source
     assert "bootstrapPhaseStartedAt" in source
-    assert "bootstrapElapsedSeconds" in source
-    assert "bootstrapAnimationTick = (self.bootstrapAnimationTick + 1) % 4" in source
-    assert "RunLoop.main.add(timer, forMode: .common)" in source
+    assert "bootstrapElapsedSeconds(now: Date)" in source
+    assert "bootstrapAnimationTick(now: Date)" in source
+    assert "Int(now.timeIntervalSince(startedAt))" in source
+    assert "bootstrapAnimationTimer" not in runner_source
+    assert "RunLoop.main.add(timer, forMode: .common)" not in runner_source
     assert "bootstrapPhase.statusMessage(" in source
-    assert "animationTick: bootstrapAnimationTick" in source
-    assert "elapsedSeconds: bootstrapElapsedSeconds" in source
+    assert "animationTick: bootstrapAnimationTick(now: Date())" in source
+    assert "elapsedSeconds: bootstrapElapsedSeconds(now: Date())" in source
 
 
-def test_macos_app_shows_voice_status_as_supported_menu_text() -> None:
-    """The status row should be visible in MenuBarExtra's SwiftUI menu content."""
+def test_macos_app_status_menu_uses_appkit_menu_items_for_live_updates() -> None:
+    """The status row should be an AppKit menu item that can update without rebuilding."""
     source = swift_source()
-    voice_status = read_swift_source_file(SWIFT_SOURCE_DIR / "VoiceStatusMenuItem.swift")
 
-    assert "VoiceStatusMenuItem(runner: runner)" in source
-    assert "struct VoiceStatusMenuItem: View" in voice_status
-    assert 'Text("Voice: \\(runner.menuStatusMessage)")' in voice_status
-    assert "NSViewRepresentable" not in voice_status
-    assert "NSTextField" not in voice_status
+    assert "final class StatusMenuController: NSObject, NSMenuDelegate" in source
+    assert "private var voiceStatusItem: NSMenuItem?" in source
+    assert 'voiceStatusItem?.title = "Voice: \\(runner.menuStatusMessage)"' in source
+    assert "menu.removeAllItems()" in source
+    assert "refreshDynamicStatus()" in source
+    assert "MenuBarExtra" not in source
 
 
 def test_macos_app_updates_bootstrap_status_without_rebuilding_menu_tree() -> None:
-    """Bootstrap animation should not refresh the whole menu every second."""
+    """Bootstrap status should live-update one AppKit menu item without rebuilding menus."""
     source = swift_source()
-    voice_status = read_swift_source_file(SWIFT_SOURCE_DIR / "VoiceStatusMenuItem.swift")
 
-    assert "VoiceStatusMenuItem(runner: runner)" in source
-    assert 'Text("Voice: \\(runner.menuStatusMessage)")' in voice_status
-    assert "Timer.publish" not in voice_status
-    assert "Timer(timeInterval:" not in voice_status
-    assert "@State" not in voice_status
-    assert ".onReceive" not in voice_status
+    assert "private var statusRefreshTimer: Timer?" in source
+    assert "private func startStatusRefreshTimer()" in source
+    assert "Timer(timeInterval: 0.8, repeats: true)" in source
+    assert "RunLoop.main.add(timer, forMode: .common)" in source
+    assert "self?.refreshDynamicStatus()" in source
+    assert 'voiceStatusItem?.title = "Voice: \\(runner.menuStatusMessage)"' in source
+    assert (
+        "rebuildRootMenu()"
+        not in source[
+            source.index("private func startStatusRefreshTimer()") : source.index(
+                "private func refreshDynamicStatus()"
+            )
+        ]
+    )
     assert "@Published private var bootstrapAnimationTick" not in source
     assert "@Published private var bootstrapElapsedSeconds" not in source
-    assert "private var bootstrapAnimationTick = 0" in source
-    assert "private var bootstrapElapsedSeconds = 0" in source
+    assert "private var bootstrapAnimationTick = 0" not in source
+    assert "private var bootstrapElapsedSeconds = 0" not in source
+    assert "private func bootstrapAnimationTick(now: Date)" in source
+    assert "private func bootstrapElapsedSeconds(now: Date)" in source
 
 
 def test_macos_app_shows_preparing_menu_bar_icon_state() -> None:
@@ -901,7 +916,8 @@ def test_macos_app_can_repair_notification_permission() -> None:
     """Users should get an in-app path to request or fix notification permission."""
     source = swift_source()
 
-    assert 'Label("Fix Notification Permission...", systemImage: "bell.badge")' in source
+    assert '"Fix Notification Permission..."' in source
+    assert 'symbolName: "bell.badge"' in source
     assert "repairNotificationPermission()" in source
     assert "requestAuthorization(options: [.alert])" in source
     assert "notificationSettingsURLs" in source
@@ -914,7 +930,8 @@ def test_macos_app_can_reset_accessibility_permission() -> None:
     """Users should get an explicit path to clear stale paste insertion permission."""
     source = swift_source()
 
-    assert 'Label("Reset Accessibility Permission...", systemImage: "figure.wave")' in source
+    assert '"Reset Accessibility Permission..."' in source
+    assert 'symbolName: "figure.wave"' in source
     assert "resetAccessibilityPermission()" in source
     assert 'runTCCReset(service: "Accessibility")' in source
     assert 'process.arguments = ["reset", service, bundleIdentifier]' in source
@@ -930,9 +947,12 @@ def test_macos_app_makes_command_errors_discoverable() -> None:
     source = swift_source()
 
     assert "@Published private(set) var hasLastError = false" in source
-    assert 'Label("Open Last Error", systemImage: "exclamationmark.triangle")' in source
-    assert 'Label("Copy Last Error", systemImage: "doc.on.doc")' in source
-    assert 'Label("Open Logs Folder", systemImage: "doc.text.magnifyingglass")' in source
+    assert '"Open Last Error"' in source
+    assert 'symbolName: "exclamationmark.triangle"' in source
+    assert '"Copy Last Error"' in source
+    assert 'symbolName: "doc.on.doc"' in source
+    assert '"Open Logs Folder"' in source
+    assert 'symbolName: "doc.text.magnifyingglass"' in source
     assert "lastErrorURL" in source
     assert 'appendingPathComponent("last-error.txt")' in source
     assert "logsURL" in source
@@ -1012,10 +1032,11 @@ def test_macos_app_shows_actual_persisted_shortcuts_and_can_reset_them() -> None
     readme = (MACOS_APP / "README.md").read_text(encoding="utf-8")
 
     assert "ShortcutSummaryState" in source
-    assert "@StateObject private var shortcutSummary = ShortcutSummaryState.shared" in source
-    assert "Text(shortcutSummary.summary)" in source
+    assert "private let shortcutSummary = ShortcutSummaryState.shared" in source
+    assert "NSMenuItem(title: shortcutSummary.summary" in source
     assert "KeyboardShortcuts.getShortcut(for: name)?.description" in source
-    assert 'Label("Reset Keyboard Shortcuts", systemImage: "arrow.counterclockwise")' in source
+    assert '"Reset Keyboard Shortcuts"' in source
+    assert 'symbolName: "arrow.counterclockwise"' in source
     assert "ShortcutSummaryState.shared.resetDefaults()" in source
     assert 'statusMessage = "Reset keyboard shortcuts to defaults"' in source
     assert "ShortcutSummaryState.shared.refresh()" in source

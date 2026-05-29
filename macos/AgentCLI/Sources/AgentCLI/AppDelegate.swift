@@ -12,6 +12,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
 
         NSApp.setActivationPolicy(.accessory)
         UNUserNotificationCenter.current().delegate = self
+        StatusMenuController.shared.start()
         configureNotifications()
         ShortcutDefaultsMigrator.migrate()
         LoginItemController.shared.refresh()
@@ -22,6 +23,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
 
     func applicationWillTerminate(_ notification: Notification) {
         VoiceLevelOverlayController.shared.hide()
+        StatusMenuController.shared.stop()
         releaseInstanceLock()
     }
 
