@@ -55,7 +55,7 @@ Since then I have expanded the tool with many more features, all focused on loca
 
 ### Prefer the macOS menu bar app?
 
-Install the native AgentCLI app with Homebrew:
+Install the native AgentCLI app with Homebrew. The explicit tap URL is intentional because the cask lives in this repository:
 
 ```bash
 brew tap basnijholt/agent-cli https://github.com/basnijholt/agent-cli
@@ -260,7 +260,7 @@ source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 
 AgentCLI is also available as a native macOS menu bar app for voice workflows that should work from any app without keeping a terminal open.
 
-Install it with Homebrew:
+Install it with Homebrew. The explicit tap URL is intentional because the cask lives in this repository:
 
 ```bash
 brew tap basnijholt/agent-cli https://github.com/basnijholt/agent-cli

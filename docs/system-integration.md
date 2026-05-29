@@ -14,7 +14,7 @@ Agent CLI is designed to work with system-wide hotkeys, allowing you to trigger 
 
 ### Native Menu Bar App
 
-For the easiest macOS hotkey workflow, install the native AgentCLI menu bar app:
+For the easiest macOS hotkey workflow, install the native AgentCLI menu bar app. The explicit tap URL is intentional because the cask lives in this repository:
 
 ```bash
 brew tap basnijholt/agent-cli https://github.com/basnijholt/agent-cli

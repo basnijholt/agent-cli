@@ -71,7 +71,7 @@ Since then I have expanded the tool with many more features, all focused on loca
 
 ### Prefer the macOS app?
 
-Install the native menu bar app with Homebrew:
+Install the native menu bar app with Homebrew. The explicit tap URL is intentional because the cask lives in this repository:
 
 ```bash
 brew tap basnijholt/agent-cli https://github.com/basnijholt/agent-cli

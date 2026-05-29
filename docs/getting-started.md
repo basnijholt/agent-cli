@@ -19,7 +19,7 @@ Before you begin, ensure you have:
 
 ### Option 1: macOS Menu Bar App
 
-For the native Mac app with global shortcuts and automatic local Whisper setup:
+For the native Mac app with global shortcuts and automatic local Whisper setup. The explicit tap URL is intentional because the cask lives in this repository:
 
 ```bash
 brew tap basnijholt/agent-cli https://github.com/basnijholt/agent-cli
