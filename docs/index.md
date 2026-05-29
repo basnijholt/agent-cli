@@ -69,6 +69,17 @@ Since then I have expanded the tool with many more features, all focused on loca
 
 ## Quick Start
 
+### Prefer the macOS app?
+
+Install the native menu bar app with Homebrew:
+
+```bash
+brew tap basnijholt/agent-cli https://github.com/basnijholt/agent-cli
+brew install --cask agent-cli
+```
+
+The app provides global shortcuts, a menu bar UI, automatic local Whisper setup, and a private bundled `agent-cli` runtime. See the [macOS app guide](installation/macos-app.md).
+
 ### Just want the CLI tool?
 
 If you already have AI services running (or plan to use OpenAI):
@@ -129,6 +140,7 @@ The setup automatically installs:
 ## Documentation
 
 - [Getting Started](getting-started.md) - Installation and first steps
+- [macOS App](installation/macos-app.md) - Native menu bar app and Homebrew cask
 - [Configuration](configuration.md) - All configuration options
 - [Commands](commands/index.md) - CLI reference
 - [System Integration](system-integration.md) - Hotkeys and system setup

@@ -10,7 +10,8 @@ Choose the best installation method for your platform and performance needs.
 
 | Platform         | Recommended Method             | GPU Support   | Performance |
 | ---------------- | ------------------------------ | ------------- | ----------- |
-| **macOS**        | [Native Setup](macos.md)       | ✅ Metal GPU  | Best        |
+| **macOS app**    | [Menu Bar App](macos-app.md)   | ✅ Metal GPU  | Best        |
+| **macOS CLI**    | [Native Setup](macos.md)       | ✅ Metal GPU  | Best        |
 | **Linux**        | [Native Setup](linux.md)       | ✅ NVIDIA GPU | Best        |
 | **NixOS**        | [System Integration](nixos.md) | ✅ NVIDIA GPU | Best        |
 | **Any Platform** | [Docker Setup](docker.md)      | ⚠️ Limited\*  | Good        |
@@ -20,7 +21,18 @@ Choose the best installation method for your platform and performance needs.
 
 ## Installation Methods
 
-### 🍎 macOS Native (Recommended)
+### 🍎 macOS Menu Bar App
+
+**Best desktop workflow for voice transcription and clipboard actions**
+
+- Native menu bar app with global shortcuts
+- Private bundled `agent-cli` runtime
+- Automatic local Whisper setup on first transcription
+- Installable with Homebrew Cask
+
+👉 [Follow macOS App Guide](macos-app.md)
+
+### 🍎 macOS Native CLI
 
 **Best performance with Metal GPU acceleration**
 

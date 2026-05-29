@@ -17,7 +17,18 @@ Before you begin, ensure you have:
 
 ## Installation
 
-### Option 1: CLI Tool Only
+### Option 1: macOS Menu Bar App
+
+For the native Mac app with global shortcuts and automatic local Whisper setup:
+
+```bash
+brew tap basnijholt/agent-cli https://github.com/basnijholt/agent-cli
+brew install --cask agent-cli
+```
+
+See: [macOS Menu Bar App](installation/macos-app.md)
+
+### Option 2: CLI Tool Only
 
 If you already have AI services set up or plan to use cloud services (OpenAI/Gemini):
 
@@ -33,7 +44,7 @@ pip install agent-cli
 > The `-p 3.13` flag is required because some dependencies don't support Python 3.14 yet.
 > See [uv issue #8206](https://github.com/astral-sh/uv/issues/8206) for details.
 
-### Option 2: Full Local Setup
+### Option 3: Full Local Setup
 
 For a complete local setup with all AI services:
 
@@ -138,6 +149,7 @@ For detailed installation instructions, see the platform-specific guides:
 
 | Platform | Guide | Notes |
 |----------|-------|-------|
+| :fontawesome-brands-apple: **macOS app** | [macOS App](installation/macos-app.md) | Native menu bar app |
 | :fontawesome-brands-apple: **macOS** | [macOS Setup](installation/macos.md) | Full Metal GPU acceleration |
 | :fontawesome-brands-linux: **Linux** | [Linux Setup](installation/linux.md) | NVIDIA GPU support |
 | :simple-nixos: **NixOS** | [NixOS Setup](installation/nixos.md) | Declarative configuration |

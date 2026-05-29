@@ -53,6 +53,17 @@ Since then I have expanded the tool with many more features, all focused on loca
 
 ## Quick Start
 
+### Prefer the macOS menu bar app?
+
+Install the native AgentCLI app with Homebrew:
+
+```bash
+brew tap basnijholt/agent-cli https://github.com/basnijholt/agent-cli
+brew install --cask agent-cli
+```
+
+The app provides global shortcuts, a menu bar UI, automatic local Whisper setup on first transcription, and a private bundled `agent-cli` runtime. See the [macOS app guide](docs/installation/macos-app.md) for setup, updates, and uninstall instructions.
+
 ### Just want the CLI tool?
 
 If you already have AI services running (or plan to use OpenAI), simply install:
@@ -143,6 +154,7 @@ The setup scripts automatically install:
     - [Step 2: Run the Setup Script](#step-2-run-the-setup-script)
     - [Step 3: Start All Services](#step-3-start-all-services)
     - [Step 4: Test Your Installation](#step-4-test-your-installation)
+- [macOS Menu Bar App](#macos-menu-bar-app)
 - [System Integration](#system-integration)
   - [macOS Hotkeys](#macos-hotkeys)
   - [Linux Hotkeys](#linux-hotkeys)
@@ -247,6 +259,28 @@ source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 ```
 
 </details>
+
+## macOS Menu Bar App
+
+AgentCLI is also available as a native macOS menu bar app for voice workflows that should work from any app without keeping a terminal open.
+
+Install it with Homebrew:
+
+```bash
+brew tap basnijholt/agent-cli https://github.com/basnijholt/agent-cli
+brew install --cask agent-cli
+```
+
+The app is a SwiftUI wrapper around the same `agent-cli` commands. It bundles `uv`, installs a private `agent-cli[audio,llm]` runtime in your Application Support folder on first use, and starts the local Whisper daemon automatically the first time you transcribe.
+
+Default shortcuts:
+
+- **`Fn+Space`** - Toggle transcription
+- **`Fn`** - Record while held and insert the transcript
+- **`Cmd+Shift+A`** - Autocorrect clipboard text
+- **`Cmd+Shift+V`** - Start voice edit
+
+You can change shortcuts, enable **Start at Login**, or switch to a user-installed `agent-cli` runtime from the app's **Settings...** screen. See the [macOS app guide](docs/installation/macos-app.md) for details.
 
 ## System Integration
 
