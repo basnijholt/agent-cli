@@ -178,6 +178,7 @@ final class AgentCommandTests: XCTestCase {
             "Warming Whisper model ◒ (00:04)"
         )
     }
+
 }
 
 private struct BootstrapCall: Equatable {

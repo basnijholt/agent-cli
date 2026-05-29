@@ -33,8 +33,7 @@ struct AgentCLIApp: App {
 
             Divider()
 
-            Text("Voice: \(runner.menuStatusMessage)")
-                .lineLimit(1)
+            VoiceStatusMenuItem(runner: runner)
 
             Text(shortcutSummary.summary)
                 .lineLimit(1)

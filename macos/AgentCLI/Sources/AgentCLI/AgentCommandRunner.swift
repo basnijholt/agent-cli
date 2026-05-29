@@ -29,8 +29,8 @@ final class AgentCommandRunner: ObservableObject {
     @Published private(set) var isRecording = false
     @Published private(set) var bootstrapPhase: BootstrapPhase = .idle
     @Published private var activeCommandCount = 0
-    @Published private var bootstrapAnimationTick = 0
-    @Published private var bootstrapElapsedSeconds = 0
+    private var bootstrapAnimationTick = 0
+    private var bootstrapElapsedSeconds = 0
     private var recordingIndicator = RecordingIndicatorController()
     private let pasteController: TranscriptPasteController
     private let bootstrap: AgentBootstrap
