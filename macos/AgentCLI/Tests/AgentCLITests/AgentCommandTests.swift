@@ -307,6 +307,13 @@ final class AgentCommandTests: XCTestCase {
         )
     }
 
+    func testMenuBarIconShowsPreparingBeforeRecording() {
+        XCTAssertEqual(MenuBarIconState.current(isPreparing: false, isRecording: false), .idle)
+        XCTAssertEqual(MenuBarIconState.current(isPreparing: false, isRecording: true), .recording)
+        XCTAssertEqual(MenuBarIconState.current(isPreparing: true, isRecording: false), .preparing)
+        XCTAssertEqual(MenuBarIconState.current(isPreparing: true, isRecording: true), .preparing)
+    }
+
     func testMenuActivityStatusFormatsActiveWorkWithSpinnerAndElapsedCounter() {
         let startedAt = Date(timeIntervalSinceReferenceDate: 1_000)
         let now = Date(timeIntervalSinceReferenceDate: 1_125)
