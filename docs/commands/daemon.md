@@ -147,6 +147,9 @@ agent-cli daemon uninstall whisper
  Examples:
 
 
+  # Ensure whisper is installed and running
+  agent-cli daemon ensure whisper
+
   # Install whisper as a background daemon
   agent-cli daemon install whisper
 
@@ -167,6 +170,7 @@ agent-cli daemon uninstall whisper
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Commands ─────────────────────────────────────────────────────────────────────────────╮
 │ status      Check status of installed daemons.                                         │
+│ ensure      Ensure one daemon is installed and running.                                │
 │ install     Install server daemons as background processes.                            │
 │ uninstall   Uninstall server daemons.                                                  │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
