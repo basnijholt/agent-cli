@@ -394,10 +394,11 @@ def test_macos_app_voice_level_meter_uses_live_audio_engine_without_saving_audio
     assert "input.installTap(onBus: 0, bufferSize: 1_024, format: format)" in source
     assert "try engine.start()" in source
     assert "process(buffer: buffer)" in source
-    assert "VoiceSpectrumAnalyzer(" in source
+    assert "Self.normalizedLevel(from: samples)" in source
     assert "engine?.inputNode.removeTap(onBus: 0)" in source
     assert "engine?.stop()" in source
     assert "engine = nil" in source
+    assert "VoiceSpectrumAnalyzer" not in source
     assert "AVAudioRecorder" not in source
 
 
@@ -406,12 +407,16 @@ def test_macos_app_voice_level_meter_smooths_fast_meter_changes() -> None:
     source = swift_source()
 
     assert ".animation(.easeOut(duration: 0.11), value: amplitude)" in source
-    assert "private var smoothedAmplitudes = VoiceLevelMeter.idleAmplitudes" in source
+    assert "private var phase = 0.0" in source
+    assert "private var smoothedLevel = CGFloat(0.16)" in source
     assert "private static let minimumDisplayAmplitude = CGFloat(0.12)" in source
-    assert "self.amplitudes = self.smoothedDisplayAmplitudes(from: rawAmplitudes)" in source
-    assert "smoothedAmplitudes = zip(smoothedAmplitudes, rawAmplitudes).map" in source
-    assert "let smoothed = (previous * 0.62) + (current * 0.38)" in source
-    assert "return max(Self.minimumDisplayAmplitude, min(1, smoothed))" in source
+    assert "self.updateDisplay(level: level)" in source
+    assert "phase += 0.22" in source
+    assert "smoothedLevel = (smoothedLevel * 0.55) + (level * 0.45)" in source
+    assert "let wave = 0.74 + 0.26 * sin(phase + Double(index) * 0.74)" in source
+    assert (
+        "return max(Self.minimumDisplayAmplitude, min(1, displayLevel * CGFloat(wave)))" in source
+    )
 
 
 def test_macos_app_supports_configurable_hold_to_transcribe_shortcut() -> None:

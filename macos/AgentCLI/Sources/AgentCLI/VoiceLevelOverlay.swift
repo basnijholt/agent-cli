@@ -94,9 +94,10 @@ final class VoiceLevelMeter: NSObject, ObservableObject {
     private static let barCount = 16
     private static let idleAmplitudes = Array(repeating: CGFloat(0.16), count: barCount)
     private static let minimumDisplayAmplitude = CGFloat(0.12)
+    private static let minimumInputDecibels: Float = -55
     private var engine: AVAudioEngine?
-    private var analyzer: VoiceSpectrumAnalyzer?
-    private var smoothedAmplitudes = VoiceLevelMeter.idleAmplitudes
+    private var phase = 0.0
+    private var smoothedLevel = CGFloat(0.16)
 
     private override init() {}
 
@@ -125,13 +126,14 @@ final class VoiceLevelMeter: NSObject, ObservableObject {
         engine?.inputNode.removeTap(onBus: 0)
         engine?.stop()
         engine = nil
-        analyzer = nil
-        smoothedAmplitudes = Self.idleAmplitudes
+        phase = 0
+        smoothedLevel = 0.16
         amplitudes = Self.idleAmplitudes
     }
 
     private func startMetering() {
-        smoothedAmplitudes = Self.idleAmplitudes
+        phase = 0
+        smoothedLevel = 0.16
         let engine = AVAudioEngine()
         let input = engine.inputNode
         let format = input.outputFormat(forBus: 0)
@@ -139,17 +141,12 @@ final class VoiceLevelMeter: NSObject, ObservableObject {
             amplitudes = Self.idleAmplitudes
             return
         }
-        let analyzer = VoiceSpectrumAnalyzer(
-            sampleRate: format.sampleRate,
-            bandCount: Self.barCount
-        )
 
         do {
             input.installTap(onBus: 0, bufferSize: 1_024, format: format) { [weak self] buffer, _ in
                 self?.process(buffer: buffer)
             }
             try engine.start()
-            self.analyzer = analyzer
             self.engine = engine
         } catch {
             input.removeTap(onBus: 0)
@@ -158,21 +155,43 @@ final class VoiceLevelMeter: NSObject, ObservableObject {
     }
 
     private func process(buffer: AVAudioPCMBuffer) {
-        guard let analyzer, let samples = Self.samples(from: buffer) else { return }
-        let rawAmplitudes = analyzer.amplitudes(from: samples)
+        guard let samples = Self.samples(from: buffer) else { return }
+        let level = Self.normalizedLevel(from: samples)
 
         DispatchQueue.main.async { [weak self] in
             guard let self, self.engine != nil else { return }
-            self.amplitudes = self.smoothedDisplayAmplitudes(from: rawAmplitudes)
+            self.updateDisplay(level: level)
         }
     }
 
-    private func smoothedDisplayAmplitudes(from rawAmplitudes: [CGFloat]) -> [CGFloat] {
-        smoothedAmplitudes = zip(smoothedAmplitudes, rawAmplitudes).map { previous, current in
-            let smoothed = (previous * 0.62) + (current * 0.38)
-            return max(Self.minimumDisplayAmplitude, min(1, smoothed))
+    private func updateDisplay(level: CGFloat) {
+        phase += 0.22
+        smoothedLevel = (smoothedLevel * 0.55) + (level * 0.45)
+        let displayLevel = smoothedLevel
+
+        amplitudes = (0..<Self.barCount).map { index in
+            let wave = 0.74 + 0.26 * sin(phase + Double(index) * 0.74)
+            return max(Self.minimumDisplayAmplitude, min(1, displayLevel * CGFloat(wave)))
         }
-        return smoothedAmplitudes
+    }
+
+    private static func normalizedLevel(from samples: [Float]) -> CGFloat {
+        guard !samples.isEmpty else { return 0.08 }
+
+        let meanSquare = samples.reduce(0.0) { partialResult, sample in
+            let value = Double(sample)
+            return partialResult + (value * value)
+        } / Double(samples.count)
+        guard meanSquare > 0 else { return 0.08 }
+
+        let rootMeanSquare = sqrt(meanSquare)
+        let decibels = Float(20 * log10(rootMeanSquare))
+        return normalizedPower(decibels, minimumPower: minimumInputDecibels)
+    }
+
+    private static func normalizedPower(_ power: Float, minimumPower: Float) -> CGFloat {
+        guard power > minimumPower else { return 0.08 }
+        return CGFloat((power - minimumPower) / abs(minimumPower))
     }
 
     private static func samples(from buffer: AVAudioPCMBuffer) -> [Float]? {
