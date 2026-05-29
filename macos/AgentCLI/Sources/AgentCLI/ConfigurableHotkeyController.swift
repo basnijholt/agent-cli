@@ -217,7 +217,6 @@ final class ConfigurableHotkeyController {
 
     private func handleFunctionKeyChanged(type: CGEventType, event: CGEvent) -> Bool {
         guard type == .flagsChanged,
-              Int(event.getIntegerValueField(.keyboardEventKeycode)) == kVK_Function,
               let shortcut = KeyboardShortcuts.getShortcut(for: .holdToTranscribe),
               isBareFunctionShortcut(shortcut) else {
             return false
@@ -225,12 +224,13 @@ final class ConfigurableHotkeyController {
 
         let isFunctionDown = event.flags.contains(CGEventFlags.maskSecondaryFn)
         if isFunctionDown {
-            guard !functionKeyIsDown else { return true }
+            guard !functionKeyIsDown else { return false }
             functionKeyIsDown = true
             schedulePendingHoldToTranscribe()
             return true
         }
 
+        guard functionKeyIsDown else { return false }
         functionKeyIsDown = false
         cancelPendingHoldToTranscribe()
         guard !suppressNextFunctionKeyRelease else {
