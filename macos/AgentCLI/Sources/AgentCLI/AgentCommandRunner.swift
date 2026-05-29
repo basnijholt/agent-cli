@@ -64,13 +64,7 @@ final class AgentCommandRunner: ObservableObject {
     }
 
     var menuBarIconState: MenuBarIconState {
-        if isRecording {
-            return .recording
-        }
-        if bootstrapPhase.isPreparing {
-            return .preparing
-        }
-        return .idle
+        MenuBarIconState.current(isPreparing: bootstrapPhase.isPreparing, isRecording: isRecording)
     }
 
     init(

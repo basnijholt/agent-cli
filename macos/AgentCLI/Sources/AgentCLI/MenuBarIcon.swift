@@ -6,6 +6,16 @@ enum MenuBarIconState: Equatable {
     case idle
     case preparing
     case recording
+
+    static func current(isPreparing: Bool, isRecording: Bool) -> Self {
+        if isPreparing {
+            return .preparing
+        }
+        if isRecording {
+            return .recording
+        }
+        return .idle
+    }
 }
 
 struct AgentCLIMenuBarIcon: View {
@@ -94,12 +104,15 @@ enum MenuBarIconImage {
 
         let image = NSImage(size: NSSize(width: 22, height: 18))
         image.lockFocus()
+        let logoRect = NSRect(x: 0, y: 0, width: 18, height: 18)
         avatar.draw(
-            in: NSRect(x: 0, y: 0, width: 18, height: 18),
+            in: logoRect,
             from: .zero,
             operation: .sourceOver,
             fraction: 1
         )
+        NSColor.white.setFill()
+        logoRect.fill(using: .sourceIn)
 
         NSColor.white.setFill()
         NSBezierPath(ovalIn: NSRect(x: 12.5, y: 0.5, width: 10, height: 10)).fill()
