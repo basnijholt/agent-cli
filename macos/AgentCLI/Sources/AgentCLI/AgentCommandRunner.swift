@@ -1,5 +1,4 @@
 import AppKit
-import ApplicationServices
 import Foundation
 import SwiftUI
 import UserNotifications
@@ -88,11 +87,6 @@ final class AgentCommandRunner: ObservableObject {
         URL(string: "x-apple.systempreferences:com.apple.Notifications-Settings.extension")!,
         URL(string: "x-apple.systempreferences:com.apple.preference.notifications")!
     ]
-    private static let accessibilitySettingsURLs: [URL] = [
-        URL(string: "x-apple.systempreferences:com.apple.Security-Privacy.extension?Privacy_Accessibility")!,
-        URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!
-    ]
-
     func warmUpTranscription() {
         guard !hasStartedTranscriptionWarmUp else { return }
         hasStartedTranscriptionWarmUp = true
@@ -512,39 +506,49 @@ final class AgentCommandRunner: ObservableObject {
     }
 
     func resetAccessibilityPermission() {
-        let result = runTCCReset(service: "Accessibility")
-        try? FileManager.default.removeItem(at: AgentRuntime.shared.accessibilityPromptMarkerURL)
-        requestAccessibilityPermissionPrompt()
-        _ = openAccessibilitySettings()
+        ConfigurableHotkeyController.shared.suspendFunctionAwareHotkeysForAccessibilityReset()
+        statusMessage = "Resetting Accessibility permission..."
 
-        guard result.exitCode == 0 else {
-            let output = result.output.trimmingCharacters(in: .whitespacesAndNewlines)
-            statusMessage = output.isEmpty
-                ? "Could not reset Accessibility permission"
-                : "Could not reset Accessibility permission: \(output)"
-            return
+        DispatchQueue.global(qos: .utility).async {
+            let result = self.runTCCReset(service: "Accessibility")
+
+            Task { @MainActor in
+                try? FileManager.default.removeItem(at: AgentRuntime.shared.accessibilityPromptMarkerURL)
+
+                guard result.exitCode == 0 else {
+                    ConfigurableHotkeyController.shared.resumeFunctionAwareHotkeysAfterAccessibilityReset(runner: self)
+                    let output = result.output.trimmingCharacters(in: .whitespacesAndNewlines)
+                    self.statusMessage = output.isEmpty
+                        ? "Could not reset Accessibility permission"
+                        : "Could not reset Accessibility permission: \(output)"
+                    return
+                }
+
+                self.statusMessage = "Accessibility permission reset. Restarting AgentCLI to request permission cleanly."
+                self.relaunchAfterAccessibilityReset()
+            }
         }
-
-        statusMessage = "Accessibility permission reset. Enable Agent CLI in Accessibility, then reopen AgentCLI if auto-insert still fails."
     }
 
-    @discardableResult
-    func openAccessibilitySettings() -> Bool {
-        for url in Self.accessibilitySettingsURLs where NSWorkspace.shared.open(url) {
-            statusMessage = "Opened Accessibility Settings. Accessibility permission controls auto-inserting transcripts."
-            return true
+    private func relaunchAfterAccessibilityReset() {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/bin/sh")
+        process.arguments = [
+            "-c",
+            "sleep 1; /usr/bin/open \"$1\"",
+            "relaunch-agentcli",
+            Bundle.main.bundleURL.path
+        ]
+
+        do {
+            try process.run()
+            NSApp.terminate(nil)
+        } catch {
+            statusMessage = "Accessibility permission reset. Reopen AgentCLI, then enable it in Accessibility."
         }
-        statusMessage = "Could not open Accessibility Settings"
-        return false
     }
 
-    private func requestAccessibilityPermissionPrompt() {
-        let promptOption = kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String
-        let options = [promptOption: true] as CFDictionary
-        _ = AXIsProcessTrustedWithOptions(options)
-    }
-
-    private func runTCCReset(service: String) -> CommandResult {
+    nonisolated private func runTCCReset(service: String) -> CommandResult {
         let bundleIdentifier = Bundle.main.bundleIdentifier ?? "lt.nijho.agent-cli.menubar"
         let process = Process()
         let pipe = Pipe()

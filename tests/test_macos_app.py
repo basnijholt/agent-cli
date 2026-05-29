@@ -957,10 +957,26 @@ def test_macos_app_can_reset_accessibility_permission() -> None:
     assert 'runTCCReset(service: "Accessibility")' in source
     assert 'process.arguments = ["reset", service, bundleIdentifier]' in source
     assert "accessibilityPromptMarkerURL" in source
-    assert "AXIsProcessTrustedWithOptions(options)" in source
-    assert "accessibilitySettingsURLs" in source
-    assert "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility" in source
-    assert "Enable Agent CLI in Accessibility" in source
+    assert '"relaunch-agentcli"' in source
+    assert "Restarting AgentCLI to request permission cleanly" in source
+
+
+def test_macos_app_resets_accessibility_from_clean_input_state() -> None:
+    """Resetting the app's own Accessibility grant should not prompt from a live event tap."""
+    runner_source = read_swift_source_file(SWIFT_SOURCE_DIR / "AgentCommandRunner.swift")
+    hotkey_source = read_swift_source_file(SWIFT_SOURCE_DIR / "ConfigurableHotkeyController.swift")
+
+    assert (
+        "ConfigurableHotkeyController.shared.suspendFunctionAwareHotkeysForAccessibilityReset()"
+        in runner_source
+    )
+    assert "DispatchQueue.global(qos: .utility).async" in runner_source
+    assert "relaunchAfterAccessibilityReset()" in runner_source
+    assert "AXIsProcessTrustedWithOptions(options)" not in runner_source
+    assert "requestAccessibilityPermissionPrompt" not in runner_source
+    assert "func suspendFunctionAwareHotkeysForAccessibilityReset()" in hotkey_source
+    assert "CFRunLoopRemoveSource(CFRunLoopGetMain(), runLoopSource, .commonModes)" in hotkey_source
+    assert "CGEvent.tapEnable(tap: tap, enable: false)" in hotkey_source
 
 
 def test_macos_app_makes_command_errors_discoverable() -> None:

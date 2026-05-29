@@ -105,6 +105,30 @@ final class ConfigurableHotkeyController {
         CGEvent.tapEnable(tap: tap, enable: true)
     }
 
+    func suspendFunctionAwareHotkeysForAccessibilityReset() {
+        cancelPendingHoldToTranscribe()
+
+        if let tap = eventTap {
+            CGEvent.tapEnable(tap: tap, enable: false)
+            CFMachPortInvalidate(tap)
+        }
+        if let runLoopSource {
+            CFRunLoopRemoveSource(CFRunLoopGetMain(), runLoopSource, .commonModes)
+        }
+
+        eventTap = nil
+        runLoopSource = nil
+        functionKeyIsDown = false
+        suppressNextFunctionKeyRelease = false
+        holdToTranscribeIsRecording = false
+    }
+
+    func resumeFunctionAwareHotkeysAfterAccessibilityReset(runner: AgentCommandRunner) {
+        guard registered, eventTap == nil else { return }
+        self.runner = runner
+        registerFunctionAwareTranscriptionHotkeys(runner: runner)
+    }
+
     private func handleFunctionAwareHotkey(type: CGEventType, event: CGEvent) -> Unmanaged<CGEvent>? {
         switch type {
         case .tapDisabledByTimeout, .tapDisabledByUserInput:
