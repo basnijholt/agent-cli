@@ -3,6 +3,13 @@ import XCTest
 @testable import AgentCLI
 
 final class RecentTranscriptionReaderTests: XCTestCase {
+    func testDefaultLogURLExpandsConfiguredTranscriptionLogPath() {
+        XCTAssertEqual(
+            RecentTranscriptionReader.defaultLogURL.path,
+            NSString(string: "~/.config/agent-cli/transcriptions.jsonl").expandingTildeInPath
+        )
+    }
+
     func testRecentTranscriptionsPreferProcessedTextNewestFirst() throws {
         let logURL = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString)

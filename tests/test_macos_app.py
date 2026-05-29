@@ -93,6 +93,23 @@ def test_macos_app_has_swift_unit_test_target() -> None:
     assert "swift test --package-path macos/AgentCLI --enable-xctest" in workflow
 
 
+def test_macos_app_exposes_transcription_log_from_menu() -> None:
+    """Recorded transcriptions should be logged and the log should be openable."""
+    command = (SWIFT_SOURCE_DIR / "AgentCommand.swift").read_text(encoding="utf-8")
+    reader = (SWIFT_SOURCE_DIR / "RecentTranscriptionReader.swift").read_text(encoding="utf-8")
+    runner = (SWIFT_SOURCE_DIR / "AgentCommandRunner.swift").read_text(encoding="utf-8")
+    menu = (SWIFT_SOURCE_DIR / "StatusMenuController.swift").read_text(encoding="utf-8")
+
+    assert '"--transcription-log"' in command
+    assert "RecentTranscriptionReader.defaultLogPath" in command
+    assert 'static let defaultLogPath = "~/.config/agent-cli/transcriptions.jsonl"' in reader
+    assert "static var defaultLogURL: URL" in reader
+    assert "func openTranscriptionLog()" in runner
+    assert "RecentTranscriptionReader.defaultLogURL" in runner
+    assert '"Open Transcription Log"' in menu
+    assert "#selector(openTranscriptionLog)" in menu
+
+
 def test_macos_info_plist_declares_menu_bar_agent_app() -> None:
     """The app bundle should be installable and hidden from the Dock."""
     with (MACOS_APP / "Resources" / "Info.plist").open("rb") as f:
