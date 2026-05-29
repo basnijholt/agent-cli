@@ -3,6 +3,19 @@ import AVFoundation
 import Foundation
 import SwiftUI
 
+enum VoiceLevelOverlayLayout {
+    static let pillSize = CGSize(width: 147, height: 38)
+    static let shadowRadius = CGFloat(13)
+    static let shadowYOffset = CGFloat(6)
+    static let horizontalPadding = shadowRadius
+    static let verticalPadding = shadowRadius + abs(shadowYOffset)
+    static let panelSize = NSSize(
+        width: pillSize.width + (horizontalPadding * 2),
+        height: pillSize.height + (verticalPadding * 2)
+    )
+    static let bottomOffset = CGFloat(38)
+}
+
 struct VoiceLevelOverlayView: View {
     @Environment(\.colorScheme) private var colorScheme
     @ObservedObject var meter: VoiceLevelMeter
@@ -25,7 +38,7 @@ struct VoiceLevelOverlayView: View {
                     .animation(.easeOut(duration: 0.11), value: amplitude)
             }
         }
-        .frame(width: 147, height: 38)
+        .frame(width: VoiceLevelOverlayLayout.pillSize.width, height: VoiceLevelOverlayLayout.pillSize.height)
         .background(
             Capsule()
                 .fill(backgroundColor)
@@ -34,7 +47,13 @@ struct VoiceLevelOverlayView: View {
             Capsule()
                 .stroke(borderColor, lineWidth: 1)
         )
-        .shadow(color: shadowColor, radius: 13, y: 6)
+        .shadow(
+            color: shadowColor,
+            radius: VoiceLevelOverlayLayout.shadowRadius,
+            y: VoiceLevelOverlayLayout.shadowYOffset
+        )
+        .padding(.horizontal, VoiceLevelOverlayLayout.horizontalPadding)
+        .padding(.vertical, VoiceLevelOverlayLayout.verticalPadding)
         .accessibilityLabel(Text("Voice level"))
     }
 
@@ -66,7 +85,7 @@ struct VoiceLevelOverlayView: View {
 final class VoiceLevelOverlayController {
     static let shared = VoiceLevelOverlayController()
 
-    private let panelSize = NSSize(width: 154, height: 41)
+    private let panelSize = VoiceLevelOverlayLayout.panelSize
     private var panel: NSPanel?
 
     private init() {}
@@ -105,10 +124,13 @@ final class VoiceLevelOverlayController {
     private func position(_ panel: NSPanel) {
         guard let screen = NSScreen.main ?? NSScreen.screens.first else { return }
         let frame = screen.visibleFrame
+        let y = frame.minY
+            + VoiceLevelOverlayLayout.bottomOffset
+            - VoiceLevelOverlayLayout.verticalPadding
         panel.setFrameOrigin(
             NSPoint(
                 x: frame.midX - panelSize.width / 2,
-                y: frame.minY + 38
+                y: y
             )
         )
     }

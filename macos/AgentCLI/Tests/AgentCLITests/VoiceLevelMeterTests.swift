@@ -25,6 +25,23 @@ final class VoiceLevelMeterTests: XCTestCase {
         XCTAssertGreaterThan((amplitudes.max() ?? 0) - (amplitudes.min() ?? 0), 0.1)
     }
 
+    func testOverlayPanelLeavesRoomForShadowBlur() {
+        let panelSize = VoiceLevelOverlayLayout.panelSize
+        let pillSize = VoiceLevelOverlayLayout.pillSize
+        let shadowRadius = VoiceLevelOverlayLayout.shadowRadius
+
+        XCTAssertGreaterThanOrEqual(
+            (panelSize.width - pillSize.width) / 2,
+            shadowRadius,
+            "The transparent panel needs enough horizontal margin to avoid clipping the capsule shadow."
+        )
+        XCTAssertGreaterThanOrEqual(
+            (panelSize.height - pillSize.height) / 2,
+            shadowRadius + abs(VoiceLevelOverlayLayout.shadowYOffset),
+            "The transparent panel needs enough vertical margin to avoid clipping the offset capsule shadow."
+        )
+    }
+
     private static func sineWave(
         frequency: Double = 220,
         sampleRate: Double = 16_000,
