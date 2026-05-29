@@ -1187,12 +1187,15 @@ def test_macos_app_waits_for_whisper_daemon_readiness() -> None:
 
     assert "waitForWhisperDaemonReady()" in source
     assert "return waitForWhisperDaemonReady()" in source
-    assert "canConnectToLocalhost(port: 10300)" in source
+    assert "localhostConnector(10300)" in source
     assert "Thread.sleep(forTimeInterval: 0.5)" in source
     assert "socket(AF_INET, SOCK_STREAM, 0)" in source
     assert "connect(socketFD" in source
     assert 'runAgentCLI(arguments: ["daemon", "status", "whisper", "--logs", "80"])' in source
     assert "Whisper ASR service did not become ready at localhost:10300" in source
+    assert 'runAgentCLI(arguments: ["daemon", "status", "whisper", "--logs", "0"])' in source
+    assert "parseWhisperDaemonInstallState" in source
+    assert "case .notInstalled, .installedButNotRunning:" in source
 
 
 def test_macos_app_has_end_to_end_packaging_test() -> None:

@@ -135,6 +135,95 @@ final class AgentCommandTests: XCTestCase {
         XCTAssertEqual(components.filter { $0 == "/usr/bin" }.count, 1)
     }
 
+    func testTranscriptionBootstrapRepairsStaleWhisperDaemonMarker() throws {
+        let tempURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("AgentCLITests-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: tempURL) }
+
+        let binURL = tempURL.appendingPathComponent("bin", isDirectory: true)
+        try FileManager.default.createDirectory(at: binURL, withIntermediateDirectories: true)
+        let agentCLIURL = binURL.appendingPathComponent("agent-cli")
+        _ = FileManager.default.createFile(atPath: agentCLIURL.path, contents: Data())
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: agentCLIURL.path)
+
+        try """
+        packageSource=agent-cli
+        installRequirement=agent-cli[audio,llm]
+
+        """.write(
+            to: tempURL.appendingPathComponent(".agent-cli-installed"),
+            atomically: true,
+            encoding: .utf8
+        )
+        try """
+        runtimeMode=bundled
+        packageSource=agent-cli
+
+        """.write(
+            to: tempURL.appendingPathComponent(".whisper-daemon-installed"),
+            atomically: true,
+            encoding: .utf8
+        )
+
+        let defaults = UserDefaults(suiteName: "AgentCLITests.stale-whisper-marker")!
+        defaults.removePersistentDomain(forName: "AgentCLITests.stale-whisper-marker")
+        var installedWhisper = false
+        var processArguments: [[String]] = []
+        let runtime = AgentRuntime(
+            environment: ["AGENTCLI_APP_SUPPORT_DIR": tempURL.path],
+            userDefaults: defaults,
+            processRunner: { _, arguments, _ in
+                processArguments.append(arguments)
+                if arguments == ["daemon", "status", "whisper", "--logs", "0"] {
+                    return CommandResult(exitCode: 0, output: "Service Status\n\n  whisper: not installed")
+                }
+                if arguments == ["daemon", "install", "whisper", "-y"] {
+                    installedWhisper = true
+                    return CommandResult(exitCode: 0, output: "Installed and started")
+                }
+                XCTFail("Unexpected process arguments: \(arguments)")
+                return CommandResult(exitCode: 1, output: "unexpected")
+            },
+            localhostConnector: { port in
+                XCTAssertEqual(port, 10300)
+                return installedWhisper
+            },
+            whisperReadyTimeout: 0.01
+        )
+
+        var phases: [BootstrapPhase] = []
+        let result = runtime.ensureReady(for: .transcription) { phases.append($0) }
+
+        XCTAssertEqual(result.exitCode, 0)
+        XCTAssertEqual(
+            processArguments,
+            [
+                ["daemon", "status", "whisper", "--logs", "0"],
+                ["daemon", "install", "whisper", "-y"],
+            ]
+        )
+        XCTAssertEqual(phases, [.waitingForVoiceService, .installingVoiceService, .waitingForVoiceService])
+    }
+
+    func testWhisperDaemonStatusParsing() {
+        XCTAssertEqual(
+            AgentRuntime.parseWhisperDaemonInstallState("Service Status\n\n  whisper: running (pid 123)"),
+            .running
+        )
+        XCTAssertEqual(
+            AgentRuntime.parseWhisperDaemonInstallState("Service Status\n\n  whisper: installed but not running"),
+            .installedButNotRunning
+        )
+        XCTAssertEqual(
+            AgentRuntime.parseWhisperDaemonInstallState("Service Status\n\n  whisper: not installed"),
+            .notInstalled
+        )
+        XCTAssertEqual(
+            AgentRuntime.parseWhisperDaemonInstallState("Service Status\n\n  tts: running"),
+            .unknown
+        )
+    }
+
     @MainActor
     func testStartupWarmUpBootstrapsTranscriptionOnce() {
         let recorder = BootstrapRecorder()
