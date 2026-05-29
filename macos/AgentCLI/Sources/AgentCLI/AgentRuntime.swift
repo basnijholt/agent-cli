@@ -15,13 +15,6 @@ private enum AgentCLIRuntimeMode: Equatable {
 typealias AgentProcessRunner = (URL, [String], [String: String]) -> CommandResult
 typealias LocalhostConnector = (UInt16) -> Bool
 
-enum WhisperDaemonInstallState {
-    case running
-    case installedButNotRunning
-    case notInstalled
-    case unknown
-}
-
 struct AgentRuntime {
     static let shared = AgentRuntime()
 
@@ -316,12 +309,6 @@ struct AgentRuntime {
             if localhostConnector(10300) {
                 return CommandResult(exitCode: 0, output: "")
             }
-            switch whisperDaemonInstallState() {
-            case .running, .unknown:
-                return waitForWhisperDaemonReady()
-            case .notInstalled, .installedButNotRunning:
-                return installWhisperDaemon(progress: progress)
-            }
         }
 
         return installWhisperDaemon(progress: progress)
@@ -329,7 +316,7 @@ struct AgentRuntime {
 
     private func installWhisperDaemon(progress: AgentBootstrapProgress) -> CommandResult {
         progress(.installingVoiceService)
-        let result = runAgentCLI(arguments: ["daemon", "install", "whisper", "-y"])
+        let result = runAgentCLI(arguments: ["daemon", "ensure", "whisper", "--quiet"])
         guard result.exitCode == 0 else {
             return result
         }
@@ -341,33 +328,6 @@ struct AgentRuntime {
         )
         progress(.waitingForVoiceService)
         return waitForWhisperDaemonReady()
-    }
-
-    private func whisperDaemonInstallState() -> WhisperDaemonInstallState {
-        let result = runAgentCLI(arguments: ["daemon", "status", "whisper", "--logs", "0"])
-        guard result.exitCode == 0 else {
-            return .unknown
-        }
-        return Self.parseWhisperDaemonInstallState(result.output)
-    }
-
-    static func parseWhisperDaemonInstallState(_ output: String) -> WhisperDaemonInstallState {
-        let lines = output
-            .components(separatedBy: .newlines)
-            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() }
-        guard let statusLine = lines.first(where: { $0.hasPrefix("whisper:") }) else {
-            return .unknown
-        }
-        if statusLine.contains("not installed") {
-            return .notInstalled
-        }
-        if statusLine.contains("installed but not running") {
-            return .installedButNotRunning
-        }
-        if statusLine.contains("running") {
-            return .running
-        }
-        return .unknown
     }
 
     private var whisperDaemonMarkerContents: String {

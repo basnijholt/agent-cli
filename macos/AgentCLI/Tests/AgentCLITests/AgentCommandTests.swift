@@ -174,10 +174,7 @@ final class AgentCommandTests: XCTestCase {
             userDefaults: defaults,
             processRunner: { _, arguments, _ in
                 processArguments.append(arguments)
-                if arguments == ["daemon", "status", "whisper", "--logs", "0"] {
-                    return CommandResult(exitCode: 0, output: "Service Status\n\n  whisper: not installed")
-                }
-                if arguments == ["daemon", "install", "whisper", "-y"] {
+                if arguments == ["daemon", "ensure", "whisper", "--quiet"] {
                     installedWhisper = true
                     return CommandResult(exitCode: 0, output: "Installed and started")
                 }
@@ -198,30 +195,10 @@ final class AgentCommandTests: XCTestCase {
         XCTAssertEqual(
             processArguments,
             [
-                ["daemon", "status", "whisper", "--logs", "0"],
-                ["daemon", "install", "whisper", "-y"],
+                ["daemon", "ensure", "whisper", "--quiet"],
             ]
         )
         XCTAssertEqual(phases, [.waitingForVoiceService, .installingVoiceService, .waitingForVoiceService])
-    }
-
-    func testWhisperDaemonStatusParsing() {
-        XCTAssertEqual(
-            AgentRuntime.parseWhisperDaemonInstallState("Service Status\n\n  whisper: running (pid 123)"),
-            .running
-        )
-        XCTAssertEqual(
-            AgentRuntime.parseWhisperDaemonInstallState("Service Status\n\n  whisper: installed but not running"),
-            .installedButNotRunning
-        )
-        XCTAssertEqual(
-            AgentRuntime.parseWhisperDaemonInstallState("Service Status\n\n  whisper: not installed"),
-            .notInstalled
-        )
-        XCTAssertEqual(
-            AgentRuntime.parseWhisperDaemonInstallState("Service Status\n\n  tts: running"),
-            .unknown
-        )
     }
 
     @MainActor
