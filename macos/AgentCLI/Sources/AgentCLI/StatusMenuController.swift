@@ -5,6 +5,10 @@ import Foundation
 final class StatusMenuController: NSObject, NSMenuDelegate {
     static let shared = StatusMenuController()
 
+    private static let statusRefreshInterval: TimeInterval = 0.8
+    private static let statusRefreshRunLoopModes: [RunLoop.Mode] = [.common, .eventTracking]
+    private static let voiceStatusTitlePrefix = "Voice: "
+
     private let runner = AgentCommandRunner.shared
     private let appUpdater = AppUpdater.shared
     private let loginItemController = LoginItemController.shared
@@ -63,20 +67,18 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
         menu.addItem(actionItem("Autocorrect Clipboard", symbolName: "text.badge.checkmark", action: #selector(autocorrectClipboard)))
         menu.addItem(.separator())
 
-        let voiceStatusItem = NSMenuItem(title: "", action: nil, keyEquivalent: "")
-        voiceStatusItem.isEnabled = false
+        let voiceStatusItem = disabledItem("")
         menu.addItem(voiceStatusItem)
         self.voiceStatusItem = voiceStatusItem
 
-        let shortcutItem = NSMenuItem(title: shortcutSummary.summary, action: nil, keyEquivalent: "")
-        shortcutItem.isEnabled = false
-        menu.addItem(shortcutItem)
+        menu.addItem(disabledItem(shortcutSummary.summary))
         menu.addItem(.separator())
 
-        let recentItem = NSMenuItem(title: "Recent Recordings", action: nil, keyEquivalent: "")
-        recentItem.image = symbolImage("clock.arrow.circlepath")
-        recentItem.submenu = recentRecordingsMenu
-        menu.addItem(recentItem)
+        menu.addItem(submenuItem(
+            "Recent Recordings",
+            symbolName: "clock.arrow.circlepath",
+            submenu: recentRecordingsMenu
+        ))
         menu.addItem(.separator())
 
         let loginItem = actionItem(
@@ -93,10 +95,11 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
         updateItem.isEnabled = appUpdater.canCheckForUpdates
         menu.addItem(updateItem)
 
-        let troubleshootingItem = NSMenuItem(title: "Troubleshooting", action: nil, keyEquivalent: "")
-        troubleshootingItem.image = symbolImage("wrench.and.screwdriver")
-        troubleshootingItem.submenu = troubleshootingMenu
-        menu.addItem(troubleshootingItem)
+        menu.addItem(submenuItem(
+            "Troubleshooting",
+            symbolName: "wrench.and.screwdriver",
+            submenu: troubleshootingMenu
+        ))
 
         menu.addItem(.separator())
         menu.addItem(actionItem("Quit", symbolName: "power", action: #selector(quit)))
@@ -107,9 +110,7 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
         recentRecordingsMenu.removeAllItems()
         let recentTranscriptions = RecentTranscriptionReader.recentTranscriptions()
         if recentTranscriptions.isEmpty {
-            let item = NSMenuItem(title: "No recent transcriptions", action: nil, keyEquivalent: "")
-            item.isEnabled = false
-            recentRecordingsMenu.addItem(item)
+            recentRecordingsMenu.addItem(disabledItem("No recent transcriptions"))
             return
         }
 
@@ -194,18 +195,19 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
 
     private func startStatusRefreshTimer() {
         guard statusRefreshTimer == nil else { return }
-        let timer = Timer(timeInterval: 0.8, repeats: true) { [weak self] _ in
+        let timer = Timer(timeInterval: Self.statusRefreshInterval, repeats: true) { [weak self] _ in
             Task { @MainActor in
                 self?.refreshDynamicStatus()
             }
         }
-        RunLoop.main.add(timer, forMode: .common)
-        RunLoop.main.add(timer, forMode: .eventTracking)
+        for mode in Self.statusRefreshRunLoopModes {
+            RunLoop.main.add(timer, forMode: mode)
+        }
         statusRefreshTimer = timer
     }
 
     private func refreshDynamicStatus() {
-        voiceStatusItem?.title = "Voice: \(runner.menuStatusMessage)"
+        voiceStatusItem?.title = "\(Self.voiceStatusTitlePrefix)\(runner.menuStatusMessage)"
         if let button = statusItem?.button {
             button.image = MenuBarIconImage.logoImage(state: runner.menuBarIconState)
             button.imagePosition = .imageOnly
@@ -225,6 +227,19 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
         let item = NSMenuItem(title: title, action: action, keyEquivalent: "")
         item.target = self
         item.image = symbolImage(symbolName)
+        return item
+    }
+
+    private func disabledItem(_ title: String) -> NSMenuItem {
+        let item = NSMenuItem(title: title, action: nil, keyEquivalent: "")
+        item.isEnabled = false
+        return item
+    }
+
+    private func submenuItem(_ title: String, symbolName: String, submenu: NSMenu) -> NSMenuItem {
+        let item = NSMenuItem(title: title, action: nil, keyEquivalent: "")
+        item.image = symbolImage(symbolName)
+        item.submenu = submenu
         return item
     }
 
