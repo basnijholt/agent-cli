@@ -200,6 +200,7 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
             }
         }
         RunLoop.main.add(timer, forMode: .common)
+        RunLoop.main.add(timer, forMode: .eventTracking)
         statusRefreshTimer = timer
     }
 

@@ -11,11 +11,13 @@ final class SettingsWindowController {
 
     func show() {
         if window == nil {
-            let controller = NSHostingController(rootView: SettingsView().frame(width: 460))
+            let contentSize = NSSize(width: 460, height: 640)
+            let controller = NSHostingController(rootView: SettingsView().frame(width: contentSize.width))
             let window = NSWindow(contentViewController: controller)
             window.title = "Agent CLI Settings"
             window.styleMask = [.titled, .closable]
             window.isReleasedWhenClosed = false
+            window.setContentSize(contentSize)
             window.center()
             self.window = window
         }
