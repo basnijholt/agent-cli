@@ -20,10 +20,8 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
     private let recentRecordingsMenu = NSMenu()
     private let troubleshootingMenu = NSMenu()
     private var voiceStatusItem: NSMenuItem?
-    private var recentActivityStatusItem: NSMenuItem?
-    private var recentActivityStatusSeparator: NSMenuItem?
-    private var troubleshootingActivityStatusItem: NSMenuItem?
-    private var troubleshootingActivityStatusSeparator: NSMenuItem?
+    private var recentActivityStatusRow: MenuActivityStatusRow?
+    private var troubleshootingActivityStatusRow: MenuActivityStatusRow?
     private var statusRefreshTimer: Timer?
 
     private override init() {
@@ -113,12 +111,7 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
 
     private func rebuildRecentRecordingsMenu() {
         recentRecordingsMenu.removeAllItems()
-        let activityItem = disabledItem("")
-        let activitySeparator = NSMenuItem.separator()
-        recentRecordingsMenu.addItem(activityItem)
-        recentRecordingsMenu.addItem(activitySeparator)
-        recentActivityStatusItem = activityItem
-        recentActivityStatusSeparator = activitySeparator
+        recentActivityStatusRow = activityStatusRow(in: recentRecordingsMenu)
 
         let recentTranscriptions = RecentTranscriptionReader.recentTranscriptions()
         if recentTranscriptions.isEmpty {
@@ -141,12 +134,7 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
 
     private func rebuildTroubleshootingMenu() {
         troubleshootingMenu.removeAllItems()
-        let activityItem = disabledItem("")
-        let activitySeparator = NSMenuItem.separator()
-        troubleshootingMenu.addItem(activityItem)
-        troubleshootingMenu.addItem(activitySeparator)
-        troubleshootingActivityStatusItem = activityItem
-        troubleshootingActivityStatusSeparator = activitySeparator
+        troubleshootingActivityStatusRow = activityStatusRow(in: troubleshootingMenu)
 
         troubleshootingMenu.addItem(actionItem(
             "Voice Service Status",
@@ -240,26 +228,14 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
     }
 
     private func updateSubmenuActivityStatus(_ activityStatus: MenuActivityStatus) {
-        updateSubmenuActivityStatus(
-            item: recentActivityStatusItem,
-            separator: recentActivityStatusSeparator,
-            activityStatus: activityStatus
-        )
-        updateSubmenuActivityStatus(
-            item: troubleshootingActivityStatusItem,
-            separator: troubleshootingActivityStatusSeparator,
-            activityStatus: activityStatus
-        )
+        recentActivityStatusRow?.update(activityStatus)
+        troubleshootingActivityStatusRow?.update(activityStatus)
     }
 
-    private func updateSubmenuActivityStatus(
-        item: NSMenuItem?,
-        separator: NSMenuItem?,
-        activityStatus: MenuActivityStatus
-    ) {
-        item?.title = "\(Self.activityStatusTitlePrefix)\(activityStatus.message)"
-        item?.isHidden = !activityStatus.isActive
-        separator?.isHidden = !activityStatus.isActive
+    private func activityStatusRow(in menu: NSMenu) -> MenuActivityStatusRow {
+        let row = MenuActivityStatusRow(prefix: Self.activityStatusTitlePrefix)
+        row.add(to: menu)
+        return row
     }
 
     private var usesUserInstalledAgentCLI: Bool {

@@ -297,6 +297,68 @@ final class AgentCommandTests: XCTestCase {
         XCTAssertFalse(MenuActivityStatus.completed(title: "Ready").isActive)
     }
 
+    func testMenuActivityTrackerPrioritizesAndRestoresActivities() {
+        var tracker = MenuActivityTracker()
+        let startedAt = Date(timeIntervalSinceReferenceDate: 1_000)
+        let now = Date(timeIntervalSinceReferenceDate: 1_065)
+        let fallback = MenuActivityStatus.completed(title: "Ready")
+
+        tracker.beginCommand(identifier: "autocorrect", title: "Autocorrect Clipboard", at: startedAt)
+        XCTAssertEqual(
+            tracker.status(now: now, fallback: fallback),
+            MenuActivityStatus.active(title: "Autocorrect Clipboard", startedAt: startedAt, now: now)
+        )
+
+        tracker.beginRecording(at: startedAt.addingTimeInterval(10))
+        XCTAssertEqual(
+            tracker.status(now: now, fallback: fallback),
+            MenuActivityStatus.active(title: "Recording", startedAt: startedAt.addingTimeInterval(10), now: now)
+        )
+
+        tracker.beginTranscribing(at: startedAt.addingTimeInterval(20))
+        XCTAssertEqual(
+            tracker.status(now: now, fallback: fallback),
+            MenuActivityStatus.active(title: "Transcribing", startedAt: startedAt.addingTimeInterval(20), now: now)
+        )
+
+        tracker.beginBootstrap(title: "Installing CLI runtime", at: startedAt.addingTimeInterval(30))
+        XCTAssertEqual(
+            tracker.status(now: now, fallback: fallback),
+            MenuActivityStatus.active(
+                title: "Installing CLI runtime",
+                startedAt: startedAt.addingTimeInterval(30),
+                now: now
+            )
+        )
+
+        tracker.finishBootstrap()
+        XCTAssertEqual(
+            tracker.status(now: now, fallback: fallback),
+            MenuActivityStatus.active(title: "Transcribing", startedAt: startedAt.addingTimeInterval(20), now: now)
+        )
+
+        tracker.finishTranscribing()
+        tracker.finishRecording()
+        tracker.finishCommand(identifier: "autocorrect")
+
+        XCTAssertEqual(tracker.status(now: now, fallback: fallback), fallback)
+    }
+
+    func testMenuActivityTrackerRestoresPreviousCommandWhenLatestFinishes() {
+        var tracker = MenuActivityTracker()
+        let startedAt = Date(timeIntervalSinceReferenceDate: 2_000)
+        let fallback = MenuActivityStatus.completed(title: "Ready")
+
+        tracker.beginCommand(identifier: "first", title: "First Command", at: startedAt)
+        tracker.beginCommand(identifier: "second", title: "Second Command", at: startedAt.addingTimeInterval(4))
+        tracker.finishCommand(identifier: "second")
+
+        XCTAssertEqual(
+            tracker.status(now: startedAt.addingTimeInterval(12), fallback: fallback),
+            MenuActivityStatus.active(title: "First Command", startedAt: startedAt, now: startedAt.addingTimeInterval(12))
+        )
+    }
+
     @MainActor
     func testIdleMenuStatusUsesCompletedCheckmark() {
         let runner = AgentCommandRunner { _, _, _ in
