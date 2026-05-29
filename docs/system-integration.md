@@ -36,6 +36,10 @@ This automatically installs missing `audio` and `llm` extras, then sets up the p
 >
 > After installation, grant Accessibility permissions to skhd:
 > System Settings → Privacy & Security → Accessibility → enable "skhd"
+>
+> The transcription hotkey may also prompt for Microphone permission for "skhd"
+> the first time it starts recording. Allow it so hotkey-launched recordings
+> contain real audio instead of silence.
 
 ### Manual skhd Configuration
 
@@ -66,6 +70,9 @@ skhd --reload
 ### Notifications
 
 The `install-hotkeys` command automatically installs terminal-notifier for visual feedback and keeps the active recording-status notification pinned while transient status/result toasts auto-dismiss.
+
+Transcription hotkey diagnostics are written to `~/.cache/agent-cli/transcribe-hotkey.log`
+and `~/.cache/agent-cli/transcribe-hotkey-agent.log`.
 
 Configure notifications in System Settings:
 1. Settings → Notifications → terminal-notifier
