@@ -59,6 +59,7 @@ diarization = [
     { name = "pyannote-audio" },
 ]
 faster-whisper = [
+    { name = "ctranslate2" },
     { name = "fastapi", extra = ["standard"] },
     { name = "faster-whisper" },
 ]
@@ -162,6 +163,7 @@ requires-dist = [
     { name = "chromadb", marker = "extra == 'memory'", specifier = ">=0.4.22" },
     { name = "chromadb", marker = "extra == 'rag'", specifier = ">=0.4.22" },
     { name = "chromadb", marker = "extra == 'vectordb'", specifier = ">=0.4.22" },
+    { name = "ctranslate2", marker = "extra == 'faster-whisper'", specifier = ">=4.6.2" },
     { name = "dotenv" },
     { name = "fastapi", extras = ["standard"], marker = "extra == 'faster-whisper'" },
     { name = "fastapi", extras = ["standard"], marker = "extra == 'kokoro'" },
