@@ -18,11 +18,6 @@ private enum HoldTranscriptionState {
     }
 }
 
-private struct ActiveCommandActivity {
-    let title: String
-    let startedAt: Date
-}
-
 @MainActor
 final class AgentCommandRunner: ObservableObject {
     static let shared = AgentCommandRunner()
@@ -36,11 +31,7 @@ final class AgentCommandRunner: ObservableObject {
     private var recordingIndicator = RecordingIndicatorController()
     private let pasteController: TranscriptPasteController
     private let bootstrap: AgentBootstrap
-    private var bootstrapPhaseStartedAt: Date?
-    private var recordingStartedAt: Date?
-    private var transcribingStartedAt: Date?
-    private var activeCommandActivities: [String: ActiveCommandActivity] = [:]
-    private var activeCommandActivityOrder: [String] = []
+    private var activityTracker = MenuActivityTracker()
     private var pendingStopRecordingCommands: Set<String> = []
     private var holdTranscriptionState: HoldTranscriptionState = .idle
     private var holdToTranscribePasteTarget: FocusedTextTarget?
@@ -60,26 +51,16 @@ final class AgentCommandRunner: ObservableObject {
     }
 
     func menuActivityStatus(now: Date) -> MenuActivityStatus {
-        if bootstrapPhase.isPreparing {
-            return MenuActivityStatus.active(
-                title: bootstrapPhase.activityTitle,
-                startedAt: bootstrapPhaseStartedAt ?? now,
-                now: now
+        if hasLastError && statusMessage.localizedCaseInsensitiveContains("failed") {
+            return activityTracker.status(
+                now: now,
+                fallback: MenuActivityStatus.inactive(message: "Last command failed")
             )
         }
-        if let transcribingStartedAt {
-            return MenuActivityStatus.active(title: "Transcribing", startedAt: transcribingStartedAt, now: now)
-        }
-        if isRecording {
-            return MenuActivityStatus.active(title: "Recording", startedAt: recordingStartedAt ?? now, now: now)
-        }
-        if let activity = currentCommandActivity {
-            return MenuActivityStatus.active(title: activity.title, startedAt: activity.startedAt, now: now)
-        }
-        if hasLastError && statusMessage.localizedCaseInsensitiveContains("failed") {
-            return MenuActivityStatus.inactive(message: "Last command failed")
-        }
-        return MenuActivityStatus.completed(title: Self.compactMenuStatus(statusMessage))
+        return activityTracker.status(
+            now: now,
+            fallback: MenuActivityStatus.completed(title: Self.compactMenuStatus(statusMessage))
+        )
     }
 
     var menuBarIconState: MenuBarIconState {
@@ -146,10 +127,10 @@ final class AgentCommandRunner: ObservableObject {
         bootstrapPhase = phase
         if phase.isPreparing {
             if !wasPreparing || phaseChanged {
-                bootstrapPhaseStartedAt = Date()
+                activityTracker.beginBootstrap(title: phase.activityTitle)
             }
         } else {
-            bootstrapPhaseStartedAt = nil
+            activityTracker.finishBootstrap()
         }
     }
 
@@ -390,34 +371,21 @@ final class AgentCommandRunner: ObservableObject {
         pendingStopRecordingCommands.remove(command.identifier)
     }
 
-    private var currentCommandActivity: ActiveCommandActivity? {
-        activeCommandActivityOrder.reversed().compactMap { activeCommandActivities[$0] }.first
-    }
-
     private func beginCommandActivity(for command: AgentCommand) {
-        if activeCommandActivities[command.identifier] == nil {
-            activeCommandActivityOrder.append(command.identifier)
-        }
-        activeCommandActivities[command.identifier] = ActiveCommandActivity(
-            title: command.menuActivityTitle,
-            startedAt: Date()
-        )
+        activityTracker.beginCommand(identifier: command.identifier, title: command.menuActivityTitle)
     }
 
     private func finishCommandActivity(for command: AgentCommand) {
-        activeCommandActivities.removeValue(forKey: command.identifier)
-        activeCommandActivityOrder.removeAll { $0 == command.identifier }
+        activityTracker.finishCommand(identifier: command.identifier)
     }
 
     private func beginTranscribingActivity() {
-        if transcribingStartedAt == nil {
-            transcribingStartedAt = Date()
-        }
+        activityTracker.beginTranscribing()
     }
 
     private func clearTranscribingActivityIfFinished() {
         if pendingStopRecordingCommands.isEmpty && !holdTranscriptionState.isFinishing {
-            transcribingStartedAt = nil
+            activityTracker.finishTranscribing()
         }
     }
 
@@ -447,7 +415,7 @@ final class AgentCommandRunner: ObservableObject {
         recordingIndicator.begin(for: command)
         isRecording = recordingIndicator.isRecording
         if !wasRecording && isRecording {
-            recordingStartedAt = Date()
+            activityTracker.beginRecording()
         }
         return true
     }
@@ -456,7 +424,7 @@ final class AgentCommandRunner: ObservableObject {
         recordingIndicator.end(for: command)
         isRecording = recordingIndicator.isRecording
         if !isRecording {
-            recordingStartedAt = nil
+            activityTracker.finishRecording()
         }
     }
 
