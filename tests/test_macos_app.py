@@ -573,16 +573,32 @@ def test_macos_app_animates_all_preparing_statuses_with_fixed_width_timer() -> N
 def test_macos_app_updates_bootstrap_status_without_rebuilding_menu_tree() -> None:
     """Bootstrap animation should keep updating without refreshing the whole menu."""
     source = swift_source()
+    voice_status = read_swift_source_file(SWIFT_SOURCE_DIR / "VoiceStatusMenuItem.swift")
 
     assert "VoiceStatusMenuItem(runner: runner)" in source
     assert 'Text("Voice: \\(runner.menuStatusMessage)")' not in source
-    assert "struct VoiceStatusMenuItem: View" in source
-    assert 'Text("Voice: \\(statusMessage)")' in source
-    assert ".onReceive(statusRefreshTimer)" in source
+    assert "struct VoiceStatusMenuItem: NSViewRepresentable" in voice_status
+    assert "@State" not in voice_status
+    assert ".onReceive" not in voice_status
     assert "@Published private var bootstrapAnimationTick" not in source
     assert "@Published private var bootstrapElapsedSeconds" not in source
     assert "private var bootstrapAnimationTick = 0" in source
     assert "private var bootstrapElapsedSeconds = 0" in source
+
+
+def test_macos_app_bootstrap_status_timer_bypasses_swiftui_menu_state() -> None:
+    """The open menu should not be invalidated for each bootstrap status tick."""
+    source = swift_source()
+    voice_status = read_swift_source_file(SWIFT_SOURCE_DIR / "VoiceStatusMenuItem.swift")
+
+    assert "struct VoiceStatusMenuItem: NSViewRepresentable" in voice_status
+    assert "final class Coordinator" in voice_status
+    assert "Timer(timeInterval:" in voice_status
+    assert "stringValue = " in voice_status
+    assert "VoiceStatusMenuItem(runner: runner)" in source
+    assert "@State" not in voice_status
+    assert ".onReceive" not in voice_status
+    assert "Timer.publish" not in voice_status
 
 
 def test_macos_app_shows_preparing_menu_bar_icon_state() -> None:
