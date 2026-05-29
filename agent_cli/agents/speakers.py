@@ -1137,17 +1137,15 @@ def _review_audio_targets(
                 player=player,
             )
         except _ReviewInterruptedError as exc:
-            audio_changed = exc.changed
-            records = exc.records
+            changed = exc.changed or changed
             interrupted = True
+            _save_review_state(review_state_path, review_state)
+            break
 
         _record_audio_review(review_state, audio_path, records)
         _save_review_state(review_state_path, review_state)
         reviewed_audio_count += 1
         changed = audio_changed or changed
-
-        if interrupted:
-            break
 
     return changed, reviewed_audio_count, skipped_audio_count, interrupted
 
