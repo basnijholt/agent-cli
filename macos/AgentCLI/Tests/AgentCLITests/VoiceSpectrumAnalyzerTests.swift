@@ -29,13 +29,25 @@ final class VoiceSpectrumAnalyzerTests: XCTestCase {
         XCTAssertTrue(amplitudes.allSatisfy { $0 == 0 })
     }
 
+    func testQuietSpeechLevelToneRisesAboveOverlayFloor() {
+        let analyzer = VoiceSpectrumAnalyzer(sampleRate: 16_000, bandCount: 16)
+        let quietSpeechLevel = pow(10.0, -45.0 / 20.0)
+
+        let amplitudes = analyzer.amplitudes(
+            from: Self.sineWave(frequency: 220, sampleRate: 16_000, amplitude: Float(quietSpeechLevel))
+        )
+
+        XCTAssertGreaterThan(amplitudes.max() ?? 0, 0.2)
+    }
+
     private static func sineWave(
         frequency: Double,
         sampleRate: Double,
-        sampleCount: Int = 2_048
+        sampleCount: Int = 2_048,
+        amplitude: Float = 1
     ) -> [Float] {
         (0..<sampleCount).map { index in
-            Float(sin(2 * Double.pi * frequency * Double(index) / sampleRate))
+            amplitude * Float(sin(2 * Double.pi * frequency * Double(index) / sampleRate))
         }
     }
 }
