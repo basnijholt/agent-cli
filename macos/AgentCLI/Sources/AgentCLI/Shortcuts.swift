@@ -308,7 +308,7 @@ struct SettingsView: View {
             } header: {
                 Text("General")
             } footer: {
-                Text("Runs the agent-cli found on PATH with your normal config instead of the app's private bundled-uv runtime. Recording sounds use Frog when recording starts and Funk when recording ends.")
+                Text("Runs the agent-cli found on PATH with your normal config instead of the app's private bundled-uv runtime. Recording sounds use Frog when recording starts and Purr when recording ends.")
             }
 
             Section {
