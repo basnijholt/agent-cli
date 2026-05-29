@@ -93,16 +93,15 @@ final class VoiceLevelMeter: NSObject, ObservableObject {
 
     private static let barCount = 16
     private static let idleAmplitudes = Array(repeating: CGFloat(0.16), count: barCount)
-    private let minimumPower: Float = -55
-    private var recorder: AVAudioRecorder?
-    private var timer: Timer?
-    private var phase = 0.0
-    private var smoothedLevel = CGFloat(0.16)
+    private static let minimumDisplayAmplitude = CGFloat(0.12)
+    private var engine: AVAudioEngine?
+    private var analyzer: VoiceSpectrumAnalyzer?
+    private var smoothedAmplitudes = VoiceLevelMeter.idleAmplitudes
 
     private override init() {}
 
     func start() {
-        guard recorder == nil else { return }
+        guard engine == nil else { return }
 
         switch AVCaptureDevice.authorizationStatus(for: .audio) {
         case .authorized:
@@ -123,58 +122,88 @@ final class VoiceLevelMeter: NSObject, ObservableObject {
     }
 
     func stop() {
-        timer?.invalidate()
-        timer = nil
-        recorder?.stop()
-        recorder = nil
-        smoothedLevel = 0.16
+        engine?.inputNode.removeTap(onBus: 0)
+        engine?.stop()
+        engine = nil
+        analyzer = nil
+        smoothedAmplitudes = Self.idleAmplitudes
         amplitudes = Self.idleAmplitudes
     }
 
     private func startMetering() {
-        smoothedLevel = 0.16
-        let url = URL(fileURLWithPath: "/dev/null")
-        let settings: [String: Any] = [
-            AVFormatIDKey: Int(kAudioFormatAppleLossless),
-            AVSampleRateKey: 44_100,
-            AVNumberOfChannelsKey: 1,
-            AVEncoderAudioQualityKey: AVAudioQuality.min.rawValue
-        ]
+        smoothedAmplitudes = Self.idleAmplitudes
+        let engine = AVAudioEngine()
+        let input = engine.inputNode
+        let format = input.outputFormat(forBus: 0)
+        guard format.sampleRate > 0, format.channelCount > 0 else {
+            amplitudes = Self.idleAmplitudes
+            return
+        }
+        let analyzer = VoiceSpectrumAnalyzer(
+            sampleRate: format.sampleRate,
+            bandCount: Self.barCount
+        )
 
         do {
-            let recorder = try AVAudioRecorder(url: url, settings: settings)
-            recorder.isMeteringEnabled = true
-            guard recorder.record() else {
-                amplitudes = Self.idleAmplitudes
-                return
+            input.installTap(onBus: 0, bufferSize: 1_024, format: format) { [weak self] buffer, _ in
+                self?.process(buffer: buffer)
             }
-            self.recorder = recorder
-            timer = Timer.scheduledTimer(withTimeInterval: 0.06, repeats: true) { [weak self] _ in
-                self?.updateMeter()
-            }
+            try engine.start()
+            self.analyzer = analyzer
+            self.engine = engine
         } catch {
+            input.removeTap(onBus: 0)
             amplitudes = Self.idleAmplitudes
         }
     }
 
-    private func updateMeter() {
-        guard let recorder else { return }
-        recorder.updateMeters()
+    private func process(buffer: AVAudioPCMBuffer) {
+        guard let analyzer, let samples = Self.samples(from: buffer) else { return }
+        let rawAmplitudes = analyzer.amplitudes(from: samples)
 
-        let power = recorder.averagePower(forChannel: 0)
-        let normalized = Self.normalizedPower(power, minimumPower: minimumPower)
-        phase += 0.22
-        smoothedLevel = (smoothedLevel * 0.55) + (normalized * 0.45)
-        let displayLevel = smoothedLevel
-
-        amplitudes = (0..<Self.barCount).map { index in
-            let wave = 0.74 + 0.26 * sin(phase + Double(index) * 0.74)
-            return max(0.12, min(1, displayLevel * CGFloat(wave)))
+        DispatchQueue.main.async { [weak self] in
+            guard let self, self.engine != nil else { return }
+            self.amplitudes = self.smoothedDisplayAmplitudes(from: rawAmplitudes)
         }
     }
 
-    private static func normalizedPower(_ power: Float, minimumPower: Float) -> CGFloat {
-        guard power > minimumPower else { return 0.08 }
-        return CGFloat((power - minimumPower) / abs(minimumPower))
+    private func smoothedDisplayAmplitudes(from rawAmplitudes: [CGFloat]) -> [CGFloat] {
+        smoothedAmplitudes = zip(smoothedAmplitudes, rawAmplitudes).map { previous, current in
+            let smoothed = (previous * 0.62) + (current * 0.38)
+            return max(Self.minimumDisplayAmplitude, min(1, smoothed))
+        }
+        return smoothedAmplitudes
+    }
+
+    private static func samples(from buffer: AVAudioPCMBuffer) -> [Float]? {
+        guard let channelData = buffer.floatChannelData else { return nil }
+        let frameLength = Int(buffer.frameLength)
+        guard frameLength > 0 else { return nil }
+
+        let channelCount = Int(buffer.format.channelCount)
+        guard channelCount > 0 else { return nil }
+
+        if channelCount == 1 {
+            return Array(UnsafeBufferPointer(start: channelData[0], count: frameLength))
+        }
+
+        if buffer.format.isInterleaved {
+            return (0..<frameLength).map { frameIndex in
+                var mixedSample = Float(0)
+                let sampleIndex = frameIndex * channelCount
+                for channelIndex in 0..<channelCount {
+                    mixedSample += channelData[0][sampleIndex + channelIndex]
+                }
+                return mixedSample / Float(channelCount)
+            }
+        }
+
+        return (0..<frameLength).map { frameIndex in
+            var mixedSample = Float(0)
+            for channelIndex in 0..<channelCount {
+                mixedSample += channelData[channelIndex][frameIndex]
+            }
+            return mixedSample / Float(channelCount)
+        }
     }
 }
