@@ -1172,6 +1172,10 @@ def test_release_workflow_publishes_macos_app_asset() -> None:
     assert "NOTARIZE=1" in workflow
     assert "gh release upload" in workflow
     assert "dist/macos/AgentCLI.dmg" in workflow
+    assert "python3 .github/scripts/normalize_appcast.py macos/appcast.xml" in workflow
+    assert workflow.index(
+        "python3 .github/scripts/normalize_appcast.py macos/appcast.xml"
+    ) < workflow.index("if git diff --quiet -- Casks/agent-cli.rb macos/appcast.xml; then")
 
 
 def test_macos_app_bootstraps_private_uv_runtime() -> None:

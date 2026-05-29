@@ -119,6 +119,7 @@ jobs:
           python3 .github/scripts/update_cask.py \
             --version "$VERSION" \
             --sha256 "$SHA256"
+          python3 .github/scripts/normalize_appcast.py macos/appcast.xml
 
           if git diff --quiet -- Casks/agent-cli.rb macos/appcast.xml; then
             echo "Casks/agent-cli.rb and macos/appcast.xml are already up to date."
