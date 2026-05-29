@@ -1,8 +1,26 @@
-<?xml version="1.0" encoding="utf-8"?>
-<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
-  <channel>
-    <title>Agent CLI Updates</title>
-    <link>https://github.com/basnijholt/agent-cli</link>
-    <description>Signed Agent CLI macOS app updates.</description>
-  </channel>
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
+    <channel>
+        <title>Agent CLI Updates</title>
+        <link>https://github.com/basnijholt/agent-cli</link>
+        <description>Signed Agent CLI macOS app updates.</description>
+        <item>
+            <title>0.95.10</title>
+            <pubDate>Fri, 29 May 2026 03:03:43 +0000</pubDate>
+            <link>https://github.com/basnijholt/agent-cli</link>
+            <sparkle:version>168</sparkle:version>
+            <sparkle:shortVersionString>0.95.10</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[## What’s Changed
+
+* Add Sparkle updater to macOS app (#534) @basnijholt
+* Repair stale Whisper daemon bootstrap (#533) @basnijholt
+* Fix macOS menu refresh during voice warmup (#532) @basnijholt
+* Fix Windows Swift source decoding (#531) @basnijholt
+
+]]></description>
+            <enclosure url="https://github.com/basnijholt/agent-cli/releases/download/v0.95.10/AgentCLI.zip" length="22741696" type="application/octet-stream" sparkle:edSignature="ojRVLbvdApEG2RyQMg9KDcZrYvraLyhso3tA4hJ4fldrPYmDPiX927Tevv18s50S2aCvdtjZ3+jdbiXMk+WBCw=="/>
+        </item>
+    </channel>
 </rss>
