@@ -930,6 +930,59 @@ def test_review_audio_targets_remembers_skipped_speaker_across_audio(
     assert saved_state["audio_files"][second_key]["speakers"][0]["action"] == "skipped_cached"
 
 
+def test_review_audio_targets_does_not_auto_skip_loose_skipped_speaker_match(
+    tmp_path: Path,
+) -> None:
+    first_audio = tmp_path / "first.wav"
+    second_audio = tmp_path / "second.wav"
+    state_file = tmp_path / "speaker-review-state.json"
+    snippet_file = tmp_path / "snippet.wav"
+    first_audio.write_bytes(b"first")
+    second_audio.write_bytes(b"second")
+    snippet_file.write_bytes(b"snippet")
+    review_state: dict[str, object] = {"version": 1, "audio_files": {}, "skipped_speakers": []}
+    diarizer = MagicMock()
+    diarizer.device = "cpu"
+    diarizer.diarize.return_value = [DiarizedSegment("SPEAKER_00", 0.0, 3.0)]
+
+    with (
+        patch(
+            "agent_cli.agents.speakers.extract_speaker_embeddings",
+            side_effect=[
+                {"SPEAKER_00": [1.0, 0.0]},
+                {"SPEAKER_00": [0.8, 0.6]},
+            ],
+        ),
+        patch(
+            "agent_cli.agents.speakers._write_speaker_snippet", return_value=snippet_file
+        ) as write_snippet,
+        patch("agent_cli.agents.speakers._start_audio_playback"),
+        patch("agent_cli.agents.speakers._review_choice_prompt", return_value="s") as prompt,
+    ):
+        changed, reviewed_count, skipped_count, interrupted = speakers_module._review_audio_targets(
+            audio_targets=[first_audio, second_audio],
+            review_state=review_state,
+            store={"profiles": []},
+            diarizer=diarizer,
+            hf_token="token",  # noqa: S106
+            speaker_match_threshold=0.7,
+            snippet_seconds=6.0,
+            player=None,
+            force_review=False,
+            review_state_path=state_file,
+        )
+
+    assert changed is False
+    assert reviewed_count == 2
+    assert skipped_count == 0
+    assert interrupted is False
+    assert write_snippet.call_count == 2
+    assert prompt.call_count == 2
+    saved_state = json.loads(state_file.read_text(encoding="utf-8"))
+    second_key = speakers_module._audio_review_key(second_audio)
+    assert saved_state["audio_files"][second_key]["speakers"][0]["action"] == "skipped"
+
+
 def test_review_audio_targets_does_not_cache_interrupted_audio(
     tmp_path: Path,
 ) -> None:
@@ -978,6 +1031,50 @@ def test_review_audio_targets_does_not_cache_interrupted_audio(
     saved_state = json.loads(state_file.read_text(encoding="utf-8"))
     assert saved_state["audio_files"] == {}
     assert saved_state["skipped_speakers"][0]["embeddings"] == [[1.0, 0.0]]
+
+
+def test_review_audio_targets_does_not_cache_audio_when_snippet_fails(
+    tmp_path: Path,
+) -> None:
+    audio_file = tmp_path / "recording.wav"
+    state_file = tmp_path / "speaker-review-state.json"
+    audio_file.write_bytes(b"audio")
+    review_state: dict[str, object] = {"version": 1, "audio_files": {}, "skipped_speakers": []}
+    diarizer = MagicMock()
+    diarizer.device = "cpu"
+    diarizer.diarize.return_value = [DiarizedSegment("SPEAKER_00", 0.0, 3.0)]
+
+    with (
+        patch(
+            "agent_cli.agents.speakers.extract_speaker_embeddings",
+            return_value={"SPEAKER_00": [1.0, 0.0]},
+        ),
+        patch(
+            "agent_cli.agents.speakers._write_speaker_snippet",
+            side_effect=RuntimeError("ffmpeg is required"),
+        ),
+        patch("agent_cli.agents.speakers._review_choice_prompt") as prompt,
+    ):
+        changed, reviewed_count, skipped_count, interrupted = speakers_module._review_audio_targets(
+            audio_targets=[audio_file],
+            review_state=review_state,
+            store={"profiles": []},
+            diarizer=diarizer,
+            hf_token="token",  # noqa: S106
+            speaker_match_threshold=0.7,
+            snippet_seconds=6.0,
+            player=None,
+            force_review=False,
+            review_state_path=state_file,
+        )
+
+    assert changed is False
+    assert reviewed_count == 0
+    assert skipped_count == 0
+    assert interrupted is False
+    prompt.assert_not_called()
+    saved_state = json.loads(state_file.read_text(encoding="utf-8"))
+    assert saved_state["audio_files"] == {}
 
 
 def test_review_audio_targets_auto_skips_short_fragments(tmp_path: Path) -> None:

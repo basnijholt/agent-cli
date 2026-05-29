@@ -960,6 +960,25 @@ def _print_no_review_summary(
             console.print(f"[dim]  {label}[/dim]")
 
 
+def _write_review_snippet_or_warn(
+    *,
+    audio_path: Path,
+    segment: DiarizedSegment,
+    output_dir: Path,
+    seconds: float,
+) -> Path | None:
+    try:
+        return _write_speaker_snippet(
+            audio_path=audio_path,
+            segment=segment,
+            output_dir=output_dir,
+            seconds=seconds,
+        )
+    except (OSError, RuntimeError, subprocess.CalledProcessError) as exc:
+        console.print(f"[yellow]Could not create snippet for {segment.speaker}: {exc}[/yellow]")
+        return None
+
+
 def _review_unknown_speakers(
     *,
     audio_path: Path,
@@ -968,11 +987,11 @@ def _review_unknown_speakers(
     matches: dict[str, SpeakerMatch],
     store: dict[str, Any],
     review_state: dict[str, Any],
-    speaker_match_threshold: float,
     snippet_seconds: float,
     player: str | None,
-) -> tuple[bool, list[dict[str, Any]]]:
+) -> tuple[bool, list[dict[str, Any]], bool]:
     changed = False
+    completed = True
     records: list[dict[str, Any]] = []
     with TemporaryDirectory(prefix="agent-cli-speakers-") as temp_dir:
         snippet_dir = Path(temp_dir)
@@ -994,7 +1013,7 @@ def _review_unknown_speakers(
                 review_state,
                 source_profile_id=source_profile_id,
                 embedding=embedding,
-                threshold=speaker_match_threshold,
+                threshold=REVIEW_SKIPPED_EMBEDDING_NEAR_DUPLICATE_THRESHOLD,
             )
             if skipped_entry is not None:
                 skipped_prior.append(review_label)
@@ -1031,15 +1050,14 @@ def _review_unknown_speakers(
                     match=match,
                 )
                 continue
-            try:
-                snippet_path = _write_speaker_snippet(
-                    audio_path=audio_path,
-                    segment=segment,
-                    output_dir=snippet_dir,
-                    seconds=snippet_seconds,
-                )
-            except (OSError, RuntimeError, subprocess.CalledProcessError) as exc:
-                console.print(f"[yellow]Could not create snippet for {label}: {exc}[/yellow]")
+            snippet_path = _write_review_snippet_or_warn(
+                audio_path=audio_path,
+                segment=segment,
+                output_dir=snippet_dir,
+                seconds=snippet_seconds,
+            )
+            if snippet_path is None:
+                completed = False
                 continue
             reviewed_count += 1
             try:
@@ -1068,14 +1086,14 @@ def _review_unknown_speakers(
                 changed = result.changed or changed
             except typer.Exit as exc:
                 raise _ReviewInterruptedError(changed, records) from exc
-        if reviewed_count == 0:
+        if reviewed_count == 0 and completed:
             _print_no_review_summary(
                 skipped_named=skipped_named,
                 skipped_prior=skipped_prior,
                 skipped_short=skipped_short,
                 skipped_no_embedding=skipped_no_embedding,
             )
-    return changed, records
+    return changed, records, completed
 
 
 def _review_audio_targets(
@@ -1125,14 +1143,13 @@ def _review_audio_targets(
         )
 
         try:
-            audio_changed, records = _review_unknown_speakers(
+            audio_changed, records, audio_completed = _review_unknown_speakers(
                 audio_path=audio_path,
                 segments=segments,
                 embeddings=embeddings,
                 matches=matches,
                 store=store,
                 review_state=review_state,
-                speaker_match_threshold=speaker_match_threshold,
                 snippet_seconds=snippet_seconds,
                 player=player,
             )
@@ -1141,6 +1158,11 @@ def _review_audio_targets(
             interrupted = True
             _save_review_state(review_state_path, review_state)
             break
+
+        if not audio_completed:
+            _save_review_state(review_state_path, review_state)
+            changed = audio_changed or changed
+            continue
 
         _record_audio_review(review_state, audio_path, records)
         _save_review_state(review_state_path, review_state)
