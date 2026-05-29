@@ -71,6 +71,17 @@ enum MenuBarIconImage {
         }
     }
 
+    static func badgeColor(for state: MenuBarIconState) -> NSColor? {
+        switch state {
+        case .idle:
+            return nil
+        case .preparing:
+            return .systemBlue
+        case .recording:
+            return .systemRed
+        }
+    }
+
     private static let idleLogoImage: NSImage? = {
         guard let url = Bundle.main.url(forResource: "logo-avatar", withExtension: "svg"),
               let image = NSImage(contentsOf: url)
@@ -86,11 +97,11 @@ enum MenuBarIconImage {
     private static let preparingLogoImage: NSImage? = makePreparingLogoImage()
 
     private static func makeRecordingLogoImage() -> NSImage? {
-        makeBadgedLogoImage(badgeColor: .systemRed, badgeDiameter: 7)
+        makeBadgedLogoImage(badgeColor: badgeColor(for: .recording) ?? .systemRed, badgeDiameter: 7)
     }
 
     private static func makePreparingLogoImage() -> NSImage? {
-        makeBadgedLogoImage(badgeColor: .controlAccentColor, badgeDiameter: 7)
+        makeBadgedLogoImage(badgeColor: badgeColor(for: .preparing) ?? .systemBlue, badgeDiameter: 7)
     }
 
     private static func makeBadgedLogoImage(badgeColor: NSColor, badgeDiameter: CGFloat) -> NSImage? {

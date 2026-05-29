@@ -1,4 +1,5 @@
 #if canImport(XCTest)
+import AppKit
 import XCTest
 @testable import AgentCLI
 
@@ -312,6 +313,12 @@ final class AgentCommandTests: XCTestCase {
         XCTAssertEqual(MenuBarIconState.current(isPreparing: false, isRecording: true), .recording)
         XCTAssertEqual(MenuBarIconState.current(isPreparing: true, isRecording: false), .preparing)
         XCTAssertEqual(MenuBarIconState.current(isPreparing: true, isRecording: true), .preparing)
+    }
+
+    func testMenuBarIconUsesFixedSetupAndRecordingBadgeColors() {
+        XCTAssertNil(MenuBarIconImage.badgeColor(for: .idle))
+        XCTAssertEqual(MenuBarIconImage.badgeColor(for: .preparing), .systemBlue)
+        XCTAssertEqual(MenuBarIconImage.badgeColor(for: .recording), .systemRed)
     }
 
     func testMenuActivityStatusFormatsActiveWorkWithSpinnerAndElapsedCounter() {
