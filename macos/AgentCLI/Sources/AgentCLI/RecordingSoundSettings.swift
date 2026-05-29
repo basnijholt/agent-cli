@@ -18,7 +18,7 @@ enum RecordingSoundEvent: Hashable {
         case .startedRecording:
             return NSSound.Name("Frog")
         case .finishedRecording:
-            return NSSound.Name("Funk")
+            return NSSound.Name("Purr")
         }
     }
 }

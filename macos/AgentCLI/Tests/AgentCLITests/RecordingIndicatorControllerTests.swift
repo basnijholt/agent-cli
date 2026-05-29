@@ -1,4 +1,5 @@
 #if canImport(XCTest)
+import AppKit
 import XCTest
 @testable import AgentCLI
 
@@ -26,6 +27,11 @@ final class RecordingIndicatorControllerTests: XCTestCase {
         controller.end(for: .toggleTranscription)
 
         XCTAssertEqual(player.events, [.startedRecording, .finishedRecording])
+    }
+
+    func testRecordingSoundCueNamesUsePurrForFinishedRecording() {
+        XCTAssertEqual(RecordingSoundEvent.startedRecording.cueName, NSSound.Name("Frog"))
+        XCTAssertEqual(RecordingSoundEvent.finishedRecording.cueName, NSSound.Name("Purr"))
     }
 
     func testFinishSoundPlaysOnlyWhenAllRecordingCommandsHaveEnded() {
