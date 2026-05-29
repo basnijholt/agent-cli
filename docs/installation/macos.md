@@ -9,6 +9,9 @@ Native macOS setup with full Metal GPU acceleration for optimal performance.
 > [!TIP]
 > **🍎 Recommended for macOS** — ~10x better performance than Docker via Metal GPU acceleration.
 
+> [!NOTE]
+> Prefer a menu bar app with global shortcuts and no terminal session? See the [macOS Menu Bar App](macos-app.md), which can be installed with Homebrew.
+
 ## Prerequisites
 
 - macOS 12 Monterey or later

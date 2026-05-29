@@ -18,6 +18,7 @@ nav = [
   { "Installation" = [
     { "Overview" = "installation/index.md" },
     { "macOS" = "installation/macos.md" },
+    { "macOS App" = "installation/macos-app.md" },
     { "Linux" = "installation/linux.md" },
     { "NixOS" = "installation/nixos.md" },
     { "Windows" = "installation/windows.md" },
