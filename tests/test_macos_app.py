@@ -150,8 +150,7 @@ def test_macos_app_source_exposes_expected_agent_cli_actions() -> None:
     assert "transcribe --toggle --llm --quiet" not in source
     assert 'arguments: ["voice-edit", "--toggle", "--quiet"]' in source
     assert 'arguments: ["autocorrect", "--quiet"]' in source
-    assert 'arguments: ["daemon", "status", "whisper", "--logs", "0"]' in source
-    assert 'arguments: ["daemon", "install", "whisper", "-y"]' in source
+    assert 'arguments: ["daemon", "ensure", "whisper", "--quiet"]' in source
     assert "let shell: String" not in source
     assert "command.shell" not in source
     assert "install-hotkeys" not in source
@@ -1193,7 +1192,7 @@ def test_macos_app_bootstraps_private_uv_runtime() -> None:
     assert "whisperDaemonMarkerURL" in source
     assert "whisperDaemonMarkerContents" in source
     assert "packageSource=" in source
-    assert 'runAgentCLI(arguments: ["daemon", "install", "whisper", "-y"])' in source
+    assert 'runAgentCLI(arguments: ["daemon", "ensure", "whisper", "--quiet"])' in source
     assert "--agentcli-bootstrap-self-test" in source
 
 
@@ -1203,12 +1202,14 @@ def test_macos_app_waits_for_whisper_daemon_readiness() -> None:
 
     assert "waitForWhisperDaemonReady()" in source
     assert "return waitForWhisperDaemonReady()" in source
-    assert "canConnectToLocalhost(port: 10300)" in source
+    assert "localhostConnector(10300)" in source
     assert "Thread.sleep(forTimeInterval: 0.5)" in source
     assert "socket(AF_INET, SOCK_STREAM, 0)" in source
     assert "connect(socketFD" in source
     assert 'runAgentCLI(arguments: ["daemon", "status", "whisper", "--logs", "80"])' in source
     assert "Whisper ASR service did not become ready at localhost:10300" in source
+    assert 'runAgentCLI(arguments: ["daemon", "ensure", "whisper", "--quiet"])' in source
+    assert "parseWhisperDaemonInstallState" not in source
 
 
 def test_macos_app_has_end_to_end_packaging_test() -> None:
