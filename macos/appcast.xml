@@ -5,6 +5,22 @@
         <link>https://github.com/basnijholt/agent-cli</link>
         <description>Signed Agent CLI macOS app updates.</description>
         <item>
+            <title>0.96.4</title>
+            <pubDate>Fri, 29 May 2026 14:59:58 +0000</pubDate>
+            <link>https://github.com/basnijholt/agent-cli</link>
+            <sparkle:version>178</sparkle:version>
+            <sparkle:shortVersionString>0.96.4</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[## What’s Changed
+
+* Cache user CLI runtime checks (#552) @basnijholt
+* Clean up macOS menu activity abstractions (#551) @basnijholt
+
+]]></description>
+            <enclosure url="https://github.com/basnijholt/agent-cli/releases/download/v0.96.4/AgentCLI.zip" length="22738926" type="application/octet-stream" sparkle:edSignature="Ro8WhN/AVGWxCvG/C6//ISayy5lo5KiOJhvpVQdJKLBsPdZv96HmtZx7G2qeVG87sAmcyIR/84pW4zwzCR7lAA=="/>
+        </item>
+        <item>
             <title>0.96.3</title>
             <pubDate>Fri, 29 May 2026 06:09:58 +0000</pubDate>
             <link>https://github.com/basnijholt/agent-cli</link>
@@ -147,24 +163,6 @@
 
 ]]></description>
             <enclosure url="https://github.com/basnijholt/agent-cli/releases/download/v0.95.11/AgentCLI.zip" length="22741421" type="application/octet-stream" sparkle:edSignature="fiMYQqjgxOE/xrXIaa47hP4YHwVvGrq1dy81hMmRCaFGWoU4T6ECg1pmLIt4JY1+JzmCJMC0enXkVTAipBVaCw=="/>
-        </item>
-        <item>
-            <title>0.95.10</title>
-            <pubDate>Fri, 29 May 2026 03:03:43 +0000</pubDate>
-            <link>https://github.com/basnijholt/agent-cli</link>
-            <sparkle:version>168</sparkle:version>
-            <sparkle:shortVersionString>0.95.10</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[## What’s Changed
-
-* Add Sparkle updater to macOS app (#534) @basnijholt
-* Repair stale Whisper daemon bootstrap (#533) @basnijholt
-* Fix macOS menu refresh during voice warmup (#532) @basnijholt
-* Fix Windows Swift source decoding (#531) @basnijholt
-
-]]></description>
-            <enclosure url="https://github.com/basnijholt/agent-cli/releases/download/v0.95.10/AgentCLI.zip" length="22741696" type="application/octet-stream" sparkle:edSignature="ojRVLbvdApEG2RyQMg9KDcZrYvraLyhso3tA4hJ4fldrPYmDPiX927Tevv18s50S2aCvdtjZ3+jdbiXMk+WBCw=="/>
         </item>
     </channel>
 </rss>
