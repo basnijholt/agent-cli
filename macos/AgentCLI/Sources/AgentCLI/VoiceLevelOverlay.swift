@@ -195,7 +195,8 @@ final class VoiceLevelMeter: NSObject, ObservableObject {
 
     private static func normalizedPower(_ power: Float, minimumPower: Float) -> CGFloat {
         guard power > minimumPower else { return 0.08 }
-        return CGFloat((power - minimumPower) / abs(minimumPower))
+        let linearLevel = CGFloat((power - minimumPower) / abs(minimumPower))
+        return CGFloat(sqrt(Double(linearLevel)))
     }
 
     private static func samples(from buffer: AVAudioPCMBuffer) -> [Float]? {
