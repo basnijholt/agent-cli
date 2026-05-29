@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import subprocess
 import sys
 from pathlib import Path
@@ -464,6 +465,123 @@ class TestDaemonCLI:
         assert result.exit_code == 0
         # Should install default services (one TTS backend auto-selected)
         assert mock_manager.install_service.call_count == len(get_default_services())
+
+    @patch("agent_cli.daemon.cli.get_service_manager")
+    def test_daemon_ensure_running_skips_install(self, mock_get_manager: MagicMock) -> None:
+        """Ensure should be a no-op when the service is already running."""
+        mock_manager = MagicMock(spec=ServiceManager)
+        mock_manager.get_service_status.return_value = ServiceStatus(
+            name="whisper",
+            installed=True,
+            running=True,
+            pid=12345,
+        )
+        mock_get_manager.return_value = mock_manager
+
+        result = runner.invoke(app, ["daemon", "ensure", "whisper", "--json"])
+
+        assert result.exit_code == 0
+        payload = json.loads(result.stdout)
+        assert payload == {
+            "service": "whisper",
+            "action": "already_running",
+            "installed": True,
+            "running": True,
+            "pid": 12345,
+            "message": "Already running",
+        }
+        mock_manager.install_service.assert_not_called()
+
+    @patch("agent_cli.daemon.cli.get_service_manager")
+    def test_daemon_ensure_installs_missing_service(self, mock_get_manager: MagicMock) -> None:
+        """Ensure should install a missing service without parsing status output."""
+        mock_manager = MagicMock(spec=ServiceManager)
+        mock_manager.get_service_status.side_effect = [
+            ServiceStatus(name="whisper", installed=False, running=False),
+            ServiceStatus(name="whisper", installed=True, running=True, pid=12345),
+        ]
+        mock_manager.install_service.return_value = InstallResult(
+            success=True,
+            message="Installed and started",
+        )
+        mock_get_manager.return_value = mock_manager
+
+        result = runner.invoke(app, ["daemon", "ensure", "whisper", "--json"])
+
+        assert result.exit_code == 0
+        payload = json.loads(result.stdout)
+        assert payload == {
+            "service": "whisper",
+            "action": "installed",
+            "installed": True,
+            "running": True,
+            "pid": 12345,
+            "message": "Installed and started",
+        }
+        mock_manager.install_service.assert_called_once_with("whisper")
+
+    @patch("agent_cli.daemon.cli.get_service_manager")
+    def test_daemon_ensure_reinstalls_stopped_service(self, mock_get_manager: MagicMock) -> None:
+        """Ensure should repair an installed launchd/systemd service that is stopped."""
+        mock_manager = MagicMock(spec=ServiceManager)
+        mock_manager.get_service_status.side_effect = [
+            ServiceStatus(name="whisper", installed=True, running=False),
+            ServiceStatus(name="whisper", installed=True, running=True, pid=12345),
+        ]
+        mock_manager.install_service.return_value = InstallResult(
+            success=True,
+            message="Installed and started",
+        )
+        mock_get_manager.return_value = mock_manager
+
+        result = runner.invoke(app, ["daemon", "ensure", "whisper", "--quiet"])
+
+        assert result.exit_code == 0
+        assert result.stdout == ""
+        mock_manager.install_service.assert_called_once_with("whisper")
+
+    @patch("agent_cli.daemon.cli.get_service_manager")
+    def test_daemon_ensure_fails_when_service_stays_stopped(
+        self,
+        mock_get_manager: MagicMock,
+    ) -> None:
+        """Ensure should fail if repair does not leave the service running."""
+        mock_manager = MagicMock(spec=ServiceManager)
+        mock_manager.get_service_status.side_effect = [
+            ServiceStatus(name="whisper", installed=True, running=False),
+            ServiceStatus(name="whisper", installed=True, running=False),
+        ]
+        mock_manager.install_service.return_value = InstallResult(
+            success=True,
+            message="Installed and started",
+        )
+        mock_get_manager.return_value = mock_manager
+
+        result = runner.invoke(app, ["daemon", "ensure", "whisper", "--json"])
+
+        assert result.exit_code == 1
+        payload = json.loads(result.stdout)
+        assert payload == {
+            "service": "whisper",
+            "action": "failed",
+            "installed": True,
+            "running": False,
+            "pid": None,
+            "message": "Installed and started, but service is not running",
+        }
+        mock_manager.install_service.assert_called_once_with("whisper")
+
+    @patch("agent_cli.daemon.cli.get_service_manager")
+    def test_daemon_ensure_unknown_service(self, mock_get_manager: MagicMock) -> None:
+        """Ensure should reject unknown services before consulting the manager."""
+        mock_manager = MagicMock(spec=ServiceManager)
+        mock_get_manager.return_value = mock_manager
+
+        result = runner.invoke(app, ["daemon", "ensure", "unknown"])
+
+        assert result.exit_code == 1
+        assert "Unknown service" in result.output
+        mock_manager.get_service_status.assert_not_called()
 
     @patch("agent_cli.daemon.cli.get_service_manager")
     def test_daemon_uninstall_no_args(self, mock_get_manager: MagicMock) -> None:

@@ -12,6 +12,9 @@ private enum AgentCLIRuntimeMode: Equatable {
     }
 }
 
+typealias AgentProcessRunner = (URL, [String], [String: String]) -> CommandResult
+typealias LocalhostConnector = (UInt16) -> Bool
+
 struct AgentRuntime {
     static let shared = AgentRuntime()
 
@@ -37,6 +40,9 @@ struct AgentRuntime {
     private let fileManager = FileManager.default
     private let baseEnvironment: [String: String]
     private let userDefaults: UserDefaults
+    private let processRunner: AgentProcessRunner
+    private let localhostConnector: LocalhostConnector
+    private let whisperReadyTimeout: TimeInterval
     let appSupportURL: URL
     let bundledUVURL: URL
     let bundledWheelsURL: URL
@@ -56,10 +62,18 @@ struct AgentRuntime {
     init(
         environment: [String: String] = ProcessInfo.processInfo.environment,
         bundle: Bundle = .main,
-        userDefaults: UserDefaults = .standard
+        userDefaults: UserDefaults = .standard,
+        processRunner: @escaping AgentProcessRunner = {
+            AgentRuntime.runProcess(executableURL: $0, arguments: $1, environment: $2)
+        },
+        localhostConnector: @escaping LocalhostConnector = AgentRuntime.canConnectToLocalhost,
+        whisperReadyTimeout: TimeInterval = 180
     ) {
         self.baseEnvironment = environment
         self.userDefaults = userDefaults
+        self.processRunner = processRunner
+        self.localhostConnector = localhostConnector
+        self.whisperReadyTimeout = whisperReadyTimeout
 
         if let override = environment["AGENTCLI_APP_SUPPORT_DIR"], !override.isEmpty {
             appSupportURL = URL(fileURLWithPath: override, isDirectory: true)
@@ -201,9 +215,9 @@ struct AgentRuntime {
         }
 
         let installDescription = "uv tool install agent-cli[audio,llm]"
-        let result = Self.runProcess(
-            executableURL: bundledUVURL,
-            arguments: [
+        let result = processRunner(
+            bundledUVURL,
+            [
                 "tool",
                 "install",
                 "--managed-python",
@@ -212,7 +226,7 @@ struct AgentRuntime {
                 "--force",
                 agentCLIInstallRequirement
             ],
-            environment: commandEnvironment()
+            commandEnvironment()
         )
         if result.exitCode != 0, result.output.isEmpty {
             return CommandResult(exitCode: result.exitCode, output: "\(installDescription) failed")
@@ -228,10 +242,10 @@ struct AgentRuntime {
     }
 
     private func ensureUserInstalledCLIAvailable() -> CommandResult {
-        let result = Self.runProcess(
-            executableURL: agentCLIExecutableURL,
-            arguments: agentCLIProcessArguments(["--version"]),
-            environment: commandEnvironment()
+        let result = processRunner(
+            agentCLIExecutableURL,
+            agentCLIProcessArguments(["--version"]),
+            commandEnvironment()
         )
         guard result.exitCode != 127 else {
             return CommandResult(
@@ -292,11 +306,17 @@ struct AgentRuntime {
     ) -> CommandResult {
         if !force, (try? String(contentsOf: whisperDaemonMarkerURL)) == whisperDaemonMarkerContents {
             progress(.waitingForVoiceService)
-            return waitForWhisperDaemonReady()
+            if localhostConnector(10300) {
+                return CommandResult(exitCode: 0, output: "")
+            }
         }
 
+        return installWhisperDaemon(progress: progress)
+    }
+
+    private func installWhisperDaemon(progress: AgentBootstrapProgress) -> CommandResult {
         progress(.installingVoiceService)
-        let result = runAgentCLI(arguments: ["daemon", "install", "whisper", "-y"])
+        let result = runAgentCLI(arguments: ["daemon", "ensure", "whisper", "--quiet"])
         guard result.exitCode == 0 else {
             return result
         }
@@ -395,10 +415,14 @@ struct AgentRuntime {
         }
     }
 
-    private func waitForWhisperDaemonReady(timeout: TimeInterval = 180) -> CommandResult {
+    private func waitForWhisperDaemonReady() -> CommandResult {
+        waitForWhisperDaemonReady(timeout: whisperReadyTimeout)
+    }
+
+    private func waitForWhisperDaemonReady(timeout: TimeInterval) -> CommandResult {
         let deadline = Date().addingTimeInterval(timeout)
         while Date() < deadline {
-            if Self.canConnectToLocalhost(port: 10300) {
+            if localhostConnector(10300) {
                 return CommandResult(exitCode: 0, output: "")
             }
             Thread.sleep(forTimeInterval: 0.5)
@@ -555,18 +579,18 @@ struct AgentRuntime {
     }
 
     func runShell(_ shell: String) -> CommandResult {
-        Self.runProcess(
-            executableURL: URL(fileURLWithPath: "/bin/zsh"),
-            arguments: ["-lc", shell],
-            environment: commandEnvironment()
+        processRunner(
+            URL(fileURLWithPath: "/bin/zsh"),
+            ["-lc", shell],
+            commandEnvironment()
         )
     }
 
     func runAgentCLI(arguments: [String]) -> CommandResult {
-        Self.runProcess(
-            executableURL: agentCLIExecutableURL,
-            arguments: agentCLIProcessArguments(arguments),
-            environment: commandEnvironment()
+        processRunner(
+            agentCLIExecutableURL,
+            agentCLIProcessArguments(arguments),
+            commandEnvironment()
         )
     }
 

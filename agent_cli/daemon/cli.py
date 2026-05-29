@@ -7,6 +7,7 @@ Manage agent-cli servers as background daemons:
 
 from __future__ import annotations
 
+import json
 import platform
 from typing import Annotated
 
@@ -17,6 +18,7 @@ from agent_cli.cli import app as main_app
 from agent_cli.core.utils import console, err_console
 from agent_cli.install.service_config import (
     SERVICES,
+    ServiceStatus,
     get_default_services,
     get_service_manager,
 )
@@ -42,6 +44,9 @@ Install, uninstall, and monitor agent-cli servers running as system daemons
 **Examples:**
 
 ```bash
+# Ensure whisper is installed and running
+agent-cli daemon ensure whisper
+
 # Install whisper as a background daemon
 agent-cli daemon install whisper
 
@@ -194,6 +199,110 @@ def _ensure_uv_installed(no_confirm: bool) -> None:
     else:
         console.print(f"  [red]✗[/red] {msg}")
         raise typer.Exit(1)
+
+
+def _service_status_payload(
+    *,
+    service: str,
+    action: str,
+    status: ServiceStatus,
+    message: str,
+) -> dict[str, object]:
+    installed = bool(status.installed)
+    running = bool(status.running)
+    return {
+        "service": service,
+        "action": action,
+        "installed": installed,
+        "running": running,
+        "pid": getattr(status, "pid", None) if running else None,
+        "message": message,
+    }
+
+
+@app.command("ensure")
+def ensure_cmd(
+    service: Annotated[
+        str,
+        typer.Argument(help="Service to ensure is installed and running"),
+    ],
+    json_output: Annotated[
+        bool,
+        typer.Option("--json", help="Output machine-readable status as JSON"),
+    ] = False,
+    quiet: Annotated[
+        bool,
+        typer.Option("--quiet", "-q", help="Suppress normal success output"),
+    ] = False,
+) -> None:
+    """Ensure one daemon is installed and running.
+
+    This is intended for app integrations that need a single repair command
+    instead of parsing human-oriented `daemon status` output.
+    """
+    if service not in SERVICES:
+        err_console.print(
+            f"[bold red]Error:[/bold red] Unknown service '{service}'. "
+            f"Available: {', '.join(SERVICES.keys())}",
+        )
+        raise typer.Exit(1)
+
+    try:
+        manager = get_service_manager()
+    except RuntimeError as e:
+        err_console.print(f"[bold red]Error:[/bold red] {e}")
+        raise typer.Exit(1) from None
+
+    status = manager.get_service_status(service)
+    if status.installed and status.running:
+        payload = _service_status_payload(
+            service=service,
+            action="already_running",
+            status=status,
+            message="Already running",
+        )
+    else:
+        action = "installed" if not status.installed else "restarted"
+        result = manager.install_service(service)
+        if not result.success:
+            payload = _service_status_payload(
+                service=service,
+                action="failed",
+                status=status,
+                message=result.message,
+            )
+            if json_output:
+                console.print(json.dumps(payload))
+            else:
+                err_console.print(f"[bold red]Error:[/bold red] {service}: {result.message}")
+            raise typer.Exit(1)
+
+        status = manager.get_service_status(service)
+        if not status.installed or not status.running:
+            message = f"{result.message}, but service is not running"
+            payload = _service_status_payload(
+                service=service,
+                action="failed",
+                status=status,
+                message=message,
+            )
+            if json_output:
+                console.print(json.dumps(payload))
+            else:
+                err_console.print(f"[bold red]Error:[/bold red] {service}: {message}")
+            raise typer.Exit(1)
+
+        payload = _service_status_payload(
+            service=service,
+            action=action,
+            status=status,
+            message=result.message,
+        )
+
+    if json_output:
+        console.print(json.dumps(payload))
+    elif not quiet:
+        console.print(f"{service}: {payload['message']}")
 
 
 @app.command("install")
