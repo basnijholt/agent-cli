@@ -108,6 +108,33 @@ final class AgentCommandTests: XCTestCase {
         XCTAssertTrue(runtime.commandEnvironment()["PATH"]?.contains("/custom/bin") == true)
     }
 
+    func testUserInstalledRuntimeCachesSuccessfulCLIAvailabilityCheck() {
+        let defaults = UserDefaults(suiteName: "AgentCLITests.user-runtime-cache")!
+        defaults.removePersistentDomain(forName: "AgentCLITests.user-runtime-cache")
+        defaults.set(true, forKey: RuntimeSettings.useUserInstalledAgentCLIKey)
+        var processArguments: [[String]] = []
+        let runtime = AgentRuntime(
+            environment: [
+                "AGENTCLI_APP_SUPPORT_DIR": "/tmp/agentcli-test-support",
+                "PATH": "/custom/bin",
+                "SHELL": "/no/such/shell",
+            ],
+            userDefaults: defaults,
+            processRunner: { _, arguments, _ in
+                processArguments.append(arguments)
+                return CommandResult(exitCode: 0, output: "agent-cli 1.2.3")
+            }
+        )
+
+        var phases: [BootstrapPhase] = []
+        XCTAssertEqual(runtime.ensureReady(for: .cliRuntime) { phases.append($0) }.exitCode, 0)
+        XCTAssertEqual(runtime.ensureReady(for: .cliRuntime) { phases.append($0) }.exitCode, 0)
+        XCTAssertEqual(runtime.ensureReady(for: .cliRuntime, force: true) { phases.append($0) }.exitCode, 0)
+
+        XCTAssertEqual(processArguments, [["agent-cli", "--version"], ["agent-cli", "--version"]])
+        XCTAssertEqual(phases, [.checkingRuntime, .checkingRuntime])
+    }
+
     func testUserInstalledCLIPathUsesLoginShellPathAndCommonUvBins() {
         let defaults = UserDefaults(suiteName: "AgentCLITests.user-runtime-path")!
         defaults.removePersistentDomain(forName: "AgentCLITests.user-runtime-path")
