@@ -280,6 +280,36 @@ final class AgentCommandTests: XCTestCase {
         )
     }
 
+    func testMenuActivityStatusFormatsActiveWorkWithSpinnerAndElapsedCounter() {
+        let startedAt = Date(timeIntervalSinceReferenceDate: 1_000)
+        let now = Date(timeIntervalSinceReferenceDate: 1_125)
+
+        XCTAssertEqual(
+            MenuActivityStatus.active(title: "Recording", startedAt: startedAt, now: now).message,
+            "Recording ◓ (02:05)"
+        )
+        XCTAssertTrue(MenuActivityStatus.active(title: "Recording", startedAt: startedAt, now: now).isActive)
+    }
+
+    func testMenuActivityStatusFormatsCompletedWorkWithCheckmark() {
+        XCTAssertEqual(MenuActivityStatus.completed(title: "Ready").message, "Ready ✓")
+        XCTAssertEqual(MenuActivityStatus.completed(title: "Text inserted").message, "Text inserted ✓")
+        XCTAssertFalse(MenuActivityStatus.completed(title: "Ready").isActive)
+    }
+
+    @MainActor
+    func testIdleMenuStatusUsesCompletedCheckmark() {
+        let runner = AgentCommandRunner { _, _, _ in
+            CommandResult(exitCode: 0, output: "")
+        }
+
+        XCTAssertEqual(runner.menuStatusMessage, "Ready ✓")
+
+        runner.statusMessage = "Text inserted"
+
+        XCTAssertEqual(runner.menuStatusMessage, "Text inserted ✓")
+    }
+
     @MainActor
     func testMenuStatusComputesElapsedPreparationTimeWhenRead() {
         let bootstrapStarted = expectation(description: "bootstrap started")

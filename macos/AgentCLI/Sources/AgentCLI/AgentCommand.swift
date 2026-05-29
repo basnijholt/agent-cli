@@ -55,6 +55,10 @@ struct AgentCommand {
         return arguments + ["--extra-instructions", trimmedInstructions]
     }
 
+    var menuActivityTitle: String {
+        title
+    }
+
     static let toggleTranscription = AgentCommand(
         identifier: "transcribe",
         title: "Toggle Transcription",

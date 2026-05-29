@@ -50,6 +50,7 @@ def test_macos_app_package_files_exist() -> None:
         "ConfigurableHotkeyController.swift",
         "FocusedTextTarget.swift",
         "MenuBarIcon.swift",
+        "MenuActivityStatus.swift",
         "RecordingIndicatorController.swift",
         "SettingsWindowController.swift",
         "Shortcuts.swift",

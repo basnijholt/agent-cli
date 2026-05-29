@@ -8,6 +8,7 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
     private static let statusRefreshInterval: TimeInterval = 0.8
     private static let statusRefreshRunLoopModes: [RunLoop.Mode] = [.common, .eventTracking]
     private static let voiceStatusTitlePrefix = "Voice: "
+    private static let activityStatusTitlePrefix = "Status: "
 
     private let runner = AgentCommandRunner.shared
     private let appUpdater = AppUpdater.shared
@@ -19,6 +20,10 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
     private let recentRecordingsMenu = NSMenu()
     private let troubleshootingMenu = NSMenu()
     private var voiceStatusItem: NSMenuItem?
+    private var recentActivityStatusItem: NSMenuItem?
+    private var recentActivityStatusSeparator: NSMenuItem?
+    private var troubleshootingActivityStatusItem: NSMenuItem?
+    private var troubleshootingActivityStatusSeparator: NSMenuItem?
     private var statusRefreshTimer: Timer?
 
     private override init() {
@@ -108,9 +113,17 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
 
     private func rebuildRecentRecordingsMenu() {
         recentRecordingsMenu.removeAllItems()
+        let activityItem = disabledItem("")
+        let activitySeparator = NSMenuItem.separator()
+        recentRecordingsMenu.addItem(activityItem)
+        recentRecordingsMenu.addItem(activitySeparator)
+        recentActivityStatusItem = activityItem
+        recentActivityStatusSeparator = activitySeparator
+
         let recentTranscriptions = RecentTranscriptionReader.recentTranscriptions()
         if recentTranscriptions.isEmpty {
             recentRecordingsMenu.addItem(disabledItem("No recent transcriptions"))
+            refreshDynamicStatus()
             return
         }
 
@@ -123,10 +136,18 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
             item.representedObject = transcription.text
             recentRecordingsMenu.addItem(item)
         }
+        refreshDynamicStatus()
     }
 
     private func rebuildTroubleshootingMenu() {
         troubleshootingMenu.removeAllItems()
+        let activityItem = disabledItem("")
+        let activitySeparator = NSMenuItem.separator()
+        troubleshootingMenu.addItem(activityItem)
+        troubleshootingMenu.addItem(activitySeparator)
+        troubleshootingActivityStatusItem = activityItem
+        troubleshootingActivityStatusSeparator = activitySeparator
+
         troubleshootingMenu.addItem(actionItem(
             "Voice Service Status",
             symbolName: "waveform.path.ecg",
@@ -191,6 +212,7 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
             symbolName: "arrow.counterclockwise",
             action: #selector(resetKeyboardShortcuts)
         ))
+        refreshDynamicStatus()
     }
 
     private func startStatusRefreshTimer() {
@@ -207,12 +229,37 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
     }
 
     private func refreshDynamicStatus() {
-        voiceStatusItem?.title = "\(Self.voiceStatusTitlePrefix)\(runner.menuStatusMessage)"
+        let activityStatus = runner.menuActivityStatus
+        voiceStatusItem?.title = "\(Self.voiceStatusTitlePrefix)\(activityStatus.message)"
+        updateSubmenuActivityStatus(activityStatus)
         if let button = statusItem?.button {
             button.image = MenuBarIconImage.logoImage(state: runner.menuBarIconState)
             button.imagePosition = .imageOnly
             button.toolTip = accessibilityLabel(for: runner.menuBarIconState)
         }
+    }
+
+    private func updateSubmenuActivityStatus(_ activityStatus: MenuActivityStatus) {
+        updateSubmenuActivityStatus(
+            item: recentActivityStatusItem,
+            separator: recentActivityStatusSeparator,
+            activityStatus: activityStatus
+        )
+        updateSubmenuActivityStatus(
+            item: troubleshootingActivityStatusItem,
+            separator: troubleshootingActivityStatusSeparator,
+            activityStatus: activityStatus
+        )
+    }
+
+    private func updateSubmenuActivityStatus(
+        item: NSMenuItem?,
+        separator: NSMenuItem?,
+        activityStatus: MenuActivityStatus
+    ) {
+        item?.title = "\(Self.activityStatusTitlePrefix)\(activityStatus.message)"
+        item?.isHidden = !activityStatus.isActive
+        separator?.isHidden = !activityStatus.isActive
     }
 
     private var usesUserInstalledAgentCLI: Bool {
