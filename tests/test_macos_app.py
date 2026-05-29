@@ -99,6 +99,9 @@ def test_macos_app_exposes_transcription_log_from_menu() -> None:
     reader = (SWIFT_SOURCE_DIR / "RecentTranscriptionReader.swift").read_text(encoding="utf-8")
     runner = (SWIFT_SOURCE_DIR / "AgentCommandRunner.swift").read_text(encoding="utf-8")
     menu = (SWIFT_SOURCE_DIR / "StatusMenuController.swift").read_text(encoding="utf-8")
+    opener = runner[
+        runner.index("func openTranscriptionLog()") : runner.index("func openConfigFolder()")
+    ]
 
     assert '"--transcription-log"' in command
     assert "RecentTranscriptionReader.defaultLogPath" in command
@@ -106,6 +109,8 @@ def test_macos_app_exposes_transcription_log_from_menu() -> None:
     assert "static var defaultLogURL: URL" in reader
     assert "func openTranscriptionLog()" in runner
     assert "RecentTranscriptionReader.defaultLogURL" in runner
+    assert "activateFileViewerSelecting([url])" in opener
+    assert "NSWorkspace.shared.open(url)" not in opener
     assert '"Open Transcription Log"' in menu
     assert "#selector(openTranscriptionLog)" in menu
 
