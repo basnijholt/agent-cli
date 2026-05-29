@@ -18,8 +18,7 @@ dependencies = [
     "psutil; sys_platform == 'win32'",
     "setproctitle",
 ]
-# TODO: remove <3.14 constraint when onnxruntime supports 3.14 (https://github.com/microsoft/onnxruntime/issues/26309)
-requires-python = ">=3.11,<3.14"
+requires-python = ">=3.11"
 
 [project.readme]
 file = "README.md"
@@ -68,11 +67,12 @@ whisper-transformers = ["agent-cli[server]", "transformers>=4.30.0", "torch>=2.0
 piper = ["agent-cli[server]", "piper-tts>=1.2.0"]
 kokoro = [
     "agent-cli[server]",
-    "kokoro>=0.9.0",
-    "soundfile>=0.12.0",
-    "huggingface-hub>=0.20.0",
-    "pip",  # Kokoro uses spacy which calls `pip install` to download language models at runtime
-    "transformers>=4.40.0",  # Ensure pre-built tokenizers wheels for Python 3.13+
+    # Kokoro pulls in misaki[en] -> spacy, which does not publish Python 3.14 wheels yet.
+    "kokoro>=0.9.0; python_version < '3.14'",
+    "soundfile>=0.12.0; python_version < '3.14'",
+    "huggingface-hub>=0.20.0; python_version < '3.14'",
+    "pip; python_version < '3.14'",  # Kokoro uses spacy which calls `pip install` to download language models at runtime
+    "transformers>=4.40.0; python_version < '3.14'",  # Ensure pre-built tokenizers wheels for Python 3.13+
 ]
 
 # Development extras
