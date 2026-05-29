@@ -17,10 +17,10 @@ The app is a SwiftUI wrapper around the same `agent-cli` commands. It bundles `u
 
 ## Install with Homebrew
 
-Install the signed app release with the Homebrew cask. The explicit tap URL is intentional because the cask lives in this repository:
+Install the signed app release with the Homebrew cask:
 
 ```bash
-brew tap basnijholt/agent-cli https://github.com/basnijholt/agent-cli
+brew tap basnijholt/agent-cli
 brew install --cask agent-cli
 ```
 
