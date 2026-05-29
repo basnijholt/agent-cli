@@ -484,11 +484,8 @@ final class AgentCommandRunner: ObservableObject {
             if !FileManager.default.fileExists(atPath: url.path) {
                 _ = FileManager.default.createFile(atPath: url.path, contents: nil)
             }
-            if NSWorkspace.shared.open(url) {
-                statusMessage = "Opened transcription log"
-            } else {
-                statusMessage = "Could not open transcription log"
-            }
+            NSWorkspace.shared.activateFileViewerSelecting([url])
+            statusMessage = "Opened transcription log"
         } catch {
             statusMessage = "Could not open transcription log: \(error.localizedDescription)"
         }
