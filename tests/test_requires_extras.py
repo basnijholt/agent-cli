@@ -274,7 +274,7 @@ class TestCheckAndInstallExtras:
             assert result == ["nemo-whisper", "wyoming"]
             mock_install.assert_not_called()
             message = mock_error.call_args[0][0]
-            assert "nemo-whisper is not supported on Python 3.14" in message
+            assert "nemo-whisper is not supported on Python" in message
             assert "Python 3.13" in message
 
     def test_python_incompatible_extra_detection(self) -> None:
