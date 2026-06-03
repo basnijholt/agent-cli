@@ -253,8 +253,11 @@ def _check_transformers_audio_model_deps(models: list[str]) -> None:
 
 def _is_parakeet_model(model_name: str) -> bool:
     """Return True when a model name targets NVIDIA Parakeet."""
-    normalized = model_name.strip().lower()
-    return normalized == "parakeet-tdt-0.6b-v2" or normalized.startswith("nvidia/parakeet-")
+    from agent_cli.server.whisper.backends.nemo import (  # noqa: PLC0415
+        is_parakeet_model_name,
+    )
+
+    return is_parakeet_model_name(model_name)
 
 
 def _resolve_whisper_required_extras(kwargs: dict[str, object]) -> tuple[str, ...]:
@@ -267,9 +270,12 @@ def _resolve_whisper_required_extras(kwargs: dict[str, object]) -> tuple[str, ..
     }
     backend = str(kwargs.get("backend") or "auto")
     models = kwargs.get("model")
-    if backend == "auto" and isinstance(models, list):
-        if any(_is_parakeet_model(str(model_name)) for model_name in models):
-            backend = "nemo"
+    if (
+        backend == "auto"
+        and isinstance(models, list)
+        and any(_is_parakeet_model(str(model_name)) for model_name in models)
+    ):
+        backend = "nemo"
     backend_extra = backend_extras.get(
         backend,
         "faster-whisper|mlx-whisper|whisper-transformers",
@@ -307,7 +313,7 @@ def whisper_cmd(  # noqa: C901, PLR0912, PLR0915
             "-m",
             help=(
                 "Whisper model(s) to load. Common models: `tiny`, `base`, `small`, "
-                "`medium`, `large-v3`, `distil-large-v3`, `parakeet-tdt-0.6b-v2` "
+                "`medium`, `large-v3`, `distil-large-v3`, `parakeet-tdt-0.6b-v3` "
                 "(NeMo backend). Can specify multiple for different "
                 "accuracy/speed tradeoffs. Default: `large-v3`"
             ),
@@ -462,7 +468,7 @@ def whisper_cmd(  # noqa: C901, PLR0912, PLR0915
         agent-cli server whisper --model large-v3 --model small
 
         # Run NVIDIA Parakeet with NeMo backend
-        agent-cli server whisper --backend nemo --model parakeet-tdt-0.6b-v2
+        agent-cli server whisper --backend nemo --model parakeet-tdt-0.6b-v3
 
         # Download model without starting server
         agent-cli server whisper --model large-v3 --download-only

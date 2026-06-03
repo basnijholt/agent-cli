@@ -90,6 +90,11 @@ class TestWhisperDependencyChecks:
             "whisper-transformers",
             "wyoming",
         )
+        assert _resolve_whisper_required_extras({"backend": "nemo"}) == (
+            "server",
+            "nemo-whisper",
+            "wyoming",
+        )
 
     def test_resolve_whisper_required_extras_keeps_auto_backend_alternatives(self) -> None:
         """Auto backend should keep the existing Whisper backend fallback."""
@@ -100,11 +105,33 @@ class TestWhisperDependencyChecks:
         )
 
     @pytest.mark.parametrize(
+        "model_name",
+        [
+            "parakeet-tdt-0.6b-v2",
+            "parakeet-tdt-0.6b-v3",
+            "nvidia/parakeet-tdt-0.6b-v3",
+        ],
+    )
+    def test_resolve_whisper_required_extras_uses_nemo_for_parakeet_auto(
+        self,
+        model_name: str,
+    ) -> None:
+        """Auto backend should install the NeMo extra for Parakeet models."""
+        assert _resolve_whisper_required_extras(
+            {"backend": "auto", "model": [model_name]},
+        ) == (
+            "server",
+            "nemo-whisper",
+            "wyoming",
+        )
+
+    @pytest.mark.parametrize(
         ("backend", "expected_extra"),
         [
             ("faster-whisper", "faster-whisper"),
             ("mlx", "mlx-whisper"),
             ("transformers", "whisper-transformers"),
+            ("nemo", "nemo-whisper"),
         ],
     )
     def test_backend_dependency_hint_uses_existing_extra(

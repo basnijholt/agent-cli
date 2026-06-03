@@ -20,10 +20,25 @@ from agent_cli.server.whisper.backends.base import (
 
 logger = logging.getLogger(__name__)
 
-# Model aliases for convenience in CLI usage.
-_MODEL_MAP: dict[str, str] = {
-    "parakeet-tdt-0.6b-v2": "nvidia/parakeet-tdt-0.6b-v2",
-}
+# Model aliases for convenience in CLI usage. Keep these to public NVIDIA
+# Parakeet model IDs so bare names resolve predictably.
+_PARAKEET_ALIASES = (
+    "parakeet-tdt-0.6b-v2",
+    "parakeet-tdt-0.6b-v3",
+    "parakeet-tdt-1.1b",
+    "parakeet-ctc-0.6b",
+    "parakeet-ctc-1.1b",
+    "parakeet-rnnt-0.6b",
+    "parakeet-rnnt-1.1b",
+    "parakeet-tdt_ctc-110m",
+)
+_MODEL_MAP: dict[str, str] = {alias: f"nvidia/{alias}" for alias in _PARAKEET_ALIASES}
+
+
+def is_parakeet_model_name(model_name: str) -> bool:
+    """Return True when a model name targets NVIDIA Parakeet."""
+    normalized = model_name.strip().lower()
+    return normalized in _MODEL_MAP or normalized.startswith("nvidia/parakeet-")
 
 
 def _resolve_model_name(model_name: str) -> str:
@@ -32,7 +47,7 @@ def _resolve_model_name(model_name: str) -> str:
     lowered = normalized.lower()
 
     if "/" in normalized:
-        if lowered.startswith("nvidia/parakeet-"):
+        if is_parakeet_model_name(normalized):
             return lowered
         return normalized
     return _MODEL_MAP.get(lowered, normalized)

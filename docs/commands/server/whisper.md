@@ -9,7 +9,7 @@ Run a local ASR server with automatic backend selection based on your platform:
 - **macOS Apple Silicon** → [mlx-whisper](https://github.com/ml-explore/mlx-examples/tree/main/whisper) (Metal acceleration)
 - **Linux/CUDA** → [faster-whisper](https://github.com/SYSTRAN/faster-whisper) (CTranslate2)
 - **HuggingFace** → [transformers](https://huggingface.co/docs/transformers/model_doc/whisper) (supports safetensors models and known remote-code ASR models such as Cohere Transcribe)
-- **NVIDIA Parakeet** → [NeMo](https://github.com/NVIDIA/NeMo) (e.g., `parakeet-tdt-0.6b-v2`)
+- **NVIDIA Parakeet** → [NeMo](https://github.com/NVIDIA/NeMo) (e.g., `parakeet-tdt-0.6b-v3`)
 
 > [!NOTE]
 > **Quick Start** - Get transcription working in 30 seconds:
@@ -74,7 +74,7 @@ agent-cli server whisper --device cpu
 agent-cli server whisper --model large-v3 --download-only
 
 # Run NVIDIA Parakeet via NeMo
-agent-cli server whisper --backend nemo --model parakeet-tdt-0.6b-v2
+agent-cli server whisper --backend nemo --model parakeet-tdt-0.6b-v3
 
 # Preload model at startup and wait until ready
 agent-cli server whisper --preload
@@ -98,7 +98,7 @@ agent-cli server whisper \
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--model, -m` | - | Whisper model(s) to load. Common models: `tiny`, `base`, `small`, `medium`, `large-v3`, `distil-large-v3`, `parakeet-tdt-0.6b-v2` (NeMo backend). Can specify multiple for different accuracy/speed tradeoffs. Default: `large-v3` |
+| `--model, -m` | - | Whisper model(s) to load. Common models: `tiny`, `base`, `small`, `medium`, `large-v3`, `distil-large-v3`, `parakeet-tdt-0.6b-v3` (NeMo backend). Can specify multiple for different accuracy/speed tradeoffs. Default: `large-v3` |
 | `--default-model` | - | Model to use when client doesn't specify one. Must be in the `--model` list |
 | `--device, -d` | `auto` | Compute device: `auto` (detect GPU), `cuda`, `cuda:0`, `cpu`. MLX backend always uses Apple Silicon |
 | `--compute-type` | `auto` | Precision for faster-whisper: `auto`, `float16`, `int8`, `int8_float16`. Lower precision = faster + less VRAM |
@@ -287,11 +287,11 @@ Notes for Cohere Transcribe:
 
 ### NVIDIA NeMo (Parakeet)
 
-For NeMo models like `nvidia/parakeet-tdt-0.6b-v2`:
+For NeMo models like `nvidia/parakeet-tdt-0.6b-v3`:
 
 ```bash
 pip install "agent-cli[nemo-whisper,wyoming]"
-agent-cli server whisper --backend nemo --model parakeet-tdt-0.6b-v2
+agent-cli server whisper --backend nemo --model parakeet-tdt-0.6b-v3
 ```
 
 NeMo models are currently transcription-only in this server. Requests to

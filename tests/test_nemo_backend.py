@@ -53,16 +53,30 @@ def _install_mock_torch(monkeypatch: pytest.MonkeyPatch, *, cuda_available: bool
     monkeypatch.setitem(sys.modules, "torch", torch_module)
 
 
-def test_download_model_resolves_parakeet_alias(
+@pytest.mark.parametrize(
+    ("alias", "resolved"),
+    [
+        ("parakeet-tdt-0.6b-v2", "nvidia/parakeet-tdt-0.6b-v2"),
+        ("parakeet-tdt-0.6b-v3", "nvidia/parakeet-tdt-0.6b-v3"),
+        ("parakeet-tdt-1.1b", "nvidia/parakeet-tdt-1.1b"),
+        ("parakeet-ctc-0.6b", "nvidia/parakeet-ctc-0.6b"),
+        ("parakeet-ctc-1.1b", "nvidia/parakeet-ctc-1.1b"),
+        ("parakeet-rnnt-0.6b", "nvidia/parakeet-rnnt-0.6b"),
+        ("parakeet-rnnt-1.1b", "nvidia/parakeet-rnnt-1.1b"),
+        ("parakeet-tdt_ctc-110m", "nvidia/parakeet-tdt_ctc-110m"),
+    ],
+)
+def test_download_model_resolves_parakeet_aliases(
     monkeypatch: pytest.MonkeyPatch,
+    alias: str,
+    resolved: str,
 ) -> None:
     """Ensure Parakeet shorthand resolves to the expected NeMo model ID."""
     calls: dict[str, object] = {}
     _install_mock_nemo(monkeypatch, calls)
 
-    resolved = backend.download_model("parakeet-tdt-0.6b-v2")
-    assert resolved == "nvidia/parakeet-tdt-0.6b-v2"
-    assert calls["model_name"] == "nvidia/parakeet-tdt-0.6b-v2"
+    assert backend.download_model(alias) == resolved
+    assert calls["model_name"] == resolved
 
 
 def test_download_model_preserves_repo_id(
@@ -214,6 +228,9 @@ def test_audio_duration_seconds_returns_zero_for_non_wav(tmp_path: Path) -> None
 def test_is_parakeet_model_matches_only_supported_identifiers() -> None:
     """Ensure Parakeet detection aligns with NeMo model-name resolution."""
     assert _is_parakeet_model("parakeet-tdt-0.6b-v2")
+    assert _is_parakeet_model("parakeet-tdt-0.6b-v3")
+    assert _is_parakeet_model("parakeet-tdt-1.1b")
+    assert _is_parakeet_model("parakeet-ctc-0.6b")
     assert _is_parakeet_model("nvidia/parakeet-tdt-0.6b-v2")
     assert _is_parakeet_model("nvidia/parakeet-custom")
     assert _is_parakeet_model("Parakeet-TDT-0.6b-v2")
