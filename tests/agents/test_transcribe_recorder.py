@@ -8,10 +8,13 @@ from typing import TYPE_CHECKING
 from typer.testing import CliRunner
 
 from agent_cli.cli import app
+from agent_cli.daemon import transcribe_recorder
 from agent_cli.daemon.transcribe_recorder import WarmAudioBuffer
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+    import pytest
 
 runner = CliRunner(env={"NO_COLOR": "1", "TERM": "dumb"})
 
@@ -45,6 +48,32 @@ def test_warm_audio_buffer_rejects_duplicate_start_and_empty_stop() -> None:
 
 def test_json_client_error_is_machine_readable(tmp_path: Path) -> None:
     missing_socket = tmp_path / "missing.sock"
+
+    result = runner.invoke(
+        app,
+        ["daemon", "transcribe-recorder", "status", "--socket", str(missing_socket), "--json"],
+    )
+
+    assert result.exit_code == 1
+    assert json.loads(result.stdout) == {
+        "ok": False,
+        "error": "Transcribe daemon is not running",
+        "socket_path": str(missing_socket),
+    }
+
+
+def test_json_client_error_handles_unsupported_unix_sockets(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Test unsupported Unix sockets still produce the JSON client error."""
+    missing_socket = tmp_path / "missing.sock"
+
+    async def fake_request(_socket_path: Path, _action: str) -> dict[str, object]:
+        msg = "open_unix_connection is unavailable"
+        raise AttributeError(msg)
+
+    monkeypatch.setattr(transcribe_recorder, "_request", fake_request)
 
     result = runner.invoke(
         app,

@@ -482,7 +482,13 @@ def _client_cmd(action: str, socket_path: Path | None, *, json_output: bool) -> 
     path = _socket_path(socket_path)
     try:
         response = asyncio.run(_request(path, action))
-    except (FileNotFoundError, ConnectionRefusedError):
+    except (
+        FileNotFoundError,
+        ConnectionRefusedError,
+        OSError,
+        AttributeError,
+        NotImplementedError,
+    ):
         if json_output:
             print(
                 json.dumps(
