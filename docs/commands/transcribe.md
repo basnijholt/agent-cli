@@ -187,6 +187,15 @@ The `--from-file` option supports multiple audio formats:
 | `--print-args` | `false` | Print the command line arguments, including variables taken from the configuration file. |
 | `--transcription-log` | - | Append transcripts to JSONL file (timestamp, hostname, model, raw/processed text). Recent entries provide context for LLM cleanup. |
 
+### Live Preview
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--live-preview-log` | - | Write rolling live transcription preview events to JSONL while recording. |
+| `--live-preview-interval` | `2.0` | Seconds between live preview retranscriptions. |
+| `--live-preview-window` | `15.0` | Seconds of recent audio to include in each live preview retranscription. |
+| `--live-preview-console, --live-preview-stdout` | `false` | Print rolling live transcription preview updates to the terminal while recording. |
+
 ### Diarization
 
 | Option | Default | Description |

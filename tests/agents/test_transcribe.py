@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+from contextlib import nullcontext
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -181,6 +182,56 @@ async def test_transcribe_main(
     assert "Copied transcript to clipboard." in caplog.text
     mock_pyperclip_copy.assert_called_once_with("hello world")
     mock_wyoming_client_context.assert_called_once()
+
+
+@pytest.mark.asyncio
+@patch("agent_cli.agents.transcribe.signal_handling_context")
+@patch("agent_cli.agents.transcribe.maybe_live")
+@patch("agent_cli.agents.transcribe.asr.create_transcriber")
+async def test_live_preview_console_disables_rich_live_status(
+    mock_create_transcriber: MagicMock,
+    mock_maybe_live: MagicMock,
+    mock_signal_handling_context: MagicMock,
+) -> None:
+    """Console live preview should not be hidden by the Rich live status."""
+    mock_maybe_live.return_value = nullcontext(None)
+    mock_create_transcriber.return_value = AsyncMock(return_value="hello world")
+    mock_signal_handling_context.return_value.__enter__.return_value = asyncio.Event()
+
+    await transcribe._async_main(
+        extra_instructions=None,
+        provider_cfg=config.ProviderSelection(
+            asr_provider="wyoming",
+            llm_provider="ollama",
+            tts_provider="wyoming",
+        ),
+        general_cfg=config.General(
+            log_level="INFO",
+            log_file=None,
+            quiet=False,
+            list_devices=False,
+            clipboard=False,
+        ),
+        audio_in_cfg=config.AudioInput(),
+        wyoming_asr_cfg=config.WyomingASR(asr_wyoming_ip="localhost", asr_wyoming_port=12345),
+        openai_asr_cfg=config.OpenAIASR(asr_openai_model="whisper-1"),
+        gemini_asr_cfg=config.GeminiASR(
+            asr_gemini_model="gemini-2.0-flash",
+            gemini_api_key="test-key",
+        ),
+        ollama_cfg=config.Ollama(llm_ollama_model="", llm_ollama_host=""),
+        openai_llm_cfg=config.OpenAILLM(llm_openai_model="", openai_base_url=None),
+        gemini_llm_cfg=config.GeminiLLM(
+            llm_gemini_model="gemini-1.5-flash",
+            gemini_api_key="test-key",
+        ),
+        llm_enabled=False,
+        transcription_log=None,
+        emit_output=False,
+        live_preview_console=True,
+    )
+
+    mock_maybe_live.assert_called_once_with(False)
 
 
 def test_log_transcription(tmp_path: Path) -> None:

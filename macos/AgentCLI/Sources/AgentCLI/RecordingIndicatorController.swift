@@ -29,6 +29,9 @@ final class RecordingIndicatorController {
         if !wasRecording {
             play(.startedRecording)
         }
+        if command.identifier == AgentCommand.toggleTranscription.identifier {
+            LiveTranscriptionPreview.shared.start()
+        }
         VoiceLevelOverlayController.shared.show()
     }
 
@@ -44,6 +47,9 @@ final class RecordingIndicatorController {
         if wasRecording && !isRecording {
             play(.finishedRecording)
             VoiceLevelOverlayController.shared.hide()
+        }
+        if command.identifier == AgentCommand.toggleTranscription.identifier {
+            LiveTranscriptionPreview.shared.stop()
         }
     }
 

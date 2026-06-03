@@ -787,6 +787,10 @@ def test_transcribe_command_last_recording_disabled(
             config_file=None,
             print_args=False,
             transcription_log=None,
+            live_preview_log=tmp_path / "preview.jsonl",
+            live_preview_interval=1.0,
+            live_preview_window=10.0,
+            live_preview_console=True,
             diarize=False,
             diarize_format="inline",
             hf_token=None,
@@ -802,6 +806,12 @@ def test_transcribe_command_last_recording_disabled(
         call_args = mock_run.call_args[0][0]
         # Should be normal recording mode, not file mode
         assert call_args.__name__ == "_async_main"
+        assert call_args.cr_frame is not None
+        coroutine_locals = call_args.cr_frame.f_locals
+        assert coroutine_locals["live_preview_log"] == tmp_path / "preview.jsonl"
+        assert coroutine_locals["live_preview_interval"] == 1.0
+        assert coroutine_locals["live_preview_window"] == 10.0
+        assert coroutine_locals["live_preview_console"] is True
         call_args.close()  # Avoid "coroutine never awaited" warning
 
 

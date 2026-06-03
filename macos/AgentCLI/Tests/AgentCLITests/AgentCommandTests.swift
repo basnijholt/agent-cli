@@ -15,6 +15,12 @@ final class AgentCommandTests: XCTestCase {
                 "~/.config/agent-cli/voice-levels.jsonl",
                 "--transcription-log",
                 "~/.config/agent-cli/transcriptions.jsonl",
+                "--live-preview-log",
+                "~/.config/agent-cli/live-preview.jsonl",
+                "--live-preview-interval",
+                "1",
+                "--live-preview-window",
+                "10",
             ]
         )
         XCTAssertEqual(AgentCommand.toggleTranscription.bootstrapRequirement, .transcription)
@@ -33,6 +39,12 @@ final class AgentCommandTests: XCTestCase {
                 "~/.config/agent-cli/voice-levels.jsonl",
                 "--transcription-log",
                 "~/.config/agent-cli/transcriptions.jsonl",
+                "--live-preview-log",
+                "~/.config/agent-cli/live-preview.jsonl",
+                "--live-preview-interval",
+                "1",
+                "--live-preview-window",
+                "10",
                 "--extra-instructions",
                 "Remember Bas and Henk.\nPrefer project names.",
             ]
