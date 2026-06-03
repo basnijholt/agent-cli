@@ -17,8 +17,7 @@ Agent CLI is designed to work with system-wide hotkeys, allowing you to trigger 
 For the easiest macOS hotkey workflow, install the native AgentCLI menu bar app:
 
 ```bash
-brew tap basnijholt/agent-cli
-brew install --cask agent-cli
+brew install --cask basnijholt/tap/agent-cli
 ```
 
 The app registers global shortcuts itself and can manage a private `agent-cli` runtime. See the [macOS app guide](installation/macos-app.md).

@@ -74,8 +74,7 @@ Since then I have expanded the tool with many more features, all focused on loca
 Install the native menu bar app with Homebrew:
 
 ```bash
-brew tap basnijholt/agent-cli
-brew install --cask agent-cli
+brew install --cask basnijholt/tap/agent-cli
 ```
 
 The app provides global shortcuts, a menu bar UI, automatic local Whisper setup, and a private bundled `agent-cli` runtime. See the [macOS app guide](installation/macos-app.md).

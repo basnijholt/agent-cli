@@ -20,8 +20,7 @@ The app is a SwiftUI wrapper around the same `agent-cli` commands. It bundles `u
 Install the signed app release with the Homebrew cask:
 
 ```bash
-brew tap basnijholt/agent-cli
-brew install --cask agent-cli
+brew install --cask basnijholt/tap/agent-cli
 ```
 
 Then open **AgentCLI** from `/Applications` or Spotlight.

@@ -22,8 +22,7 @@ Before you begin, ensure you have:
 For the native Mac app with global shortcuts and automatic local Whisper setup:
 
 ```bash
-brew tap basnijholt/agent-cli
-brew install --cask agent-cli
+brew install --cask basnijholt/tap/agent-cli
 ```
 
 See: [macOS Menu Bar App](installation/macos-app.md)

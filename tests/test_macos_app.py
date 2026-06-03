@@ -17,6 +17,13 @@ BUILD_SCRIPT = ROOT / "macos" / "build-macos-app.sh"
 E2E_SCRIPT = ROOT / "macos" / "test-macos-app-e2e.sh"
 LOGO_SVG = ROOT / "docs" / "logo-clean.svg"
 MENU_BAR_LOGO_SVG = ROOT / "docs" / "logo-avatar.svg"
+MACOS_APP_INSTALL_DOCS = [
+    ROOT / "README.md",
+    ROOT / "docs" / "getting-started.md",
+    ROOT / "docs" / "index.md",
+    ROOT / "docs" / "system-integration.md",
+    ROOT / "docs" / "installation" / "macos-app.md",
+]
 
 
 def assert_script_executable(path: Path) -> None:
@@ -65,6 +72,20 @@ def test_macos_app_package_files_exist() -> None:
     assert (MACOS_APP / "README.md").is_file()
     assert LOGO_SVG.is_file()
     assert MENU_BAR_LOGO_SVG.is_file()
+
+
+def test_macos_app_homebrew_docs_use_tap_cask_one_liner() -> None:
+    """Homebrew tap shorthand should use the public basnijholt/homebrew-tap repo."""
+    install_command = "brew install --cask basnijholt/tap/agent-cli"
+
+    for path in MACOS_APP_INSTALL_DOCS:
+        text = path.read_text(encoding="utf-8")
+        assert install_command in text, path
+        assert "\nbrew tap basnijholt/agent-cli\n" not in text, path
+        assert "brew install --cask basnijholt/agent-cli/agent-cli" not in text, path
+        assert (
+            "brew tap basnijholt/agent-cli https://github.com/basnijholt/agent-cli.git" not in text
+        ), path
 
 
 def test_macos_app_depends_on_keyboardshortcuts_package() -> None:

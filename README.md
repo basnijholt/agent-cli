@@ -58,8 +58,7 @@ Since then I have expanded the tool with many more features, all focused on loca
 Install the native AgentCLI app with Homebrew:
 
 ```bash
-brew tap basnijholt/agent-cli
-brew install --cask agent-cli
+brew install --cask basnijholt/tap/agent-cli
 ```
 
 The app provides global shortcuts, a menu bar UI, automatic local Whisper setup on first transcription, and a private bundled `agent-cli` runtime. See the [macOS app guide](docs/installation/macos-app.md) for setup, updates, and uninstall instructions.
@@ -263,8 +262,7 @@ AgentCLI is also available as a native macOS menu bar app for voice workflows th
 Install it with Homebrew:
 
 ```bash
-brew tap basnijholt/agent-cli
-brew install --cask agent-cli
+brew install --cask basnijholt/tap/agent-cli
 ```
 
 The app is a SwiftUI wrapper around the same `agent-cli` commands. It bundles `uv`, installs a private `agent-cli[audio,llm]` runtime in your Application Support folder on first use, and starts the local Whisper daemon automatically the first time you transcribe.
