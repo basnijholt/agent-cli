@@ -5,6 +5,30 @@
         <link>https://github.com/basnijholt/agent-cli</link>
         <description>Signed Agent CLI macOS app updates.</description>
         <item>
+            <title>0.96.10</title>
+            <pubDate>Wed, 03 Jun 2026 18:47:20 +0000</pubDate>
+            <link>https://github.com/basnijholt/agent-cli</link>
+            <sparkle:version>184</sparkle:version>
+            <sparkle:shortVersionString>0.96.10</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[## What's Changed
+* Lazy-load cli.py top-level imports by @basnijholt in https://github.com/basnijholt/agent-cli/pull/561
+* Revert "Lazy-load cli.py top-level imports" by @basnijholt in https://github.com/basnijholt/agent-cli/pull/562
+* Clarify Homebrew tap URL in docs by @basnijholt in https://github.com/basnijholt/agent-cli/pull/563
+* Use short Homebrew tap command in docs by @basnijholt in https://github.com/basnijholt/agent-cli/pull/564
+* [pre-commit.ci] pre-commit autoupdate by @pre-commit-ci[bot] in https://github.com/basnijholt/agent-cli/pull/566
+* ⬆️ Pin dependencies by @renovate[bot] in https://github.com/basnijholt/agent-cli/pull/567
+* Update Homebrew cask install docs by @basnijholt in https://github.com/basnijholt/agent-cli/pull/569
+* Move Homebrew cask updates to tap repo by @basnijholt in https://github.com/basnijholt/agent-cli/pull/570
+* ⬆️ Update astral-sh/setup-uv action to v8.2.0 by @renovate[bot] in https://github.com/basnijholt/agent-cli/pull/568
+
+
+**Full Changelog**: https://github.com/basnijholt/agent-cli/compare/v0.96.9...v0.96.10
+]]></description>
+            <enclosure url="https://github.com/basnijholt/agent-cli/releases/download/v0.96.10/AgentCLI.zip" length="22739098" type="application/octet-stream" sparkle:edSignature="ts87YVB8W7EwWouoQ4UXK6UX9YUB3se9rwyd/RWiuiY18lGXz7+qgeKOUqqdtZYwqtg7HZO+4SmZKihg+gG6Bw=="/>
+        </item>
+        <item>
             <title>0.96.9</title>
             <pubDate>Fri, 29 May 2026 17:56:24 +0000</pubDate>
             <link>https://github.com/basnijholt/agent-cli</link>
@@ -148,23 +172,6 @@
 
 ]]></description>
             <enclosure url="https://github.com/basnijholt/agent-cli/releases/download/v0.96.1/AgentCLI.zip" length="22729845" type="application/octet-stream" sparkle:edSignature="YYq/64CSi+pxZD2NZ02GWIPAdusUf3mesEQ4MltVUOSheuOwimOZpHs81brT4g8rFBa2PRfnobfrfcTtfONqCQ=="/>
-        </item>
-        <item>
-            <title>0.96.0</title>
-            <pubDate>Fri, 29 May 2026 05:30:42 +0000</pubDate>
-            <link>https://github.com/basnijholt/agent-cli</link>
-            <sparkle:version>174</sparkle:version>
-            <sparkle:shortVersionString>0.96.0</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[## What’s Changed
-
-* Fix macOS accessibility reset flow (#544) @basnijholt
-* Make voice level overlay frequency aware (#543) @basnijholt
-* Support Python 3.14 dependency resolution (#542) @basnijholt
-
-]]></description>
-            <enclosure url="https://github.com/basnijholt/agent-cli/releases/download/v0.96.0/AgentCLI.zip" length="22728280" type="application/octet-stream" sparkle:edSignature="7sr0rCM9T7/MZevvaLJppkWJyMmIBmkgVUUsk+mc37fl6uVfacDmhBokYwlr/qAPWGlK1rtK/Q162LWtwSppAw=="/>
         </item>
     </channel>
 </rss>
