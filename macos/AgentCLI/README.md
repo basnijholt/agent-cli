@@ -111,6 +111,8 @@ workflow expects these repository secrets:
 - `APPLE_APP_SPECIFIC_PASSWORD`: app-specific password for `notarytool`
 - `APPLE_TEAM_ID`: Apple Developer Team ID
 - `SPARKLE_PRIVATE_ED_KEY`: private Sparkle EdDSA key for signing updates
+- `HOMEBREW_TAP_DISPATCH_TOKEN`: fine-grained token with Contents write access
+  to `basnijholt/homebrew-tap`, used to trigger the tap cask update workflow
 
 The workflow also expects the repository variable `SPARKLE_PUBLIC_ED_KEY`.
 Generate the key pair with Sparkle's `generate_keys` tool and store only the

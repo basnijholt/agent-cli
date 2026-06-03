@@ -88,6 +88,12 @@ def test_macos_app_homebrew_docs_use_tap_cask_one_liner() -> None:
         ), path
 
 
+def test_homebrew_cask_is_owned_by_homebrew_tap_repo() -> None:
+    """The external homebrew-tap repo owns cask contents and updates."""
+    assert not (ROOT / "Casks" / "agent-cli.rb").exists()
+    assert not (ROOT / ".github" / "scripts" / "update_cask.py").exists()
+
+
 def test_macos_app_depends_on_keyboardshortcuts_package() -> None:
     """KeyboardShortcuts README documents SPM install from this URL."""
     package = (MACOS_APP / "Package.swift").read_text(encoding="utf-8")
@@ -310,10 +316,18 @@ def test_release_workflow_publishes_macos_app_asset() -> None:
     assert "NOTARIZE=1" in workflow
     assert "gh release upload" in workflow
     assert "dist/macos/AgentCLI.dmg" in workflow
+    assert "name: Trigger Homebrew tap update" in workflow
+    assert "HOMEBREW_TAP_DISPATCH_TOKEN" in workflow
+    assert "repos/basnijholt/homebrew-tap/dispatches" in workflow
+    assert "event_type=agent-cli-release" in workflow
+    assert "client_payload[tag_name]" in workflow
+    assert "client_payload[asset_url]" in workflow
     assert "python3 .github/scripts/normalize_appcast.py macos/appcast.xml" in workflow
     assert workflow.index(
         "python3 .github/scripts/normalize_appcast.py macos/appcast.xml"
-    ) < workflow.index("if git diff --quiet -- Casks/agent-cli.rb macos/appcast.xml; then")
+    ) < workflow.index("if git diff --quiet -- macos/appcast.xml; then")
+    assert "python3 .github/scripts/update_cask.py" not in workflow
+    assert "Casks/agent-cli.rb" not in workflow
 
 
 def test_macos_app_has_end_to_end_packaging_test() -> None:

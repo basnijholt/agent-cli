@@ -25,12 +25,6 @@ brew install --cask basnijholt/tap/agent-cli
 
 Then open **AgentCLI** from `/Applications` or Spotlight.
 
-If you already cloned the repository and want to install the cask from the local checkout:
-
-```bash
-brew install --cask ./Casks/agent-cli.rb
-```
-
 ## First Launch
 
 1. Open **AgentCLI**.

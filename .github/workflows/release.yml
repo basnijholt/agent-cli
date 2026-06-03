@@ -109,26 +109,34 @@ jobs:
               "$APPCAST_DIR"
 
           cp "$APPCAST_DIR/appcast.xml" macos/appcast.xml
-      - name: Update Homebrew cask and Sparkle appcast
+      - name: Update Sparkle appcast metadata
         env:
           TAG_NAME: ${{ github.event.release.tag_name }}
         run: |
-          VERSION="${TAG_NAME#v}"
-          SHA256=$(shasum -a 256 dist/macos/AgentCLI.dmg | awk '{ print $1 }')
-
-          python3 .github/scripts/update_cask.py \
-            --version "$VERSION" \
-            --sha256 "$SHA256"
           python3 .github/scripts/normalize_appcast.py macos/appcast.xml
 
-          if git diff --quiet -- Casks/agent-cli.rb macos/appcast.xml; then
-            echo "Casks/agent-cli.rb and macos/appcast.xml are already up to date."
+          if git diff --quiet -- macos/appcast.xml; then
+            echo "macos/appcast.xml is already up to date."
             exit 0
           fi
 
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add Casks/agent-cli.rb macos/appcast.xml
+          git add macos/appcast.xml
           git commit -m "Update AgentCLI release metadata to ${TAG_NAME}"
           git pull --rebase origin main
           git push origin HEAD:main
+      - name: Trigger Homebrew tap update
+        env:
+          GH_TOKEN: ${{ secrets.HOMEBREW_TAP_DISPATCH_TOKEN }}
+          TAG_NAME: ${{ github.event.release.tag_name }}
+        run: |
+          if [[ -z "$GH_TOKEN" ]]; then
+            echo "HOMEBREW_TAP_DISPATCH_TOKEN is required to update basnijholt/homebrew-tap." >&2
+            exit 1
+          fi
+
+          gh api repos/basnijholt/homebrew-tap/dispatches \
+            -f event_type=agent-cli-release \
+            -F "client_payload[tag_name]=$TAG_NAME" \
+            -F "client_payload[asset_url]=https://github.com/basnijholt/agent-cli/releases/download/${TAG_NAME}/AgentCLI.dmg"
