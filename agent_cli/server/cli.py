@@ -91,7 +91,10 @@ def _resolve_tts_required_extras(kwargs: dict[str, object]) -> tuple[str, ...]:
     """Choose the TTS backend extra after Typer has parsed --backend."""
     backend = kwargs.get("backend")
     backend_extra = backend if backend in ("piper", "kokoro") else "piper|kokoro"
-    return ("server", str(backend_extra), "wyoming")
+    extras = ["server", str(backend_extra)]
+    if not kwargs.get("no_wyoming"):
+        extras.append("wyoming")
+    return tuple(extras)
 
 
 def _check_tts_deps(backend: str = "auto") -> None:
@@ -280,7 +283,10 @@ def _resolve_whisper_required_extras(kwargs: dict[str, object]) -> tuple[str, ..
         backend,
         "faster-whisper|mlx-whisper|whisper-transformers",
     )
-    return ("server", backend_extra, "wyoming")
+    extras = ["server", backend_extra]
+    if not kwargs.get("no_wyoming"):
+        extras.append("wyoming")
+    return tuple(extras)
 
 
 def _print_optional_whisper_config(

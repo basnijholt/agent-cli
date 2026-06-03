@@ -69,6 +69,16 @@ class TestModelConfig:
         assert config.default_language == "en"
         assert config.trust_remote_code is True
 
+    def test_zero_ttl_disables_auto_unload(self) -> None:
+        """TTL 0 should be accepted as keep-loaded mode."""
+        config = ModelConfig(model_name="small", ttl_seconds=0)
+        assert config.ttl_seconds == 0
+
+    def test_negative_ttl_is_rejected(self) -> None:
+        """Negative TTL values should remain invalid."""
+        with pytest.raises(ValueError, match="ttl_seconds must be >= 0"):
+            ModelConfig(model_name="small", ttl_seconds=-1)
+
 
 class TestWhisperDependencyChecks:
     """Tests for server Whisper optional dependency handling."""
@@ -102,6 +112,15 @@ class TestWhisperDependencyChecks:
             "server",
             "faster-whisper|mlx-whisper|whisper-transformers",
             "wyoming",
+        )
+
+    def test_resolve_whisper_required_extras_omits_wyoming_when_disabled(self) -> None:
+        """HTTP-only mode should not install Wyoming protocol dependencies."""
+        assert _resolve_whisper_required_extras(
+            {"backend": "nemo", "no_wyoming": True},
+        ) == (
+            "server",
+            "nemo-whisper",
         )
 
     @pytest.mark.parametrize(
@@ -207,6 +226,18 @@ class TestWhisperModelManager:
         """Test starting and stopping the manager."""
         await manager.start()
         assert manager._manager._unload_task is not None
+
+        await manager.stop()
+        assert manager._manager._shutdown is True
+
+    @pytest.mark.asyncio
+    async def test_zero_ttl_does_not_start_unload_watcher(self, config: ModelConfig) -> None:
+        """TTL 0 should keep the model loaded until explicit shutdown."""
+        config.ttl_seconds = 0
+        manager = WhisperModelManager(config)
+
+        await manager.start()
+        assert manager._manager._unload_task is None
 
         await manager.stop()
         assert manager._manager._shutdown is True
