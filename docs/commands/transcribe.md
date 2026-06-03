@@ -194,7 +194,7 @@ The `--from-file` option supports multiple audio formats:
 | `--live-preview-log` | - | Write rolling live transcription preview events to JSONL while recording. |
 | `--live-preview-interval` | `2.0` | Seconds between live preview retranscriptions. |
 | `--live-preview-window` | `15.0` | Seconds of recent audio to include in each live preview retranscription. |
-| `--live-preview-console, --live-preview-stdout` | `false` | Print rolling live transcription preview updates to the terminal while recording. |
+| `--live-preview-console` | `false` | Print rolling live transcription preview updates to the terminal while recording. |
 
 ### Diarization
 
