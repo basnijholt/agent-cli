@@ -17,7 +17,10 @@ certifi==2026.5.20
     # via
     #   httpcore
     #   httpx
+    #   requests
     #   sentry-sdk
+charset-normalizer==3.4.7 ; python_full_version >= '3.13'
+    # via requests
 click==8.4.1
     # via
     #   rich-toolkit
@@ -58,13 +61,13 @@ filelock==3.29.0
     # via huggingface-hub
 flatbuffers==25.12.19
     # via onnxruntime
-fsspec==2026.4.0
+fsspec==2024.12.0
     # via huggingface-hub
 h11==0.16.0
     # via
     #   httpcore
     #   uvicorn
-hf-xet==1.5.0 ; platform_machine == 'AMD64' or platform_machine == 'aarch64' or platform_machine == 'amd64' or platform_machine == 'arm64' or platform_machine == 'x86_64'
+hf-xet==1.5.0 ; (python_full_version < '3.13' and platform_machine == 'AMD64') or platform_machine == 'aarch64' or platform_machine == 'amd64' or platform_machine == 'arm64' or platform_machine == 'x86_64'
     # via huggingface-hub
 httpcore==1.0.9
     # via httpx
@@ -76,7 +79,11 @@ httpx==0.28.1
     #   fastapi
     #   fastapi-cloud-cli
     #   huggingface-hub
-huggingface-hub==1.16.1
+huggingface-hub==0.36.2 ; python_full_version >= '3.13'
+    # via
+    #   faster-whisper
+    #   tokenizers
+huggingface-hub==1.16.1 ; python_full_version < '3.13'
     # via
     #   faster-whisper
     #   tokenizers
@@ -85,6 +92,7 @@ idna==3.17
     #   anyio
     #   email-validator
     #   httpx
+    #   requests
 jinja2==3.1.6
     # via fastapi
 markdown-it-py==4.2.0
@@ -93,17 +101,23 @@ markupsafe==3.0.3
     # via jinja2
 mdurl==0.1.2
     # via markdown-it-py
-numpy==2.4.6
+numpy==1.26.4 ; python_full_version < '3.13'
+    # via
+    #   ctranslate2
+    #   onnxruntime
+numpy==2.4.6 ; python_full_version >= '3.13'
     # via
     #   ctranslate2
     #   onnxruntime
 onnxruntime==1.26.0
     # via faster-whisper
-packaging==26.2
+packaging==24.2
     # via
     #   huggingface-hub
     #   onnxruntime
-protobuf==6.33.6
+protobuf==4.24.4 ; python_full_version < '3.13'
+    # via onnxruntime
+protobuf==5.29.6 ; python_full_version >= '3.13'
     # via onnxruntime
 psutil==7.2.2 ; sys_platform == 'win32'
     # via agent-cli
@@ -136,6 +150,8 @@ pyyaml==6.0.3
     #   ctranslate2
     #   huggingface-hub
     #   uvicorn
+requests==2.34.2 ; python_full_version >= '3.13'
+    # via huggingface-hub
 rich==15.0.0
     # via
     #   agent-cli
@@ -186,7 +202,9 @@ typing-inspection==0.4.2
     #   pydantic
     #   pydantic-settings
 urllib3==2.7.0
-    # via sentry-sdk
+    # via
+    #   requests
+    #   sentry-sdk
 uvicorn==0.48.0
     # via
     #   fastapi

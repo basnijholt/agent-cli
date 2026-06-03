@@ -14,6 +14,7 @@ from agent_cli.core import process
 from agent_cli.core.deps import (
     EXTRAS,
     _check_and_install_extras,
+    _find_python_incompatible_extras,
     _get_auto_install_setting,
     _get_install_hint,
     _maybe_reexec_after_install,
@@ -256,6 +257,32 @@ class TestCheckAndInstallExtras:
             assert result == ["fake-extra"]
             mock_error.assert_called_once()
             assert "Auto-install failed" in mock_error.call_args[0][0]
+
+    def test_returns_missing_for_python_incompatible_extra_without_installing(self) -> None:
+        """Python-incompatible extras should fail before auto-install."""
+        with (
+            patch("agent_cli.core.deps._check_extra_installed", return_value=False),
+            patch("agent_cli.core.deps._get_auto_install_setting", return_value=True),
+            patch(
+                "agent_cli.core.deps._find_python_incompatible_extras",
+                return_value=["nemo-whisper"],
+            ),
+            patch("agent_cli.core.deps._try_auto_install") as mock_install,
+            patch("agent_cli.core.deps.print_error_message") as mock_error,
+        ):
+            result = _check_and_install_extras(("nemo-whisper", "wyoming"))
+            assert result == ["nemo-whisper", "wyoming"]
+            mock_install.assert_not_called()
+            message = mock_error.call_args[0][0]
+            assert "nemo-whisper is not supported on Python 3.14" in message
+            assert "Python 3.13" in message
+
+    def test_python_incompatible_extra_detection(self) -> None:
+        """NeMo should be unavailable on Python 3.14+."""
+        assert _find_python_incompatible_extras(["nemo-whisper"], python_version=(3, 13)) == []
+        assert _find_python_incompatible_extras(["nemo-whisper"], python_version=(3, 14)) == [
+            "nemo-whisper",
+        ]
 
     def test_returns_empty_when_install_succeeds(self) -> None:
         """Should return empty list when auto-install succeeds."""

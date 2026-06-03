@@ -28,6 +28,11 @@ F = TypeVar("F", bound="Callable[..., object]")
 _REEXEC_MARKER = "_AGENT_CLI_REEXEC"
 
 
+_EXTRA_PYTHON_MAX_EXCLUSIVE: dict[str, tuple[int, int]] = {
+    "nemo-whisper": (3, 14),
+}
+
+
 # -- Settings --
 
 
@@ -273,6 +278,35 @@ def _resolve_extras_for_install(extras: tuple[str, ...]) -> list[str]:
     return result
 
 
+def _find_python_incompatible_extras(
+    extras: list[str],
+    *,
+    python_version: tuple[int, int] | None = None,
+) -> list[str]:
+    """Return extras that are not compatible with the current Python version."""
+    version = python_version or sys.version_info[:2]
+    return [
+        extra
+        for extra in extras
+        if extra in _EXTRA_PYTHON_MAX_EXCLUSIVE and version >= _EXTRA_PYTHON_MAX_EXCLUSIVE[extra]
+    ]
+
+
+def _python_incompatibility_message(extras: list[str]) -> str:
+    """Build a helpful error for extras unavailable on this Python version."""
+    version = f"{sys.version_info.major}.{sys.version_info.minor}"
+    extras_list = ", ".join(extras)
+    return (
+        f"{extras_list} is not supported on Python {version}.\n"
+        "NeMo currently depends on packages without Python 3.14 wheels "
+        "(notably kaldialign).\n\n"
+        "Use Python 3.13 for this backend, for example:\n"
+        "  CMAKE_POLICY_VERSION_MINIMUM=3.5 \\\n"
+        "  uv run --python 3.13 --extra server --extra nemo-whisper \\\n"
+        "    agent-cli server whisper --backend nemo --model parakeet-tdt-0.6b-v3"
+    )
+
+
 def _maybe_exec_with_marker(cmd: list[str], message: str) -> None:
     """Re-execute with a new command, preventing infinite loops."""
     if os.environ.get(_REEXEC_MARKER):
@@ -327,6 +361,11 @@ def _check_and_install_extras(extras: tuple[str, ...]) -> list[str]:
     missing = [e for e in extras if not _check_extra_installed(e)]
     if not missing:
         return []
+
+    incompatible = _find_python_incompatible_extras(_resolve_extras_for_install(tuple(missing)))
+    if incompatible:
+        print_error_message(_python_incompatibility_message(incompatible))
+        return missing
 
     # 2. Auto-install disabled? Show error and return missing
     if not _get_auto_install_setting():

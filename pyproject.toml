@@ -62,7 +62,11 @@ mlx-whisper = [
     "mlx-whisper>=0.4.0; sys_platform == 'darwin' and platform_machine == 'arm64'",
 ]
 whisper-transformers = ["agent-cli[server]", "transformers>=4.30.0", "torch>=2.0.0"]
-nemo-whisper = ["agent-cli[server]", "nemo_toolkit[asr]>=2.2.0"]
+nemo-whisper = [
+    "agent-cli[server]",
+    # NeMo currently pulls kaldialign, which does not publish Python 3.14 wheels.
+    "nemo_toolkit[asr]>=2.2.0; python_version < '3.14'",
+]
 
 # TTS backends
 piper = ["agent-cli[server]", "piper-tts>=1.2.0"]
