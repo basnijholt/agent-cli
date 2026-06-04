@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import sys
+from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures.process import BrokenProcessPool
 from types import ModuleType, SimpleNamespace
 from typing import TYPE_CHECKING, Any
 
@@ -10,6 +12,7 @@ import pytest
 
 from agent_cli.server.cli import _is_parakeet_model
 from agent_cli.server.whisper.backends import nemo as backend
+from agent_cli.server.whisper.backends.base import BackendConfig
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -224,6 +227,121 @@ def test_audio_duration_seconds_returns_zero_for_non_wav(tmp_path: Path) -> None
     audio_path = tmp_path / "sample.mp3"
     audio_path.write_bytes(b"ID3" + b"\x00" * 8)
     assert backend._audio_duration_seconds(str(audio_path)) == 0.0
+
+
+def test_build_transcribe_kwargs_omits_language_for_plain_asr_models() -> None:
+    """Plain NeMo ASR transcribe signatures should not receive unsupported language args."""
+
+    def transcribe(audio: list[str], *, timestamps: bool) -> None:  # noqa: ARG001
+        return None
+
+    assert backend._build_transcribe_kwargs(
+        transcribe,
+        language="de",
+        word_timestamps=True,
+    ) == {"timestamps": True}
+
+
+def test_build_transcribe_kwargs_passes_target_lang_for_prompt_models() -> None:
+    """Prompt-conditioned Parakeet signatures should receive target_lang."""
+
+    def transcribe(audio: list[str], *, timestamps: bool, **prompt: str) -> None:  # noqa: ARG001
+        return None
+
+    assert backend._build_transcribe_kwargs(
+        transcribe,
+        language="de-DE",
+        word_timestamps=True,
+    ) == {"timestamps": True, "target_lang": "de-DE"}
+
+
+def test_build_transcribe_kwargs_passes_multitask_language_args() -> None:
+    """Multitask NeMo signatures should receive ASR source/target language args."""
+
+    def transcribe(
+        audio: list[str],  # noqa: ARG001
+        *,
+        timestamps: bool,  # noqa: ARG001
+        task: str,  # noqa: ARG001
+        source_lang: str,  # noqa: ARG001
+        target_lang: str,  # noqa: ARG001
+    ) -> None:
+        return None
+
+    assert backend._build_transcribe_kwargs(
+        transcribe,
+        language="fr",
+        word_timestamps=False,
+    ) == {
+        "timestamps": False,
+        "task": "asr",
+        "source_lang": "fr",
+        "target_lang": "fr",
+    }
+
+
+@pytest.mark.asyncio
+async def test_unload_waits_for_subprocess_shutdown() -> None:
+    """NeMo unload should wait for subprocess shutdown before reporting unloaded."""
+
+    class _Executor:
+        def __init__(self) -> None:
+            self.shutdown_args: tuple[bool, bool] | None = None
+
+        def shutdown(self, wait: bool = True, *, cancel_futures: bool = False) -> None:
+            self.shutdown_args = (wait, cancel_futures)
+
+    executor = _Executor()
+    nemo_backend = backend.NemoWhisperBackend(
+        BackendConfig(model_name="parakeet-tdt-0.6b-v3"),
+    )
+    nemo_backend._executor = executor  # type: ignore[assignment]  # Test double.
+
+    await nemo_backend.unload()
+
+    assert executor.shutdown_args == (True, True)
+    assert not nemo_backend.is_loaded
+
+
+@pytest.mark.asyncio
+async def test_transcribe_recovers_from_broken_process_pool(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """NeMo backend should clear and reload a broken subprocess pool once."""
+    nemo_backend = backend.NemoWhisperBackend(
+        BackendConfig(model_name="parakeet-tdt-0.6b-v3"),
+    )
+    nemo_backend._executor = ThreadPoolExecutor(max_workers=1)  # type: ignore[assignment]
+    calls = {"transcribe": 0, "load": 0}
+
+    def transcribe_once_then_succeed(
+        audio: bytes,  # noqa: ARG001
+        kwargs: dict[str, Any],  # noqa: ARG001
+    ) -> dict[str, Any]:
+        calls["transcribe"] += 1
+        if calls["transcribe"] == 1:
+            raise BrokenProcessPool
+        return {
+            "text": "ok",
+            "language": "en",
+            "language_probability": 0.95,
+            "duration": 1.0,
+            "segments": [],
+        }
+
+    async def fake_load() -> float:
+        calls["load"] += 1
+        nemo_backend._executor = ThreadPoolExecutor(max_workers=1)  # type: ignore[assignment]
+        return 0.0
+
+    monkeypatch.setattr(backend, "_transcribe_in_subprocess", transcribe_once_then_succeed)
+    monkeypatch.setattr(nemo_backend, "load", fake_load)
+
+    result = await nemo_backend.transcribe(b"audio")
+
+    await nemo_backend.unload()
+    assert result.text == "ok"
+    assert calls == {"transcribe": 2, "load": 1}
 
 
 def test_is_parakeet_model_matches_only_supported_identifiers() -> None:

@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import asyncio
+import inspect
 import logging
 import tempfile
+import time
 import wave
 from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures.process import BrokenProcessPool
 from dataclasses import dataclass
 from multiprocessing import get_context
 from pathlib import Path
@@ -157,6 +160,36 @@ def _audio_duration_seconds(wav_path: str) -> float:
         return 0.0
 
 
+def _build_transcribe_kwargs(
+    transcribe_func: Any,
+    *,
+    language: str | None,
+    word_timestamps: bool,
+) -> dict[str, Any]:
+    """Build NeMo transcribe kwargs supported by the loaded model signature."""
+    transcribe_kwargs: dict[str, Any] = {"timestamps": word_timestamps}
+    if not language:
+        return transcribe_kwargs
+
+    try:
+        parameters = inspect.signature(transcribe_func).parameters
+    except (TypeError, ValueError):
+        return transcribe_kwargs
+
+    has_var_keyword = any(
+        parameter.kind is inspect.Parameter.VAR_KEYWORD for parameter in parameters.values()
+    )
+
+    if "task" in parameters:
+        transcribe_kwargs["task"] = "asr"
+    if "source_lang" in parameters:
+        transcribe_kwargs["source_lang"] = language
+    if "target_lang" in parameters or has_var_keyword:
+        transcribe_kwargs["target_lang"] = language
+
+    return transcribe_kwargs
+
+
 def _load_model_in_subprocess(model_name: str, device: str) -> str:
     """Load model in subprocess. Returns actual device string."""
     import nemo.collections.asr as nemo_asr  # noqa: PLC0415
@@ -189,10 +222,12 @@ def _transcribe_in_subprocess(
         tmp_path = tmp.name
 
     try:
-        outputs = _state.model.transcribe(
-            [tmp_path],
-            timestamps=kwargs["word_timestamps"],
+        transcribe_kwargs = _build_transcribe_kwargs(
+            _state.model.transcribe,
+            language=kwargs["language"],
+            word_timestamps=kwargs["word_timestamps"],
         )
+        outputs = _state.model.transcribe([tmp_path], **transcribe_kwargs)
 
         hypothesis: Any | None = None
         if isinstance(outputs, list) and outputs:
@@ -223,7 +258,11 @@ def _transcribe_in_subprocess(
 
 
 class NemoWhisperBackend:
-    """ASR backend using NVIDIA NeMo models."""
+    """ASR backend using NVIDIA NeMo models.
+
+    One worker process is intentional: one loaded NeMo model owns process memory
+    or VRAM, so requests for a loaded model are serialized.
+    """
 
     def __init__(self, config: BackendConfig) -> None:
         """Initialize the backend."""
@@ -244,8 +283,6 @@ class NemoWhisperBackend:
 
     async def load(self) -> float:
         """Start subprocess and load model."""
-        import time  # noqa: PLC0415
-
         logger.debug(
             "Starting NeMo subprocess for model %s (resolved: %s, device=%s)",
             self._config.model_name,
@@ -259,12 +296,20 @@ class NemoWhisperBackend:
         self._executor = ProcessPoolExecutor(max_workers=1, mp_context=ctx)
 
         loop = asyncio.get_running_loop()
-        self._device = await loop.run_in_executor(
-            self._executor,
-            _load_model_in_subprocess,
-            self._resolved_model,
-            self._config.device,
-        )
+        try:
+            self._device = await loop.run_in_executor(
+                self._executor,
+                _load_model_in_subprocess,
+                self._resolved_model,
+                self._config.device,
+            )
+        except Exception:
+            executor = self._executor
+            self._executor = None
+            self._device = None
+            if executor is not None:
+                executor.shutdown(wait=True, cancel_futures=True)
+            raise
 
         load_duration = time.time() - start_time
         logger.info(
@@ -279,14 +324,15 @@ class NemoWhisperBackend:
         """Shutdown subprocess, releasing all memory."""
         if self._executor is None:
             return
+        executor = self._executor
+        self._executor = None
+        self._device = None
         logger.debug(
             "Shutting down NeMo subprocess for model %s",
             self._config.model_name,
         )
-        self._executor.shutdown(wait=False, cancel_futures=True)
-        self._executor = None
-        self._device = None
-        logger.info("Model %s unloaded (subprocess terminated)", self._config.model_name)
+        await asyncio.to_thread(executor.shutdown, wait=True, cancel_futures=True)
+        logger.info("Model %s unloaded (subprocess shut down)", self._config.model_name)
 
     async def transcribe(
         self,
@@ -311,12 +357,29 @@ class NemoWhisperBackend:
         }
 
         loop = asyncio.get_running_loop()
-        result = await loop.run_in_executor(
-            self._executor,
-            _transcribe_in_subprocess,
-            audio,
-            kwargs,
-        )
+        try:
+            result = await loop.run_in_executor(
+                self._executor,
+                _transcribe_in_subprocess,
+                audio,
+                kwargs,
+            )
+        except BrokenProcessPool:
+            logger.warning(
+                "NeMo subprocess for model %s died; reloading and retrying once",
+                self._config.model_name,
+            )
+            await self.unload()
+            await self.load()
+            if self._executor is None:
+                msg = "Model reload failed after NeMo subprocess died."
+                raise RuntimeError(msg) from None
+            result = await loop.run_in_executor(
+                self._executor,
+                _transcribe_in_subprocess,
+                audio,
+                kwargs,
+            )
 
         return TranscriptionResult(
             text=result["text"],
