@@ -78,7 +78,10 @@ final class ConfigurableHotkeyController {
     private var suppressNextFunctionKeyRelease = false
     private var holdToTranscribeKeyState = HoldToTranscribeKeyState()
     private var pendingHoldToTranscribeWorkItem: DispatchWorkItem?
+    private var accessibilityRetryWorkItem: DispatchWorkItem?
     private let holdToTranscribeDelay: TimeInterval = 0.16
+    private let accessibilityRetryInterval: TimeInterval = 1
+    private let accessibilityRetryTimeout: TimeInterval = 120
 
     private init() {}
 
@@ -129,6 +132,9 @@ final class ConfigurableHotkeyController {
     }
 
     private func registerFunctionAwareTranscriptionHotkeys(runner: AgentCommandRunner) {
+        cancelAccessibilityRetry()
+        guard eventTap == nil else { return }
+
         let eventMask =
             CGEventMask(1 << CGEventType.keyDown.rawValue) |
             CGEventMask(1 << CGEventType.keyUp.rawValue) |
@@ -153,6 +159,7 @@ final class ConfigurableHotkeyController {
             userInfo: userInfo
         ) else {
             requestAccessibilityPermissionForFunctionHotkeys()
+            scheduleAccessibilityRetry(runner: runner, deadline: Date().addingTimeInterval(accessibilityRetryTimeout))
             Task { @MainActor in
                 runner.statusMessage = "Allow Accessibility permission for Fn transcription shortcuts"
             }
@@ -169,6 +176,7 @@ final class ConfigurableHotkeyController {
 
     func suspendFunctionAwareHotkeysForAccessibilityReset() {
         cancelPendingHoldToTranscribe()
+        cancelAccessibilityRetry()
 
         if let tap = eventTap {
             CGEvent.tapEnable(tap: tap, enable: false)
@@ -187,6 +195,12 @@ final class ConfigurableHotkeyController {
 
     func resumeFunctionAwareHotkeysAfterAccessibilityReset(runner: AgentCommandRunner) {
         guard registered, eventTap == nil else { return }
+        self.runner = runner
+        registerFunctionAwareTranscriptionHotkeys(runner: runner)
+    }
+
+    func retryFunctionAwareHotkeysIfTrusted(runner: AgentCommandRunner) {
+        guard registered, eventTap == nil, AXIsProcessTrusted() else { return }
         self.runner = runner
         registerFunctionAwareTranscriptionHotkeys(runner: runner)
     }
@@ -317,6 +331,44 @@ final class ConfigurableHotkeyController {
     private func cancelPendingHoldToTranscribe() {
         pendingHoldToTranscribeWorkItem?.cancel()
         pendingHoldToTranscribeWorkItem = nil
+    }
+
+    private func scheduleAccessibilityRetry(runner: AgentCommandRunner, deadline: Date) {
+        guard Date() < deadline else { return }
+
+        var workItem: DispatchWorkItem?
+        workItem = DispatchWorkItem { [weak self] in
+            guard let self,
+                  workItem?.isCancelled == false else {
+                return
+            }
+
+            self.accessibilityRetryWorkItem = nil
+            guard self.eventTap == nil else { return }
+
+            guard AXIsProcessTrusted() else {
+                self.scheduleAccessibilityRetry(runner: runner, deadline: deadline)
+                return
+            }
+
+            self.runner = runner
+            self.registerFunctionAwareTranscriptionHotkeys(runner: runner)
+            if self.eventTap != nil {
+                Task { @MainActor in
+                    runner.statusMessage = "Accessibility permission enabled"
+                }
+            }
+        }
+
+        accessibilityRetryWorkItem = workItem
+        if let workItem {
+            DispatchQueue.main.asyncAfter(deadline: .now() + accessibilityRetryInterval, execute: workItem)
+        }
+    }
+
+    private func cancelAccessibilityRetry() {
+        accessibilityRetryWorkItem?.cancel()
+        accessibilityRetryWorkItem = nil
     }
 
     private func requestHoldToTranscribeStart(
