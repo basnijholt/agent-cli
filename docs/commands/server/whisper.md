@@ -109,7 +109,7 @@ agent-cli server whisper \
 | `--preload` | `false` | Load model(s) immediately at startup instead of on first request. Useful for reducing first-request latency |
 | `--host` | `0.0.0.0` | Network interface to bind. Use `0.0.0.0` for all interfaces |
 | `--port, -p` | `10301` | Port for OpenAI-compatible HTTP API (`/v1/audio/transcriptions`) |
-| `--asr-wyoming-port` | `10300` | Port for Wyoming protocol (Home Assistant integration) |
+| `--wyoming-port, --asr-wyoming-port` | `10300` | Port for Wyoming protocol (Home Assistant integration) |
 | `--no-wyoming` | `false` | Disable Wyoming protocol server (only run HTTP API) |
 | `--download-only` | `false` | Download model(s) to cache and exit. Useful for Docker builds |
 | `--backend, -b` | `auto` | Inference backend: `auto` (faster-whisper on CUDA/CPU, MLX on Apple Silicon), `faster-whisper`, `mlx`, `transformers` (HuggingFace, supports safetensors and known remote-code ASR models), `nemo` (NVIDIA NeMo, supports Parakeet models) |

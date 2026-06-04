@@ -85,6 +85,15 @@ def test_get_command_options_dev_new_uses_start_agent_and_agent_name() -> None:
     assert "--with-agent" not in names
 
 
+def test_get_command_options_server_wyoming_ports_include_aliases() -> None:
+    """Server Wyoming port docs should show canonical flags and client-style aliases."""
+    whisper_names = {opt["name"] for opt in _get_command_options("server.whisper")}
+    tts_names = {opt["name"] for opt in _get_command_options("server.tts")}
+
+    assert "--wyoming-port, --asr-wyoming-port" in whisper_names
+    assert "--wyoming-port, --tts-wyoming-port" in tts_names
+
+
 # --- Tests for _options_table ---
 
 
@@ -294,3 +303,9 @@ def test_config_example_subcommand_section() -> None:
     """Test that subcommand dots are replaced with dashes in section name."""
     config = config_example("memory.proxy")
     assert "[memory-proxy]" in config
+
+
+def test_config_example_uses_primary_option_name_for_aliases() -> None:
+    """Aliased options should use the first flag as the config key."""
+    config = config_example("server.whisper")
+    assert "# wyoming_port = 10300" in config
