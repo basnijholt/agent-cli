@@ -132,8 +132,8 @@ final class ConfigurableHotkeyController {
     }
 
     private func registerFunctionAwareTranscriptionHotkeys(runner: AgentCommandRunner) {
-        guard eventTap == nil else { return }
         cancelAccessibilityRetry()
+        guard eventTap == nil else { return }
 
         let eventMask =
             CGEventMask(1 << CGEventType.keyDown.rawValue) |
@@ -351,6 +351,7 @@ final class ConfigurableHotkeyController {
                 return
             }
 
+            self.runner = runner
             self.registerFunctionAwareTranscriptionHotkeys(runner: runner)
             if self.eventTap != nil {
                 Task { @MainActor in
