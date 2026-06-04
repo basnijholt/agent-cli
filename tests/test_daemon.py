@@ -12,6 +12,7 @@ import pytest
 from typer.testing import CliRunner
 
 from agent_cli.cli import app
+from agent_cli.install.launchd import _generate_plist as launchd_generate_plist
 from agent_cli.install.launchd import _get_log_command as launchd_get_log_command
 from agent_cli.install.launchd import _get_service_status as launchd_get_service_status
 from agent_cli.install.launchd import manager as launchd_manager
@@ -83,6 +84,33 @@ class TestServiceConfig:
         assert "test" in cmd
         assert "--port" in cmd
         assert "8080" in cmd
+
+    def test_build_service_command_appends_runtime_args(self, tmp_path: Path) -> None:
+        """User-provided daemon args are appended to the generated server command."""
+        uv_path = tmp_path / "uv"
+        uv_path.touch()
+        service = ServiceConfig(
+            name="whisper",
+            display_name="Whisper ASR",
+            description="Test",
+            extra="server",
+            command_args=["--port", "10301"],
+        )
+
+        cmd = build_service_command(
+            service,
+            uv_path,
+            extra_command_args=["--backend", "nemo", "--model", "parakeet"],
+        )
+
+        assert cmd[-6:] == [
+            "--port",
+            "10301",
+            "--backend",
+            "nemo",
+            "--model",
+            "parakeet",
+        ]
 
     def test_build_service_command_with_python_version(self, tmp_path: Path) -> None:
         """Test building service command with Python version constraint."""
@@ -434,6 +462,58 @@ class TestDaemonCLI:
         mock_manager.install_service.assert_called_once_with("whisper")
 
     @patch("agent_cli.daemon.cli.get_service_manager")
+    def test_daemon_install_passes_trailing_service_args(self, mock_get_manager: MagicMock) -> None:
+        """Arguments after -- are persisted in the installed service command."""
+        mock_manager = MagicMock(spec=ServiceManager)
+        mock_manager.check_uv_installed.return_value = (True, Path("/usr/bin/uv"))
+        mock_manager.install_service.return_value = InstallResult(
+            success=True,
+            message="Installed and started",
+            log_dir=None,
+        )
+        mock_manager.get_log_command.return_value = "journalctl --user -u agent-cli-whisper -f"
+        mock_get_manager.return_value = mock_manager
+
+        result = runner.invoke(
+            app,
+            [
+                "daemon",
+                "install",
+                "whisper",
+                "-y",
+                "--",
+                "--backend",
+                "nemo",
+                "--model",
+                "parakeet-unified-en-0.6b",
+            ],
+        )
+
+        assert result.exit_code == 0
+        mock_manager.install_service.assert_called_once_with(
+            "whisper",
+            ["--backend", "nemo", "--model", "parakeet-unified-en-0.6b"],
+        )
+
+    @patch("agent_cli.daemon.cli.get_service_manager")
+    def test_daemon_install_rejects_trailing_args_with_multiple_services(
+        self, mock_get_manager: MagicMock
+    ) -> None:
+        """Custom daemon args are only valid when installing one service."""
+        mock_manager = MagicMock(spec=ServiceManager)
+        mock_manager.check_uv_installed.return_value = (True, Path("/usr/bin/uv"))
+        mock_get_manager.return_value = mock_manager
+
+        result = runner.invoke(
+            app,
+            ["daemon", "install", "whisper", "tts-kokoro", "-y", "--", "--port", "10309"],
+        )
+
+        assert result.exit_code == 1
+        assert "only supported when installing exactly one service" in result.output
+        mock_manager.install_service.assert_not_called()
+
+    @patch("agent_cli.daemon.cli.get_service_manager")
     def test_daemon_install_failure(self, mock_get_manager: MagicMock) -> None:
         """Test failed daemon installation."""
         mock_manager = MagicMock(spec=ServiceManager)
@@ -653,6 +733,21 @@ class TestLaunchdModule:
         assert "agent-cli-whisper" in cmd
         assert ".log" in cmd
 
+    def test_launchd_generate_plist_appends_extra_args(self, tmp_path: Path) -> None:
+        """Launchd plist persists user-provided daemon args."""
+        uv_path = tmp_path / "uv"
+        service = SERVICES["whisper"]
+
+        plist = launchd_generate_plist(
+            service,
+            uv_path,
+            tmp_path,
+            tmp_path,
+            ["--model", "small", "--port", "10311"],
+        )
+
+        assert plist["ProgramArguments"][-4:] == ["--model", "small", "--port", "10311"]
+
     @patch("subprocess.run")
     def test_launchd_get_service_status_not_installed(
         self,
@@ -747,9 +842,9 @@ class TestSystemdModule:
         assert status.pid == 12345
         mock_exists.assert_called()
 
-    def test_systemd_generate_unit_file(self, tmp_path: Path) -> None:
+    def test_systemd_generate_unit_file(self) -> None:
         """Test systemd unit file generation."""
-        uv_path = tmp_path / "uv"
+        uv_path = Path("uv")
         service = SERVICES["whisper"]
         unit_content = systemd_generate_unit_file(service, uv_path)
 
@@ -759,3 +854,57 @@ class TestSystemdModule:
         assert "ExecStart=" in unit_content
         assert str(uv_path) in unit_content
         assert "Restart=on-failure" in unit_content
+
+    def test_systemd_generate_unit_file_appends_extra_args(self) -> None:
+        """Systemd unit file persists user-provided daemon args."""
+        uv_path = Path("uv")
+        service = SERVICES["whisper"]
+
+        unit_content = systemd_generate_unit_file(
+            service,
+            uv_path,
+            ["--model", "small", "--port", "10311"],
+        )
+
+        assert "--model small --port 10311" in unit_content
+
+    def test_systemd_generate_unit_file_escapes_percent_args(self) -> None:
+        """Systemd unit file escapes literal percent signs in args."""
+        uv_path = Path("uv")
+        service = SERVICES["whisper"]
+
+        unit_content = systemd_generate_unit_file(
+            service,
+            uv_path,
+            ["--base-url", "http://localhost/audio%20files"],
+        )
+
+        assert "audio%%20files" in unit_content
+
+    def test_systemd_generate_unit_file_escapes_dollar_args(self) -> None:
+        """Systemd unit file escapes literal dollar signs in args."""
+        uv_path = Path("uv")
+        service = SERVICES["whisper"]
+
+        unit_content = systemd_generate_unit_file(
+            service,
+            uv_path,
+            ["--cache-dir", "$HOME/agent-cache"],
+        )
+
+        assert "$$HOME/agent-cache" in unit_content
+
+    def test_systemd_generate_unit_file_uses_systemd_quotes(self) -> None:
+        """Systemd unit file avoids shell-only quote concatenation."""
+        uv_path = Path("uv")
+        service = SERVICES["whisper"]
+
+        unit_content = systemd_generate_unit_file(
+            service,
+            uv_path,
+            ["--cache-dir", "/var/lib/O'Connor/cache", "--prompt", "hello world"],
+        )
+
+        assert "'\"'\"'" not in unit_content
+        assert '"/var/lib/O\'Connor/cache"' in unit_content
+        assert '"hello world"' in unit_content

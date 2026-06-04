@@ -20,6 +20,40 @@ from agent_cli.install.service_config import (
 # Linux-specific paths for uv
 _LINUX_UV_PATHS = [Path("/usr/bin/uv")]
 
+_SYSTEMD_ESCAPE_CHARS = {
+    "\a": r"\a",
+    "\b": r"\b",
+    "\f": r"\f",
+    "\n": r"\n",
+    "\r": r"\r",
+    "\t": r"\t",
+    "\v": r"\v",
+    "\\": r"\\",
+    '"': r"\"",
+}
+
+
+def _format_exec_start_arg(arg: str) -> str:
+    """Format one argv item for systemd ExecStart syntax."""
+    needs_quotes = arg == "" or any(char.isspace() or char in {'"', "'", "\\", ";"} for char in arg)
+
+    escaped_parts: list[str] = []
+    for char in arg:
+        if char == "%":
+            escaped_parts.append("%%")
+        elif char == "$":
+            escaped_parts.append("$$")
+        else:
+            escaped_parts.append(_SYSTEMD_ESCAPE_CHARS.get(char, char))
+
+    escaped = "".join(escaped_parts)
+    return f'"{escaped}"' if needs_quotes else escaped
+
+
+def _format_exec_start(args: list[str]) -> str:
+    """Format argv for systemd ExecStart without shell quoting."""
+    return " ".join(_format_exec_start_arg(arg) for arg in args)
+
 
 def _get_unit_name(service_name: str) -> str:
     """Get systemd unit name for a service."""
@@ -64,9 +98,12 @@ def _get_recent_logs(service_name: str, num_lines: int = 10) -> list[str]:
 def _generate_unit_file(
     service: ServiceConfig,
     uv_path: Path,
+    extra_command_args: list[str] | None = None,
 ) -> str:
     """Generate systemd unit file content for a service."""
-    exec_start = " ".join(build_service_command(service, uv_path))
+    exec_start = _format_exec_start(
+        build_service_command(service, uv_path, extra_command_args=extra_command_args),
+    )
 
     return f"""[Unit]
 Description=agent-cli {service.display_name}
@@ -129,7 +166,10 @@ def _get_service_status(service_name: str) -> ServiceStatus:
     )
 
 
-def _install_service(service_name: str) -> InstallResult:
+def _install_service(
+    service_name: str,
+    extra_command_args: list[str] | None = None,
+) -> InstallResult:
     """Install a service as a Linux systemd user service.
 
     Returns an InstallResult with success status and message.
@@ -157,7 +197,7 @@ def _install_service(service_name: str) -> InstallResult:
     unit_path.parent.mkdir(parents=True, exist_ok=True)
 
     # Generate and write unit file
-    unit_content = _generate_unit_file(service, uv_path)
+    unit_content = _generate_unit_file(service, uv_path, extra_command_args)
     unit_path.write_text(unit_content)
 
     # Stop service if running (ignore errors if not running)
