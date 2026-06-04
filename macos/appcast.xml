@@ -5,6 +5,21 @@
         <link>https://github.com/basnijholt/agent-cli</link>
         <description>Signed Agent CLI macOS app updates.</description>
         <item>
+            <title>0.98.1</title>
+            <pubDate>Thu, 04 Jun 2026 16:50:48 +0000</pubDate>
+            <link>https://github.com/basnijholt/agent-cli</link>
+            <sparkle:version>189</sparkle:version>
+            <sparkle:shortVersionString>0.98.1</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[## What’s Changed
+
+* Add macOS transcription TTL setting (#578) @basnijholt
+
+]]></description>
+            <enclosure url="https://github.com/basnijholt/agent-cli/releases/download/v0.98.1/AgentCLI.zip" length="22896191" type="application/octet-stream" sparkle:edSignature="4g9PD/is1i4Htq5eM2TfAUjxEaXSb7xJJDjnliSfX5TQfqeLLsItUcaCLbhpXaOKqzq0YByVg5SLSpqHK08vAw=="/>
+        </item>
+        <item>
             <title>0.98.0</title>
             <pubDate>Thu, 04 Jun 2026 16:25:34 +0000</pubDate>
             <link>https://github.com/basnijholt/agent-cli</link>
@@ -153,24 +168,6 @@
 **Full Changelog**: https://github.com/basnijholt/agent-cli/compare/v0.96.5...v0.96.6
 ]]></description>
             <enclosure url="https://github.com/basnijholt/agent-cli/releases/download/v0.96.6/AgentCLI.zip" length="22742441" type="application/octet-stream" sparkle:edSignature="DriNk09uSrq9l20Pu7S+y34r4LvO+rfTHGOm1gsPDOd94FQZXqgDZxbVYYfTGgJ6eWSb0l3ljQokW6VQhJ97DQ=="/>
-        </item>
-        <item>
-            <title>0.96.5</title>
-            <pubDate>Fri, 29 May 2026 16:40:33 +0000</pubDate>
-            <link>https://github.com/basnijholt/agent-cli</link>
-            <sparkle:version>179</sparkle:version>
-            <sparkle:shortVersionString>0.96.5</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[## What’s Changed
-
-* Fix bare Fn shortcut detection on macOS (#554) @marcellaholm
-* Fix macOS setup menu bar icon (#555) @marcellaholm
-* Use purr for recording release sound (#556) @basnijholt
-* Boost quiet waveform levels (#553) @basnijholt
-
-]]></description>
-            <enclosure url="https://github.com/basnijholt/agent-cli/releases/download/v0.96.5/AgentCLI.zip" length="22738995" type="application/octet-stream" sparkle:edSignature="Jf0aoWxUGvOR6idZhELnlGf61IHrf8Kw92tcH5Xk4wC8chn3mO3OgeE+8+P2orbHC0VhszHgjMNzsGN3bZPwCg=="/>
         </item>
     </channel>
 </rss>
