@@ -5,6 +5,22 @@
         <link>https://github.com/basnijholt/agent-cli</link>
         <description>Signed Agent CLI macOS app updates.</description>
         <item>
+            <title>0.98.4</title>
+            <pubDate>Thu, 04 Jun 2026 22:31:54 +0000</pubDate>
+            <link>https://github.com/basnijholt/agent-cli</link>
+            <sparkle:version>192</sparkle:version>
+            <sparkle:shortVersionString>0.98.4</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[## What’s Changed
+
+* Fix macOS voice level meter input source (#581) @basnijholt
+* Clarify NeMo prompt handling (#582) @basnijholt
+
+]]></description>
+            <enclosure url="https://github.com/basnijholt/agent-cli/releases/download/v0.98.4/AgentCLI.zip" length="22902781" type="application/octet-stream" sparkle:edSignature="7ozRAuD+LY4sh7h792LgmHn55ZnUHFHKTyro+436GCnfJydmJo9/PJK1er7y3pyvsrHiqGO6bKkszA+HY3VRBA=="/>
+        </item>
+        <item>
             <title>0.98.3</title>
             <pubDate>Thu, 04 Jun 2026 18:19:53 +0000</pubDate>
             <link>https://github.com/basnijholt/agent-cli</link>
@@ -152,21 +168,6 @@
 
 ]]></description>
             <enclosure url="https://github.com/basnijholt/agent-cli/releases/download/v0.96.9/AgentCLI.zip" length="22750010" type="application/octet-stream" sparkle:edSignature="semUotDS9kCm4NJKcULqF9E7UyZLzP9HfwAWArIXmDWpRe7Ib22YHL6II4lQ6YZSi7mltwWvQMACO0V0r0o+AQ=="/>
-        </item>
-        <item>
-            <title>0.96.8</title>
-            <pubDate>Fri, 29 May 2026 17:28:43 +0000</pubDate>
-            <link>https://github.com/basnijholt/agent-cli</link>
-            <sparkle:version>182</sparkle:version>
-            <sparkle:shortVersionString>0.96.8</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[## What’s Changed
-
-* Fix macOS transcription log opener (#559) @basnijholt
-
-]]></description>
-            <enclosure url="https://github.com/basnijholt/agent-cli/releases/download/v0.96.8/AgentCLI.zip" length="22743296" type="application/octet-stream" sparkle:edSignature="fmxqkfXnArafteyN2XbeAeni7wiUrWd9WNPs1Yxgl+/8vwrl0OMP67/R15ROqyjiwa8hMiIWRritGuiIrMIYBA=="/>
         </item>
     </channel>
 </rss>
