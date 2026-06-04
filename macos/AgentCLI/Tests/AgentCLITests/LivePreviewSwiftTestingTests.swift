@@ -9,6 +9,8 @@ func toggleTranscriptionDisablesLivePreviewArgumentsByDefault() {
         "transcribe",
         "--toggle",
         "--quiet",
+        "--voice-level-log",
+        "~/.config/agent-cli/voice-levels.jsonl",
         "--transcription-log",
         "~/.config/agent-cli/transcriptions.jsonl",
     ])
@@ -23,6 +25,8 @@ func toggleTranscriptionEnablesLivePreviewArgumentsWhenConfigured() {
         "transcribe",
         "--toggle",
         "--quiet",
+        "--voice-level-log",
+        "~/.config/agent-cli/voice-levels.jsonl",
         "--transcription-log",
         "~/.config/agent-cli/transcriptions.jsonl",
         "--live-preview-log",
