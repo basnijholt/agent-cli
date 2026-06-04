@@ -3,29 +3,67 @@ import Carbon.HIToolbox
 import Foundation
 import KeyboardShortcuts
 
+enum HoldToTranscribeKeyAction: Equatable {
+    case none
+    case waitForStart
+    case stopNow
+}
+
 struct HoldToTranscribeKeyState {
-    private(set) var isStartPendingOrRecording = false
-
-    mutating func requestStart() -> Bool {
-        guard !isStartPendingOrRecording else { return false }
-        isStartPendingOrRecording = true
-        return true
+    private enum State {
+        case idle
+        case startPending(releaseRequested: Bool)
+        case recording
     }
 
-    mutating func releaseNeedsStop() -> Bool {
-        guard isStartPendingOrRecording else { return false }
-        isStartPendingOrRecording = false
-        return true
-    }
+    private var state: State = .idle
 
-    mutating func completeStart(started: Bool) {
-        if !started {
-            isStartPendingOrRecording = false
+    var isStartPendingOrRecording: Bool {
+        switch state {
+        case .idle:
+            return false
+        case .startPending, .recording:
+            return true
         }
     }
 
+    mutating func requestStart() -> Bool {
+        guard case .idle = state else { return false }
+        state = .startPending(releaseRequested: false)
+        return true
+    }
+
+    mutating func release() -> HoldToTranscribeKeyAction {
+        switch state {
+        case .idle:
+            return .none
+        case .startPending:
+            state = .startPending(releaseRequested: true)
+            return .waitForStart
+        case .recording:
+            state = .idle
+            return .stopNow
+        }
+    }
+
+    mutating func completeStart(started: Bool) -> HoldToTranscribeKeyAction {
+        guard case let .startPending(releaseRequested) = state else { return .none }
+        guard started else {
+            state = .idle
+            return .none
+        }
+
+        if releaseRequested {
+            state = .idle
+            return .stopNow
+        }
+
+        state = .recording
+        return .none
+    }
+
     mutating func reset() {
-        isStartPendingOrRecording = false
+        state = .idle
     }
 }
 
@@ -78,8 +116,9 @@ final class ConfigurableHotkeyController {
                   !self.usesFunctionShortcut(shortcut) else {
                 return
             }
+            guard self.holdToTranscribeKeyState.requestStart() else { return }
             Task { @MainActor in
-                _ = runner.beginHoldToTranscribe()
+                self.finishHoldToTranscribeStart(runner: runner)
             }
         }
         KeyboardShortcuts.onKeyUp(for: .holdToTranscribe) {
@@ -88,7 +127,7 @@ final class ConfigurableHotkeyController {
                   !self.usesFunctionShortcut(shortcut) else {
                 return
             }
-            Task { @MainActor in runner.endHoldToTranscribe() }
+            self.stopHoldToTranscribeIfNeeded(self.holdToTranscribeKeyState.release())
         }
     }
 
@@ -219,23 +258,21 @@ final class ConfigurableHotkeyController {
             if !isAutorepeat(event) && holdToTranscribeKeyState.requestStart() {
                 Task { @MainActor in
                     guard let runner = self.runner else {
-                        self.holdToTranscribeKeyState.completeStart(started: false)
+                        _ = self.holdToTranscribeKeyState.completeStart(started: false)
                         return
                     }
                     let started = runner.beginHoldToTranscribe()
-                    self.holdToTranscribeKeyState.completeStart(started: started)
+                    let action = self.holdToTranscribeKeyState.completeStart(started: started)
+                    if action == .stopNow {
+                        runner.endHoldToTranscribe()
+                    }
                 }
             }
             return true
         }
 
         if type == .keyUp {
-            if holdToTranscribeKeyState.releaseNeedsStop() {
-                Task { @MainActor in
-                    guard let runner = self.runner else { return }
-                    runner.endHoldToTranscribe()
-                }
-            }
+            stopHoldToTranscribeIfNeeded(holdToTranscribeKeyState.release())
             return true
         }
 
@@ -265,15 +302,16 @@ final class ConfigurableHotkeyController {
             return true
         }
 
-        if holdToTranscribeKeyState.releaseNeedsStop() {
-            Task { @MainActor in
-                guard let runner = self.runner else { return }
-                runner.endHoldToTranscribe()
-            }
-        } else {
+        let action = holdToTranscribeKeyState.release()
+        switch action {
+        case .stopNow:
+            stopHoldToTranscribeIfNeeded(action)
+        case .none:
             Task { @MainActor in
                 _ = self.runner?.stopTranscriptionFromFunctionKeyIfNeeded()
             }
+        case .waitForStart:
+            break
         }
 
         return true
@@ -293,16 +331,19 @@ final class ConfigurableHotkeyController {
             guard self.holdToTranscribeKeyState.requestStart() else { return }
             Task { @MainActor in
                 if self.runner?.stopTranscriptionFromFunctionKeyIfNeeded() == true {
-                    self.holdToTranscribeKeyState.completeStart(started: false)
+                    _ = self.holdToTranscribeKeyState.completeStart(started: false)
                     return
                 }
 
                 guard let runner = self.runner else {
-                    self.holdToTranscribeKeyState.completeStart(started: false)
+                    _ = self.holdToTranscribeKeyState.completeStart(started: false)
                     return
                 }
                 let started = runner.beginHoldToTranscribe()
-                self.holdToTranscribeKeyState.completeStart(started: started)
+                let action = self.holdToTranscribeKeyState.completeStart(started: started)
+                if action == .stopNow {
+                    runner.endHoldToTranscribe()
+                }
             }
         }
 
@@ -315,6 +356,23 @@ final class ConfigurableHotkeyController {
     private func cancelPendingHoldToTranscribe() {
         pendingHoldToTranscribeWorkItem?.cancel()
         pendingHoldToTranscribeWorkItem = nil
+    }
+
+    @MainActor
+    private func finishHoldToTranscribeStart(runner: AgentCommandRunner) {
+        let started = runner.beginHoldToTranscribe()
+        let action = holdToTranscribeKeyState.completeStart(started: started)
+        if action == .stopNow {
+            runner.endHoldToTranscribe()
+        }
+    }
+
+    private func stopHoldToTranscribeIfNeeded(_ action: HoldToTranscribeKeyAction) {
+        guard action == .stopNow else { return }
+        Task { @MainActor in
+            guard let runner = self.runner else { return }
+            runner.endHoldToTranscribe()
+        }
     }
 
     private func shortcutMatches(type: CGEventType, event: CGEvent, shortcut: KeyboardShortcuts.Shortcut) -> Bool {

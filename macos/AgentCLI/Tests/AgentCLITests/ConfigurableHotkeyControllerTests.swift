@@ -3,23 +3,34 @@ import XCTest
 @testable import AgentCLI
 
 final class ConfigurableHotkeyControllerTests: XCTestCase {
-    func testReleaseStopsPendingHoldStart() {
+    func testReleaseBeforeHoldStartCompletesStopsAfterSuccessfulStart() {
         var state = HoldToTranscribeKeyState()
 
         XCTAssertTrue(state.requestStart())
-        XCTAssertTrue(state.releaseNeedsStop())
-        state.completeStart(started: true)
+        XCTAssertEqual(state.release(), .waitForStart)
 
-        XCTAssertFalse(state.releaseNeedsStop())
+        XCTAssertEqual(state.completeStart(started: true), .stopNow)
+        XCTAssertFalse(state.isStartPendingOrRecording)
     }
 
-    func testFailedHoldStartClearsPendingState() {
+    func testReleaseAfterHoldStartStopsImmediately() {
         var state = HoldToTranscribeKeyState()
 
         XCTAssertTrue(state.requestStart())
-        state.completeStart(started: false)
+        XCTAssertEqual(state.completeStart(started: true), .none)
 
-        XCTAssertFalse(state.releaseNeedsStop())
+        XCTAssertEqual(state.release(), .stopNow)
+        XCTAssertFalse(state.isStartPendingOrRecording)
+    }
+
+    func testFailedHoldStartAfterReleaseClearsPendingStateWithoutStop() {
+        var state = HoldToTranscribeKeyState()
+
+        XCTAssertTrue(state.requestStart())
+        XCTAssertEqual(state.release(), .waitForStart)
+
+        XCTAssertEqual(state.completeStart(started: false), .none)
+        XCTAssertFalse(state.isStartPendingOrRecording)
     }
 }
 #endif
