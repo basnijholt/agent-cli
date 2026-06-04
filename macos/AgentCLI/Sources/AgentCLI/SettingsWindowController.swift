@@ -5,7 +5,7 @@ import SwiftUI
 final class SettingsWindowController {
     static let shared = SettingsWindowController()
 
-    private static let contentSize = NSSize(width: 460, height: 640)
+    private static let contentSize = NSSize(width: 460, height: 680)
 
     private var window: NSWindow?
 

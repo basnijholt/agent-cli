@@ -88,16 +88,18 @@ def _get_recent_logs(service_name: str, num_lines: int = 10) -> list[str]:
 
     lines: list[str] = []
 
-    # Prefer stdout as it has structured output (startup message, usage examples)
-    # stderr often has noisy warnings from libraries like PyTorch/Kokoro
     for log_file in [stdout_log, stderr_log]:
         if log_file.exists():
             try:
                 with log_file.open() as f:
                     all_lines = f.readlines()
-                    lines = [line.rstrip() for line in all_lines[-num_lines:]]
+                    recent_lines = [line.rstrip() for line in all_lines[-num_lines:]]
+                    if not recent_lines:
+                        continue
                     if lines:
-                        break
+                        lines.append("")
+                    lines.append(f"==> {log_file.name} <==")
+                    lines.extend(recent_lines)
             except OSError:
                 continue
 

@@ -12,6 +12,8 @@ import pytest
 from typer.testing import CliRunner
 
 from agent_cli.cli import app
+from agent_cli.core import deps
+from agent_cli.install import launchd as launchd_module
 from agent_cli.install.launchd import _generate_plist as launchd_generate_plist
 from agent_cli.install.launchd import _get_log_command as launchd_get_log_command
 from agent_cli.install.launchd import _get_service_status as launchd_get_service_status
@@ -157,6 +159,34 @@ class TestServiceConfig:
 
         assert "agent-cli[server,nemo-whisper,wyoming]" in cmd
         assert cmd[cmd.index("--python") + 1] == "3.13"
+
+    def test_build_service_command_materializes_nemo_override_without_spaces(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """UV --overrides receives a copied no-space path for bundled app installs."""
+        uv_path = tmp_path / "uv"
+        uv_path.touch()
+        source_dir = tmp_path / "Application Support" / "AgentCLI" / "_overrides"
+        source_dir.mkdir(parents=True)
+        source_override = source_dir / "nemo-whisper.txt"
+        source_override.write_text("kaldialign==0.9.3\n")
+        materialized_dir = tmp_path / "agentcli-overrides"
+        monkeypatch.setattr(deps, "_OVERRIDES_DIR", source_dir)
+        monkeypatch.setattr(deps, "_find_runtime_uv", lambda: str(uv_path))
+        monkeypatch.setenv("AGENTCLI_UV_OVERRIDES_DIR", str(materialized_dir))
+
+        cmd = build_service_command(
+            SERVICES["whisper"],
+            uv_path,
+            use_macos_extra=True,
+            extra_command_args=["--backend", "nemo"],
+        )
+
+        override_path = Path(cmd[cmd.index("--overrides") + 1])
+        assert override_path == materialized_dir / "nemo-whisper.txt"
+        assert " " not in override_path.as_posix()
+        assert override_path.read_text() == source_override.read_text()
+        assert "agent-cli[server,nemo-whisper,wyoming]" in cmd
 
     def test_build_service_command_uses_app_package_source(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
@@ -762,6 +792,21 @@ class TestLaunchdModule:
         )
 
         assert plist["ProgramArguments"][-4:] == ["--model", "small", "--port", "10311"]
+
+    def test_launchd_recent_logs_include_stdout_and_stderr(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Status output should include stderr when stdout has stale startup logs."""
+        (tmp_path / "stdout.log").write_text("old large-v3 startup\n")
+        (tmp_path / "stderr.log").write_text("error: File not found: `Library/Application`\n")
+        monkeypatch.setattr(launchd_module, "_get_log_dir", lambda _service_name: tmp_path)
+
+        lines = launchd_module._get_recent_logs("whisper", 5)
+
+        assert "==> stdout.log <==" in lines
+        assert "old large-v3 startup" in lines
+        assert "==> stderr.log <==" in lines
+        assert "error: File not found: `Library/Application`" in lines
 
     @patch("subprocess.run")
     def test_launchd_get_service_status_not_installed(

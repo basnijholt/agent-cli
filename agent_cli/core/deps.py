@@ -283,7 +283,41 @@ def _is_uv_cmd(cmd: list[str]) -> bool:
 
 def _uv_override_path(extra: str) -> Path:
     """Return the override file path for an extra."""
-    return _OVERRIDES_DIR / f"{extra}.txt"
+    source = _OVERRIDES_DIR / f"{extra}.txt"
+    if not _path_contains_whitespace(source):
+        return source
+    # uv mishandles --overrides paths with spaces (for example, app bundles
+    # installed under "Application Support"), so hand it a copied no-space path.
+    return _materialize_uv_override(source)
+
+
+def _path_contains_whitespace(path: Path) -> bool:
+    return any(character.isspace() for character in str(path))
+
+
+def _materialized_uv_overrides_dir() -> Path:
+    configured_dir = os.environ.get("AGENTCLI_UV_OVERRIDES_DIR")
+    if configured_dir:
+        configured_path = Path(configured_dir).expanduser()
+        if not _path_contains_whitespace(configured_path):
+            return configured_path
+
+    # Keep this outside AGENTCLI_APP_SUPPORT_DIR; that path usually contains a
+    # space on macOS and would reintroduce the launchd/uv parse failure.
+    return Path.home() / ".cache" / "agent-cli" / "uv-overrides"
+
+
+def _materialize_uv_override(source: Path) -> Path:
+    """Copy a bundled override to a no-space path that uv can parse."""
+    target = _materialized_uv_overrides_dir() / source.name
+    try:
+        source_bytes = source.read_bytes()
+        target.parent.mkdir(parents=True, exist_ok=True)
+        if not target.exists() or target.read_bytes() != source_bytes:
+            target.write_bytes(source_bytes)
+    except OSError:
+        return source
+    return target
 
 
 def _supports_uv_runtime_override(
