@@ -83,3 +83,16 @@ agent-cli install-extras rag memory vad
 # Install all extras
 agent-cli install-extras --all
 ```
+
+## NeMo / Parakeet
+
+Use the runtime installer for NVIDIA NeMo support:
+
+```bash
+agent-cli install-extras nemo-whisper wyoming
+agent-cli server whisper --backend nemo
+```
+
+This matters on Python 3.14. Plain `pip install "agent-cli[nemo-whisper]"` uses
+the published extra metadata, while `agent-cli install-extras nemo-whisper` can
+apply agent-cli's temporary uv override for the pinned NeMo Git build.
