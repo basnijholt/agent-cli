@@ -13,12 +13,16 @@ final class LiveTranscriptionPreview: ObservableObject {
     private static let pollInterval: TimeInterval = 0.25
     private var timer: Timer?
     private var logURL: URL?
+    private var readOffset: UInt64 = 0
+    private var pendingLine = ""
 
     private init() {}
 
     func start(logURL: URL = defaultLogURL) {
         stop()
         self.logURL = logURL
+        readOffset = 0
+        pendingLine = ""
         text = ""
         try? FileManager.default.createDirectory(
             at: logURL.deletingLastPathComponent(),
@@ -40,22 +44,52 @@ final class LiveTranscriptionPreview: ObservableObject {
         timer?.invalidate()
         timer = nil
         logURL = nil
+        readOffset = 0
+        pendingLine = ""
         text = ""
     }
 
     func poll() {
         guard let logURL,
-              let contents = try? String(contentsOf: logURL, encoding: .utf8) else {
+              let contents = readNewContents(from: logURL) else {
             return
         }
 
-        let latestText = contents
-            .components(separatedBy: .newlines)
+        let completeText = pendingLine + contents
+        let lines = completeText.components(separatedBy: .newlines)
+        pendingLine = completeText.hasSuffix("\n") || completeText.hasSuffix("\r") ? "" : (lines.last ?? "")
+
+        guard let latestText = lines
             .compactMap(Self.previewText)
-            .last ?? ""
+            .last else {
+            return
+        }
 
         if latestText != text {
             text = latestText
+        }
+    }
+
+    private func readNewContents(from logURL: URL) -> String? {
+        do {
+            let attributes = try FileManager.default.attributesOfItem(atPath: logURL.path)
+            let fileSize = (attributes[.size] as? NSNumber)?.uint64Value ?? 0
+            if readOffset > fileSize {
+                readOffset = 0
+                pendingLine = ""
+            }
+            guard fileSize > readOffset else { return nil }
+
+            let handle = try FileHandle(forReadingFrom: logURL)
+            defer {
+                try? handle.close()
+            }
+            try handle.seek(toOffset: readOffset)
+            guard let data = try handle.readToEnd(), !data.isEmpty else { return nil }
+            readOffset += UInt64(data.count)
+            return String(data: data, encoding: .utf8)
+        } catch {
+            return nil
         }
     }
 

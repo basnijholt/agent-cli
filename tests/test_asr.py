@@ -132,6 +132,30 @@ async def test_live_preview_streamer_stop_writes_final(tmp_path: Path) -> None:
 
 
 @pytest.mark.asyncio
+async def test_live_preview_streamer_ignores_partial_after_stop(tmp_path: Path) -> None:
+    """A stale partial must not be appended after the final transcript."""
+    log_file = tmp_path / "preview.jsonl"
+    preview = asr.LivePreviewStreamer(
+        asr.LivePreviewConfig(log_file=log_file),
+        wyoming_asr_cfg=config.WyomingASR(asr_wyoming_ip="localhost", asr_wyoming_port=10300),
+        logger=MagicMock(),
+    )
+    preview.reset_log()
+    await preview.add_chunk(b"\x00\x00" * 16_000)
+    await preview.stop("final words")
+
+    with patch(
+        "agent_cli.services.asr._transcribe_recorded_audio_wyoming",
+        new_callable=AsyncMock,
+        return_value="stale partial",
+    ):
+        await preview.emit_partial()
+
+    entries = [json.loads(line) for line in log_file.read_text().splitlines()]
+    assert [entry["type"] for entry in entries] == ["final"]
+
+
+@pytest.mark.asyncio
 async def test_send_audio() -> None:
     """Test that _send_audio sends the correct events."""
     # Arrange

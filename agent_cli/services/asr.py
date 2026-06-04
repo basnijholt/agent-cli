@@ -171,6 +171,8 @@ class LivePreviewStreamer:
         text = text.strip()
         if not text or text == self._last_text:
             return
+        if self._stop_event.is_set():
+            return
 
         self._revision += 1
         self._last_text = text
