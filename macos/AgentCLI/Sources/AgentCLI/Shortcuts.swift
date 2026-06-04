@@ -373,7 +373,11 @@ struct SettingsView: View {
             } header: {
                 Text("Transcription Instructions")
             } footer: {
-                Text("Names, vocabulary, and guidance to pass as initial transcription context.")
+                Text(
+                    selectedTranscriptionBackend == .nemo && !useUserInstalledAgentCLI
+                        ? "Parakeet does not support names or vocabulary as text prompt context, so this field has no effect for bundled NeMo transcription."
+                        : "Names, vocabulary, and guidance to pass as initial transcription context."
+                )
             }
 
             Section {

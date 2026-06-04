@@ -791,8 +791,9 @@ the `[defaults]` section of your configuration file.
 │ --help  -h        Show this message and exit.                                          │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM Configuration ────────────────────────────────────────────────────────────────────╮
-│ --extra-instructions                TEXT  Extra instructions appended to the LLM       │
-│                                           cleanup prompt (requires --llm).             │
+│ --extra-instructions                TEXT  Extra ASR context where supported, and LLM   │
+│                                           cleanup instructions when --llm is enabled.  │
+│                                           The NeMo backend ignores ASR text prompts.   │
 │ --llm                   --no-llm          Clean up transcript with LLM: fix errors,    │
 │                                           add punctuation, remove filler words. Uses   │
 │                                           --extra-instructions if set (via CLI or      │

@@ -95,7 +95,7 @@ The `--from-file` option supports multiple audio formats:
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--extra-instructions` | - | Extra instructions appended to the LLM cleanup prompt (requires `--llm`). |
+| `--extra-instructions` | - | Extra ASR context where supported, and LLM cleanup instructions when `--llm` is enabled. The NeMo backend ignores ASR text prompts. |
 | `--llm/--no-llm` | `false` | Clean up transcript with LLM: fix errors, add punctuation, remove filler words. Uses `--extra-instructions` if set (via CLI or config file). Not compatible with --diarize. |
 
 ### Audio Recovery
