@@ -234,6 +234,111 @@ async def test_live_preview_console_disables_rich_live_status(
     mock_maybe_live.assert_called_once_with(False)
 
 
+@pytest.mark.asyncio
+@patch("agent_cli.agents.transcribe.signal_handling_context")
+@patch("agent_cli.agents.transcribe.maybe_live")
+@patch("agent_cli.agents.transcribe.asr.create_transcriber")
+async def test_live_preview_console_keeps_rich_live_status_for_non_wyoming_provider(
+    mock_create_transcriber: MagicMock,
+    mock_maybe_live: MagicMock,
+    mock_signal_handling_context: MagicMock,
+) -> None:
+    """Console preview should only hide Rich status when preview can run."""
+    mock_maybe_live.return_value = nullcontext(None)
+    mock_create_transcriber.return_value = AsyncMock(return_value="hello world")
+    mock_signal_handling_context.return_value.__enter__.return_value = asyncio.Event()
+
+    await transcribe._async_main(
+        extra_instructions=None,
+        provider_cfg=config.ProviderSelection(
+            asr_provider="openai",
+            llm_provider="ollama",
+            tts_provider="wyoming",
+        ),
+        general_cfg=config.General(
+            log_level="INFO",
+            log_file=None,
+            quiet=False,
+            list_devices=False,
+            clipboard=False,
+        ),
+        audio_in_cfg=config.AudioInput(),
+        wyoming_asr_cfg=config.WyomingASR(asr_wyoming_ip="localhost", asr_wyoming_port=12345),
+        openai_asr_cfg=config.OpenAIASR(asr_openai_model="whisper-1"),
+        gemini_asr_cfg=config.GeminiASR(
+            asr_gemini_model="gemini-2.0-flash",
+            gemini_api_key="test-key",
+        ),
+        ollama_cfg=config.Ollama(llm_ollama_model="", llm_ollama_host=""),
+        openai_llm_cfg=config.OpenAILLM(llm_openai_model="", openai_base_url=None),
+        gemini_llm_cfg=config.GeminiLLM(
+            llm_gemini_model="gemini-1.5-flash",
+            gemini_api_key="test-key",
+        ),
+        llm_enabled=False,
+        transcription_log=None,
+        emit_output=False,
+        live_preview_console=True,
+    )
+
+    mock_maybe_live.assert_called_once_with(True)
+    mock_create_transcriber.return_value.assert_awaited_once()
+    assert mock_create_transcriber.return_value.await_args.kwargs["live_preview_config"] is None
+
+
+@pytest.mark.asyncio
+@patch("agent_cli.agents.transcribe.create_recorded_audio_transcriber")
+@patch("agent_cli.agents.transcribe.load_audio_from_file")
+@patch("agent_cli.agents.transcribe.maybe_live")
+async def test_live_preview_console_keeps_rich_live_status_for_file_transcription(
+    mock_maybe_live: MagicMock,
+    mock_load_audio_from_file: MagicMock,
+    mock_create_recorded_audio_transcriber: MagicMock,
+    tmp_path: Path,
+) -> None:
+    """File transcription cannot emit console preview, so Rich status stays visible."""
+    audio_file = tmp_path / "sample.wav"
+    audio_file.write_bytes(b"audio")
+    mock_maybe_live.return_value = nullcontext(None)
+    mock_load_audio_from_file.return_value = b"audio"
+    mock_create_recorded_audio_transcriber.return_value = AsyncMock(return_value="hello world")
+
+    await transcribe._async_main(
+        audio_file_path=audio_file,
+        extra_instructions=None,
+        provider_cfg=config.ProviderSelection(
+            asr_provider="wyoming",
+            llm_provider="ollama",
+            tts_provider="wyoming",
+        ),
+        general_cfg=config.General(
+            log_level="INFO",
+            log_file=None,
+            quiet=False,
+            list_devices=False,
+            clipboard=False,
+        ),
+        wyoming_asr_cfg=config.WyomingASR(asr_wyoming_ip="localhost", asr_wyoming_port=12345),
+        openai_asr_cfg=config.OpenAIASR(asr_openai_model="whisper-1"),
+        gemini_asr_cfg=config.GeminiASR(
+            asr_gemini_model="gemini-2.0-flash",
+            gemini_api_key="test-key",
+        ),
+        ollama_cfg=config.Ollama(llm_ollama_model="", llm_ollama_host=""),
+        openai_llm_cfg=config.OpenAILLM(llm_openai_model="", openai_base_url=None),
+        gemini_llm_cfg=config.GeminiLLM(
+            llm_gemini_model="gemini-1.5-flash",
+            gemini_api_key="test-key",
+        ),
+        llm_enabled=False,
+        transcription_log=None,
+        emit_output=False,
+        live_preview_console=True,
+    )
+
+    mock_maybe_live.assert_called_once_with(True)
+
+
 def test_log_transcription(tmp_path: Path) -> None:
     """Test the log_transcription function."""
     log_file = tmp_path / "test_log.jsonl"

@@ -374,8 +374,11 @@ async def _async_main(  # noqa: PLR0912, PLR0915, C901
     start_time = time.monotonic()
     transcript: str | None
     saved_recording_path: Path | None = None
+    live_preview_console_active = (
+        live_preview_console and audio_file_path is None and provider_cfg.asr_provider == "wyoming"
+    )
 
-    with maybe_live(not general_cfg.quiet and not live_preview_console) as live:
+    with maybe_live(not general_cfg.quiet and not live_preview_console_active) as live:
         if audio_file_path:
             # File-based transcription
             # Determine if we can use native format support (skip PCM conversion)
