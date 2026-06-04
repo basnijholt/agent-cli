@@ -34,6 +34,12 @@ Run a local ASR server with automatic backend selection based on your platform:
 >   --default-language en
 > ```
 >
+> NVIDIA Parakeet via NeMo:
+> ```bash
+> agent-cli install-extras nemo-whisper wyoming
+> agent-cli server whisper --backend nemo
+> ```
+>
 > Use it with any OpenAI-compatible client, or configure agent-cli to use it - see [Configuration](../../configuration.md#using-local-whisper-server).
 
 ## Features
@@ -74,6 +80,12 @@ agent-cli server whisper --device cpu
 agent-cli server whisper --model large-v3 --download-only
 
 # Run NVIDIA Parakeet via NeMo
+agent-cli server whisper --backend nemo
+
+# Keep Parakeet loaded after first request (avoids repeated load cost)
+agent-cli server whisper --backend nemo --ttl 0
+
+# Run a specific Parakeet model instead of the NeMo default
 agent-cli server whisper --backend nemo --model parakeet-tdt-0.6b-v3
 
 # Preload model at startup and wait until ready
@@ -287,15 +299,62 @@ Notes for Cohere Transcribe:
 
 ### NVIDIA NeMo (Parakeet)
 
-For NeMo models like `nvidia/parakeet-tdt-0.6b-v3`:
+The NeMo backend runs NVIDIA Parakeet models behind the same OpenAI-compatible
+HTTP API and Wyoming protocol as the other Whisper backends. With `--backend
+nemo`, the default model is `parakeet-unified-en-0.6b`.
+
+Install the runtime dependencies:
 
 ```bash
-pip install "agent-cli[nemo-whisper,wyoming]"
-agent-cli server whisper --backend nemo --model parakeet-tdt-0.6b-v3
+agent-cli install-extras nemo-whisper wyoming
 ```
 
-NeMo models are currently transcription-only in this server. Requests to
-`/v1/audio/translations` return `400` for `--backend nemo`.
+Start the server:
+
+```bash
+agent-cli server whisper --backend nemo
+```
+
+Use it from agent-cli through either protocol:
+
+```bash
+# OpenAI-compatible HTTP API
+ag transcribe \
+  --asr-provider openai \
+  --asr-openai-base-url http://localhost:10301/v1
+
+# Wyoming protocol
+ag transcribe \
+  --asr-provider wyoming \
+  --asr-wyoming-ip localhost \
+  --asr-wyoming-port 10300
+```
+
+Run it as a daemon with persistent arguments:
+
+```bash
+agent-cli daemon install whisper -y -- \
+  --backend nemo \
+  --model parakeet-unified-en-0.6b \
+  --ttl 0
+```
+
+Notes for NeMo/Parakeet:
+
+- `--backend nemo` defaults to `parakeet-unified-en-0.6b`.
+- `--backend auto` switches to NeMo when any requested model name is a Parakeet model.
+- NeMo uses CUDA when available and CPU otherwise; it does not use MLX/MPS on Apple Silicon.
+- First request can be slow because the model loads lazily. Use `--preload` to load at startup, or `--ttl 0` to keep it loaded after the first request.
+- REST uploads can be WAV, MP3, M4A, FLAC, OGG, AAC, or WebM when `ffmpeg` is available.
+- NeMo models are currently transcription-only in this server. Requests to `/v1/audio/translations` return `400`.
+- Segment formats (`verbose_json`, `srt`, `vtt`) require timestamp output from the selected NeMo model.
+
+Python 3.14 note:
+
+On Python 3.14, the plain published extra path does not apply agent-cli's NeMo
+override. The `agent-cli install-extras nemo-whisper` path is uv-aware and can
+apply agent-cli's temporary pinned NeMo Git install plus override file. Prefer it
+over plain `pip install "agent-cli[nemo-whisper]"` on Python 3.14.
 
 ### Docker
 
