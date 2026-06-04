@@ -1,0 +1,7 @@
+# Temporary NeMo runtime install override.
+#
+# NeMo 2.7.x caps kaldialign to <=0.9.1 in released PyPI metadata. That cap
+# blocks Python 3.14 because cp314 wheels first appear in kaldialign 0.9.3.
+# Pin exact 0.9.3 instead of >=0.9.3 because 0.10.0 currently lacks macOS
+# wheels. Remove after NVIDIA-NeMo/NeMo#15438 reaches a PyPI release.
+kaldialign==0.9.3

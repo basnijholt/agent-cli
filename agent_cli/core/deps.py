@@ -32,6 +32,15 @@ _EXTRA_PYTHON_MAX_EXCLUSIVE: dict[str, tuple[int, int]] = {
     "nemo-whisper": (3, 14),
 }
 
+_EXTRA_UV_RUNTIME_REQUIREMENTS: dict[str, tuple[str, ...]] = {
+    # The published NeMo 2.7.x metadata still caps kaldialign below the first
+    # release with Python 3.14 macOS wheels. Keep agent-cli's public extra
+    # publishable, and apply this only for runtime uv installs.
+    "nemo-whisper": ("nemo_toolkit[asr]>=2.2.0",),
+}
+
+_OVERRIDES_DIR = Path(__file__).parent.parent / "_overrides"
+
 
 # -- Settings --
 
@@ -106,6 +115,13 @@ def _format_install_commands(extras: list[str]) -> list[str]:
     """Format install commands for one or more extras."""
     combined = ",".join(extras)
     extras_args = " ".join(extras)
+    if _needs_runtime_install_hint(extras):
+        return [
+            "Install with:",
+            f"  [bold cyan]agent-cli install-extras {extras_args}[/bold cyan]",
+            "  # or use Python 3.13 with the published extra",
+            f'  [bold cyan]uv tool install --python 3.13 "agent-cli\\[{combined}]"[/bold cyan]',
+        ]
     return [
         "Install with:",
         f'  [bold cyan]uv tool install "agent-cli\\[{combined}]"[/bold cyan]',
@@ -158,6 +174,15 @@ def get_combined_install_hint(extras: list[str]) -> str:
     return "\n".join(lines)
 
 
+def _needs_runtime_install_hint(extras: list[str]) -> bool:
+    """Return True when the regular published extra cannot express the install."""
+    return (
+        "nemo-whisper" in extras
+        and sys.version_info[:2] >= (3, 14)
+        and _supports_uv_runtime_override("nemo-whisper")
+    )
+
+
 # -- Installation --
 
 _REQUIREMENTS_DIR = Path(__file__).parent.parent / "_requirements"
@@ -201,12 +226,14 @@ def _get_current_uv_tool_extras() -> list[str]:
 
 def _install_via_uv_tool(extras: list[str], *, quiet: bool = False) -> bool:
     """Reinstall agent-cli via uv tool with the specified extras."""
+    extras = sorted(set(extras))
     extras_str = ",".join(extras)
     package_spec = f"agent-cli[{extras_str}]"
     # Cap at Python 3.13 for compatibility - onnxruntime doesn't support 3.14 yet
     major, minor = sys.version_info[:2]
     python_version = f"{major}.{min(minor, 13)}"
     cmd = ["uv", "tool", "install", package_spec, "--force", "--python", python_version]
+    cmd.extend(_uv_tool_extra_args(extras))
     if quiet:
         cmd.append("-q")
     # Use stderr for status messages so they don't pollute stdout
@@ -230,6 +257,54 @@ def _install_cmd() -> list[str]:
     return cmd
 
 
+def _is_uv_cmd(cmd: list[str]) -> bool:
+    """Return True if the install command is uv."""
+    return bool(cmd) and Path(cmd[0]).name == "uv"
+
+
+def _uv_override_path(extra: str) -> Path:
+    """Return the override file path for an extra."""
+    return _OVERRIDES_DIR / f"{extra}.txt"
+
+
+def _supports_uv_runtime_override(
+    extra: str,
+    *,
+    uv_available: bool | None = None,
+) -> bool:
+    """Return True when uv can install an extra with runtime overrides."""
+    if extra not in _EXTRA_UV_RUNTIME_REQUIREMENTS:
+        return False
+    has_uv = shutil.which("uv") is not None if uv_available is None else uv_available
+    return has_uv and _uv_override_path(extra).exists()
+
+
+def _uv_pip_extra_args(extra: str, cmd: list[str]) -> list[str]:
+    """Return uv pip arguments needed for an extra."""
+    if not _is_uv_cmd(cmd) or not _supports_uv_runtime_override(extra):
+        return []
+    return ["--overrides", str(_uv_override_path(extra))]
+
+
+def _uv_pip_extra_requirements(extra: str, cmd: list[str]) -> list[str]:
+    """Return direct uv pip requirements needed for an extra."""
+    if not _is_uv_cmd(cmd) or not _supports_uv_runtime_override(extra):
+        return []
+    return list(_EXTRA_UV_RUNTIME_REQUIREMENTS[extra])
+
+
+def _uv_tool_extra_args(extras: list[str]) -> list[str]:
+    """Return uv tool arguments needed for extras with runtime overrides."""
+    args: list[str] = []
+    for extra in extras:
+        if not _supports_uv_runtime_override(extra):
+            continue
+        args.extend(["--overrides", str(_uv_override_path(extra))])
+        for requirement in _EXTRA_UV_RUNTIME_REQUIREMENTS[extra]:
+            args.extend(["--with", requirement])
+    return args
+
+
 def install_extras_impl(extras: list[str], *, quiet: bool = False) -> bool:
     """Install extras. Returns True on success, False on failure."""
     if is_uv_tool_install():
@@ -243,7 +318,13 @@ def install_extras_impl(extras: list[str], *, quiet: bool = False) -> bool:
         if not quiet:
             console.print(f"Installing [cyan]{extra}[/]...")
         result = subprocess.run(
-            [*cmd, "-r", str(req_file)],
+            [
+                *cmd,
+                *_uv_pip_extra_args(extra, cmd),
+                "-r",
+                str(req_file),
+                *_uv_pip_extra_requirements(extra, cmd),
+            ],
             check=False,
             capture_output=quiet,
         )
@@ -282,13 +363,16 @@ def _find_python_incompatible_extras(
     extras: list[str],
     *,
     python_version: tuple[int, int] | None = None,
+    uv_available: bool | None = None,
 ) -> list[str]:
     """Return extras that are not compatible with the current Python version."""
     version = python_version or sys.version_info[:2]
     return [
         extra
         for extra in extras
-        if extra in _EXTRA_PYTHON_MAX_EXCLUSIVE and version >= _EXTRA_PYTHON_MAX_EXCLUSIVE[extra]
+        if extra in _EXTRA_PYTHON_MAX_EXCLUSIVE
+        and version >= _EXTRA_PYTHON_MAX_EXCLUSIVE[extra]
+        and not _supports_uv_runtime_override(extra, uv_available=uv_available)
     ]
 
 
@@ -298,9 +382,10 @@ def _python_incompatibility_message(extras: list[str]) -> str:
     extras_list = ", ".join(extras)
     return (
         f"{extras_list} is not supported on Python {version}.\n"
-        "NeMo currently depends on packages without Python 3.14 wheels "
-        "(notably kaldialign).\n\n"
-        "Use Python 3.13 for this backend, for example:\n"
+        "NeMo's released package metadata still caps dependencies below "
+        "Python 3.14-compatible wheels. agent-cli can work around this only "
+        "when uv is available.\n\n"
+        "Install uv, or use Python 3.13 for this backend, for example:\n"
         "  CMAKE_POLICY_VERSION_MINIMUM=3.5 \\\n"
         "  uv run --python 3.13 --extra server --extra nemo-whisper \\\n"
         "    agent-cli server whisper --backend nemo --model parakeet-tdt-0.6b-v3"

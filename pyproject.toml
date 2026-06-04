@@ -64,7 +64,8 @@ mlx-whisper = [
 whisper-transformers = ["agent-cli[server]", "transformers>=4.30.0", "torch>=2.0.0"]
 nemo-whisper = [
     "agent-cli[server]",
-    # NeMo currently pulls kaldialign, which does not publish Python 3.14 wheels.
+    # Keep the publishable extra capped until NeMo releases NVIDIA-NeMo/NeMo#15438.
+    # Runtime uv installs apply a temporary kaldialign override.
     "nemo_toolkit[asr]>=2.2.0; python_version < '3.14'",
 ]
 
