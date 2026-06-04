@@ -27,6 +27,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         releaseInstanceLock()
     }
 
+    func applicationDidBecomeActive(_ notification: Notification) {
+        ConfigurableHotkeyController.shared.retryFunctionAwareHotkeysIfTrusted(runner: AgentCommandRunner.shared)
+    }
+
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
         false
     }
