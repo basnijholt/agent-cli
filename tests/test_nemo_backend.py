@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import io
+import os
 import sys
 import wave
 from concurrent.futures import ThreadPoolExecutor
@@ -47,16 +48,27 @@ def _install_mock_nemo(
     monkeypatch.setitem(sys.modules, "nemo.collections.asr", asr_module)
 
 
-def _install_mock_torch(monkeypatch: pytest.MonkeyPatch, *, cuda_available: bool) -> None:
-    """Install a minimal mock torch module exposing cuda.is_available()."""
+def _install_mock_torch(
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    cuda_available: bool,
+    mps_available: bool = False,
+) -> None:
+    """Install a minimal mock torch module exposing device availability."""
 
     class _Cuda:
         @staticmethod
         def is_available() -> bool:
             return cuda_available
 
+    class _Mps:
+        @staticmethod
+        def is_available() -> bool:
+            return mps_available
+
     torch_module: Any = ModuleType("torch")
     torch_module.cuda = _Cuda()
+    torch_module.backends = SimpleNamespace(mps=_Mps())
     monkeypatch.setitem(sys.modules, "torch", torch_module)
 
 
@@ -207,15 +219,27 @@ def test_resolve_device_auto_uses_cuda_when_available(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Ensure auto device selection prefers CUDA when available."""
-    _install_mock_torch(monkeypatch, cuda_available=True)
+    _install_mock_torch(monkeypatch, cuda_available=True, mps_available=True)
     assert backend._resolve_device("auto") == "cuda"
+
+
+def test_resolve_device_auto_uses_mps_when_cuda_unavailable(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Ensure auto device selection uses Apple GPU when CUDA is unavailable."""
+    monkeypatch.delenv("PYTORCH_ENABLE_MPS_FALLBACK", raising=False)
+    monkeypatch.setattr(backend.sys, "platform", "darwin")
+    _install_mock_torch(monkeypatch, cuda_available=False, mps_available=True)
+
+    assert backend._resolve_device("auto") == "mps"
+    assert os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] == "1"
 
 
 def test_resolve_device_auto_falls_back_to_cpu(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Ensure auto device selection falls back to CPU."""
-    _install_mock_torch(monkeypatch, cuda_available=False)
+    _install_mock_torch(monkeypatch, cuda_available=False, mps_available=False)
     assert backend._resolve_device("auto") == "cpu"
 
 
@@ -227,6 +251,16 @@ def test_resolve_device_explicit_cuda_requires_available_cuda(
 
     with pytest.raises(RuntimeError, match="CUDA device requested"):
         backend._resolve_device("cuda:0")
+
+
+def test_resolve_device_explicit_mps_requires_available_mps(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Ensure explicit MPS requests fail fast when MPS is unavailable."""
+    _install_mock_torch(monkeypatch, cuda_available=False, mps_available=False)
+
+    with pytest.raises(RuntimeError, match="MPS device requested"):
+        backend._resolve_device("mps")
 
 
 def test_resolve_device_preserves_explicit_cpu(
