@@ -117,6 +117,7 @@ def _generate_plist(
         value = os.environ.get(key)
         if value:
             environment[key] = value
+    environment["AGENTCLI_UV_PATH"] = uv_path.as_posix()
 
     return {
         "Label": _get_label(service.name),

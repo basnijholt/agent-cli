@@ -853,6 +853,7 @@ class TestSystemdModule:
         assert "[Install]" in unit_content
         assert "ExecStart=" in unit_content
         assert str(uv_path) in unit_content
+        assert "Environment=AGENTCLI_UV_PATH=uv" in unit_content
         assert "Restart=on-failure" in unit_content
 
     def test_systemd_generate_unit_file_appends_extra_args(self) -> None:

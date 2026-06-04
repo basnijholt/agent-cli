@@ -104,12 +104,14 @@ def _generate_unit_file(
     exec_start = _format_exec_start(
         build_service_command(service, uv_path, extra_command_args=extra_command_args),
     )
+    uv_environment = _format_exec_start_arg(f"AGENTCLI_UV_PATH={uv_path}")
 
     return f"""[Unit]
 Description=agent-cli {service.display_name}
 After=network.target
 
 [Service]
+Environment={uv_environment}
 ExecStart={exec_start}
 Restart=on-failure
 RestartSec=5
