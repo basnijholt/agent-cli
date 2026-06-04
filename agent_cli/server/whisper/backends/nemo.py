@@ -240,6 +240,7 @@ def _ensure_validation_ds_config(model: Any) -> None:
         return
 
     if validation_ds is None:
+        # TODO(NVIDIA-NeMo/NeMo#15752): Drop after NeMo release.  # noqa: FIX002
         _set_config_value(config, "validation_ds", {})
 
 
