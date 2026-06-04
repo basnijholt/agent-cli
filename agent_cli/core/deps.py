@@ -286,6 +286,8 @@ def _uv_override_path(extra: str) -> Path:
     source = _OVERRIDES_DIR / f"{extra}.txt"
     if not _path_contains_whitespace(source):
         return source
+    # uv mishandles --overrides paths with spaces (for example, app bundles
+    # installed under "Application Support"), so hand it a copied no-space path.
     return _materialize_uv_override(source)
 
 
@@ -300,6 +302,8 @@ def _materialized_uv_overrides_dir() -> Path:
         if not _path_contains_whitespace(configured_path):
             return configured_path
 
+    # Keep this outside AGENTCLI_APP_SUPPORT_DIR; that path usually contains a
+    # space on macOS and would reintroduce the launchd/uv parse failure.
     return Path.home() / ".cache" / "agent-cli" / "uv-overrides"
 
 
