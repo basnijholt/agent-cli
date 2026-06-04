@@ -351,7 +351,7 @@ def whisper_cmd(  # noqa: C901, PLR0912, PLR0915
             "--device",
             "-d",
             help=(
-                "Compute device: `auto` (detect GPU), `cuda`, `cuda:0`, `cpu`. "
+                "Compute device: `auto` (detect GPU), `cuda`, `cuda:0`, `mps`, `cpu`. "
                 "MLX backend always uses Apple Silicon"
             ),
         ),

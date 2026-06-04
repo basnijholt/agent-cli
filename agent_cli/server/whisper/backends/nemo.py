@@ -6,6 +6,8 @@ import asyncio
 import inspect
 import io
 import logging
+import os
+import sys
 import tempfile
 import time
 import wave
@@ -89,16 +91,33 @@ _state = _SubprocessState()
 
 def _resolve_device(device: str) -> str:
     """Resolve the runtime device for NeMo inference."""
+    if device in {"auto", "mps"} and sys.platform == "darwin":
+        os.environ.setdefault("PYTORCH_ENABLE_MPS_FALLBACK", "1")
+
     import torch  # noqa: PLC0415
 
     if device == "auto":
-        return "cuda" if torch.cuda.is_available() else "cpu"
+        if torch.cuda.is_available():
+            return "cuda"
+        if _mps_available(torch):
+            return "mps"
+        return "cpu"
 
     if device.startswith("cuda") and not torch.cuda.is_available():
         msg = f"CUDA device requested ({device}) but CUDA is not available"
         raise RuntimeError(msg)
 
+    if device == "mps" and not _mps_available(torch):
+        msg = "MPS device requested (mps) but MPS is not available"
+        raise RuntimeError(msg)
+
     return device
+
+
+def _mps_available(torch: Any) -> bool:
+    """Return True when PyTorch exposes an available MPS backend."""
+    mps = getattr(getattr(torch, "backends", None), "mps", None)
+    return bool(mps is not None and mps.is_available())
 
 
 def _extract_text(hypothesis: Any) -> str:
