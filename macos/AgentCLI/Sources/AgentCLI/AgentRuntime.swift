@@ -177,6 +177,17 @@ struct AgentRuntime {
             }
         }
 
+        if CommandLine.arguments.contains("--agentcli-voice-level-self-test") {
+            do {
+                try Self.runVoiceLevelSelfTest()
+                print("AgentCLI voice-level self-test ok")
+                exit(0)
+            } catch {
+                print("AgentCLI voice-level self-test failed: \(error.localizedDescription)")
+                exit(1)
+            }
+        }
+
         guard CommandLine.arguments.contains("--agentcli-bootstrap-self-test") else { return }
 
         let bootstrap = ensureReady(for: .transcription, force: true)
@@ -199,6 +210,54 @@ struct AgentRuntime {
             print(transcription.output)
         }
         exit(0)
+    }
+
+    private static func runVoiceLevelSelfTest() throws {
+        guard argumentValue(AgentCommand.toggleTranscription.arguments, for: "--voice-level-log") == VoiceLevelLog.defaultLogPath else {
+            throw SelfTestError("Toggle Transcription does not pass --voice-level-log")
+        }
+        guard argumentValue(AgentCommand.voiceEdit.arguments, for: "--voice-level-log") == VoiceLevelLog.defaultLogPath else {
+            throw SelfTestError("Voice Edit does not pass --voice-level-log")
+        }
+
+        let logURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+            .appendingPathExtension("jsonl")
+        defer { try? FileManager.default.removeItem(at: logURL) }
+
+        try """
+        {"timestamp":"2026-06-04T12:00:00Z","level":0.25}
+        {"timestamp":"2026-06-04T12:00:01Z","level":0.75}
+        """.write(to: logURL, atomically: true, encoding: .utf8)
+
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime]
+        guard let now = formatter.date(from: "2026-06-04T12:00:01Z") else {
+            throw SelfTestError("Could not construct voice-level test timestamp")
+        }
+        guard VoiceLevelLog.latestLevel(from: logURL, now: now) == CGFloat(0.75) else {
+            throw SelfTestError("VoiceLevelLog did not read latest fresh level")
+        }
+    }
+
+    private static func argumentValue(_ arguments: [String], for option: String) -> String? {
+        guard let index = arguments.firstIndex(of: option),
+              arguments.indices.contains(index + 1) else {
+            return nil
+        }
+        return arguments[index + 1]
+    }
+
+    private struct SelfTestError: LocalizedError {
+        let message: String
+
+        init(_ message: String) {
+            self.message = message
+        }
+
+        var errorDescription: String? {
+            message
+        }
     }
 
     func ensureInstalled(

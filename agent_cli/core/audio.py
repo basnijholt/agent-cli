@@ -4,10 +4,15 @@ from __future__ import annotations
 
 import asyncio
 import functools
+import json
 import logging
+import math
+import struct
 import threading
+import time
 from contextlib import asynccontextmanager, contextmanager
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Literal
 
 from rich.text import Text
@@ -22,6 +27,7 @@ from agent_cli.core.utils import (
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Awaitable, Callable, Generator
+    from pathlib import Path
 
     import sounddevice as sd
     from rich.live import Live
@@ -30,6 +36,7 @@ if TYPE_CHECKING:
 
 LOGGER = logging.getLogger(__name__)
 _AUDIO_SHUTDOWN_TIMEOUT_SECONDS = 0.5
+_MINIMUM_INPUT_DECIBELS = -55.0
 
 
 @dataclass
@@ -62,6 +69,74 @@ class StreamConfig:
             channels=self.channels,
             dtype=self.dtype,
         )
+
+
+def normalized_audio_level(chunk: bytes) -> float:
+    """Return a 0...1 speech level from mono little-endian int16 PCM."""
+    sample_count = len(chunk) // constants.AUDIO_FORMAT_WIDTH
+    if sample_count <= 0:
+        return 0.0
+
+    pcm = chunk[: sample_count * constants.AUDIO_FORMAT_WIDTH]
+    samples = struct.unpack(f"<{sample_count}h", pcm)
+    mean_square = sum((sample / 32768.0) ** 2 for sample in samples) / sample_count
+    if mean_square <= 0:
+        return 0.0
+
+    root_mean_square = math.sqrt(mean_square)
+    decibels = 20 * math.log10(root_mean_square)
+    if decibels <= _MINIMUM_INPUT_DECIBELS:
+        return 0.0
+
+    linear_level = (decibels - _MINIMUM_INPUT_DECIBELS) / abs(_MINIMUM_INPUT_DECIBELS)
+    return min(1.0, math.sqrt(linear_level))
+
+
+class AudioLevelLogWriter:
+    """Append normalized audio levels for UI consumers."""
+
+    def __init__(
+        self,
+        path: Path,
+        *,
+        interval_seconds: float = 0.05,
+        monotonic_clock: Callable[[], float] = time.monotonic,
+        timestamp_clock: Callable[[], datetime] = lambda: datetime.now(UTC),
+    ) -> None:
+        """Create a writer and clear stale samples at the destination."""
+        self.path = path.expanduser()
+        self.interval_seconds = interval_seconds
+        self.monotonic_clock = monotonic_clock
+        self.timestamp_clock = timestamp_clock
+        self._last_write = -math.inf
+        self._enabled = True
+        self._lock = threading.Lock()
+        try:
+            self.path.parent.mkdir(parents=True, exist_ok=True)
+            self.path.write_text("")
+        except OSError:
+            self._enabled = False
+
+    def write_chunk(self, chunk: bytes) -> None:
+        """Append one normalized level sample for a PCM chunk."""
+        with self._lock:
+            if not self._enabled:
+                return
+            now = self.monotonic_clock()
+            if now - self._last_write < self.interval_seconds:
+                return
+            self._last_write = now
+
+            entry = {
+                "timestamp": self.timestamp_clock().isoformat(),
+                "level": round(normalized_audio_level(chunk), 4),
+            }
+            try:
+                with self.path.open("a", encoding="utf-8") as file:
+                    file.write(json.dumps(entry, separators=(",", ":")))
+                    file.write("\n")
+            except OSError:
+                self._enabled = False
 
 
 class _AudioTee:
