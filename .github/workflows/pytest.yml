@@ -33,6 +33,10 @@ jobs:
         run: swift test --package-path macos/AgentCLI --enable-xctest
       - name: Run pytest (macOS - all extras)
         if: matrix.os == 'macos-latest'
+        env:
+          # kaldialign builds pybind11 2.10.x from source, which needs this
+          # compatibility floor with CMake 4 on current macOS runners.
+          CMAKE_POLICY_VERSION_MINIMUM: "3.5"
         run: uv run --all-extras pytest -vvv
       - name: Run pytest (non-macOS - exclude mlx-whisper)
         if: matrix.os != 'macos-latest'

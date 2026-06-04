@@ -14,11 +14,15 @@ from agent_cli.core import process
 from agent_cli.core.deps import (
     EXTRAS,
     _check_and_install_extras,
+    _find_python_incompatible_extras,
     _get_auto_install_setting,
     _get_install_hint,
+    _install_via_uv_tool,
     _maybe_reexec_after_install,
     _resolve_extras_for_install,
     _should_skip_extra_check_for_process_control,
+    get_combined_install_hint,
+    install_extras_impl,
     requires_extras,
 )
 
@@ -256,6 +260,110 @@ class TestCheckAndInstallExtras:
             assert result == ["fake-extra"]
             mock_error.assert_called_once()
             assert "Auto-install failed" in mock_error.call_args[0][0]
+
+    def test_returns_missing_for_python_incompatible_extra_without_installing(self) -> None:
+        """Python-incompatible extras should fail before auto-install."""
+        with (
+            patch("agent_cli.core.deps._check_extra_installed", return_value=False),
+            patch("agent_cli.core.deps._get_auto_install_setting", return_value=True),
+            patch(
+                "agent_cli.core.deps._find_python_incompatible_extras",
+                return_value=["nemo-whisper"],
+            ),
+            patch("agent_cli.core.deps._try_auto_install") as mock_install,
+            patch("agent_cli.core.deps.print_error_message") as mock_error,
+        ):
+            result = _check_and_install_extras(("nemo-whisper", "wyoming"))
+            assert result == ["nemo-whisper", "wyoming"]
+            mock_install.assert_not_called()
+            message = mock_error.call_args[0][0]
+            assert "nemo-whisper is not supported on Python" in message
+            assert "Python 3.13" in message
+
+    def test_python_incompatible_extra_detection(self) -> None:
+        """NeMo should use the uv override path on Python 3.14 when available."""
+        assert _find_python_incompatible_extras(["nemo-whisper"], python_version=(3, 13)) == []
+        assert (
+            _find_python_incompatible_extras(
+                ["nemo-whisper"],
+                python_version=(3, 14),
+                uv_available=True,
+            )
+            == []
+        )
+        assert _find_python_incompatible_extras(
+            ["nemo-whisper"],
+            python_version=(3, 14),
+            uv_available=False,
+        ) == ["nemo-whisper"]
+
+    def test_uv_pip_install_uses_nemo_git_override(self) -> None:
+        """Uv pip installs NeMo from a pinned Git revision with the kaldialign override."""
+        with (
+            patch("agent_cli.core.deps.is_uv_tool_install", return_value=False),
+            patch(
+                "agent_cli.core.deps._install_cmd",
+                return_value=["uv", "pip", "install", "--python", "/bin/python"],
+            ),
+            patch("agent_cli.core.deps.subprocess.run") as mock_run,
+        ):
+            mock_run.return_value.returncode = 0
+
+            assert install_extras_impl(["nemo-whisper"], quiet=True) is True
+
+        cmd = mock_run.call_args.args[0]
+        assert "--overrides" in cmd
+        assert "nemo-whisper.txt" in cmd[cmd.index("--overrides") + 1]
+        assert (
+            "nemo-toolkit[asr] @ "
+            "git+https://github.com/NVIDIA-NeMo/NeMo.git@"
+            "be23ce1ee6594da3d7fa2f37e603d3b3ba230a9e"
+        ) in cmd
+        assert "nemo_toolkit[asr]>=2.2.0" not in cmd
+
+    def test_uv_tool_install_uses_nemo_git_override(self) -> None:
+        """Uv tool installs NeMo from a pinned Git revision with override."""
+        with (
+            patch("agent_cli.core.deps._get_current_uv_tool_extras", return_value=["server"]),
+            patch("agent_cli.core.deps.subprocess.run") as mock_run,
+            patch("sys.version_info", (3, 14, 1)),
+        ):
+            mock_run.return_value.returncode = 0
+
+            assert _install_via_uv_tool(["server", "nemo-whisper"], quiet=True) is True
+
+        cmd = mock_run.call_args.args[0]
+        assert cmd[:3] == ["uv", "tool", "install"]
+        assert "agent-cli[nemo-whisper,server]" in cmd
+        assert "--with" in cmd
+        assert (
+            cmd[cmd.index("--with") + 1] == "nemo-toolkit[asr] @ "
+            "git+https://github.com/NVIDIA-NeMo/NeMo.git@"
+            "be23ce1ee6594da3d7fa2f37e603d3b3ba230a9e"
+        )
+        assert "--overrides" in cmd
+        assert "nemo-whisper.txt" in cmd[cmd.index("--overrides") + 1]
+
+    def test_nemo_override_file_pins_nemo_git_requirement(self) -> None:
+        """Override file should replace released NeMo pins with the Git revision."""
+        override = Path("agent_cli/_overrides/nemo-whisper.txt").read_text()
+        assert "kaldialign==0.9.3" in override
+        assert (
+            "nemo-toolkit[asr] @ "
+            "git+https://github.com/NVIDIA-NeMo/NeMo.git@"
+            "be23ce1ee6594da3d7fa2f37e603d3b3ba230a9e"
+        ) in override
+
+    def test_nemo_python314_hint_prefers_runtime_installer(self) -> None:
+        """Python 3.14 NeMo hints should prefer the uv-aware runtime installer."""
+        with (
+            patch("sys.version_info", (3, 14, 1)),
+            patch("agent_cli.core.deps._supports_uv_runtime_override", return_value=True),
+        ):
+            hint = get_combined_install_hint(["nemo-whisper", "wyoming"])
+
+        assert "agent-cli install-extras nemo-whisper wyoming" in hint
+        assert 'uv tool install "agent-cli\\[nemo-whisper,wyoming]"' not in hint
 
     def test_returns_empty_when_install_succeeds(self) -> None:
         """Should return empty list when auto-install succeeds."""

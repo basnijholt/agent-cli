@@ -32,7 +32,9 @@ markdown-it-py==4.2.0
     # via rich
 mdurl==0.1.2
     # via markdown-it-py
-numpy==2.4.6
+numpy==1.26.4 ; python_full_version < '3.13'
+    # via audiostretchy
+numpy==2.4.6 ; python_full_version >= '3.13'
     # via audiostretchy
 psutil==7.2.2 ; sys_platform == 'win32'
     # via agent-cli

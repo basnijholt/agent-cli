@@ -103,7 +103,8 @@ filelock==3.29.0 ; python_full_version < '3.14'
     # via
     #   huggingface-hub
     #   torch
-fsspec==2026.4.0 ; python_full_version < '3.14'
+    #   transformers
+fsspec==2024.12.0 ; python_full_version < '3.14'
     # via
     #   huggingface-hub
     #   torch
@@ -111,7 +112,7 @@ h11==0.16.0
     # via
     #   httpcore
     #   uvicorn
-hf-xet==1.5.0 ; (python_full_version < '3.14' and platform_machine == 'AMD64') or (python_full_version < '3.14' and platform_machine == 'aarch64') or (python_full_version < '3.14' and platform_machine == 'amd64') or (python_full_version < '3.14' and platform_machine == 'arm64') or (python_full_version < '3.14' and platform_machine == 'x86_64')
+hf-xet==1.5.0 ; (python_full_version < '3.13' and platform_machine == 'AMD64') or (python_full_version < '3.14' and platform_machine == 'aarch64') or (python_full_version < '3.14' and platform_machine == 'amd64') or (python_full_version < '3.14' and platform_machine == 'arm64') or (python_full_version < '3.14' and platform_machine == 'x86_64')
     # via huggingface-hub
 httpcore==1.0.9
     # via httpx
@@ -124,7 +125,13 @@ httpx==0.28.1
     #   fastapi-cloud-cli
     #   huggingface-hub
     #   weasel
-huggingface-hub==1.16.1 ; python_full_version < '3.14'
+huggingface-hub==0.36.2 ; python_full_version == '3.13.*'
+    # via
+    #   agent-cli
+    #   kokoro
+    #   tokenizers
+    #   transformers
+huggingface-hub==1.16.1 ; python_full_version < '3.13'
     # via
     #   agent-cli
     #   kokoro
@@ -174,7 +181,15 @@ networkx==3.6.1 ; python_full_version < '3.14'
     # via torch
 num2words==0.5.14 ; python_full_version < '3.14'
     # via misaki
-numpy==2.4.6 ; python_full_version < '3.14'
+numpy==1.26.4 ; python_full_version < '3.13'
+    # via
+    #   blis
+    #   kokoro
+    #   soundfile
+    #   spacy
+    #   thinc
+    #   transformers
+numpy==2.4.6 ; python_full_version == '3.13.*'
     # via
     #   blis
     #   kokoro
@@ -223,7 +238,7 @@ nvidia-nvshmem-cu13==3.4.5 ; python_full_version < '3.14' and sys_platform == 'l
     # via torch
 nvidia-nvtx==13.0.85 ; python_full_version < '3.14' and sys_platform == 'linux'
     # via cuda-toolkit
-packaging==26.2 ; python_full_version < '3.14'
+packaging==24.2 ; python_full_version < '3.14'
     # via
     #   huggingface-hub
     #   spacy
@@ -291,7 +306,10 @@ regex==2026.5.9 ; python_full_version < '3.14'
     #   segments
     #   transformers
 requests==2.34.2 ; python_full_version < '3.14'
-    # via spacy
+    # via
+    #   huggingface-hub
+    #   spacy
+    #   transformers
 rfc3986==1.5.0 ; python_full_version < '3.14'
     # via csvw
 rich==15.0.0
@@ -363,7 +381,11 @@ tqdm==4.67.3 ; python_full_version < '3.14'
     #   huggingface-hub
     #   spacy
     #   transformers
-transformers==5.9.0 ; python_full_version < '3.14'
+transformers==4.57.6 ; python_full_version == '3.13.*'
+    # via
+    #   agent-cli
+    #   kokoro
+transformers==5.9.0 ; python_full_version < '3.13'
     # via
     #   agent-cli
     #   kokoro

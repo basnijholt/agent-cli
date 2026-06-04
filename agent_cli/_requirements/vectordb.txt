@@ -25,6 +25,8 @@ attrs==26.1.0
     #   aiohttp
     #   jsonschema
     #   referencing
+backoff==2.2.1 ; python_full_version < '3.13'
+    # via opentelemetry-exporter-otlp-proto-grpc
 bcrypt==5.0.0
     # via chromadb
 build==1.5.0
@@ -48,7 +50,7 @@ click==8.4.1
     # via
     #   rich-toolkit
     #   uvicorn
-colorama==0.4.6 ; os_name == 'nt' or sys_platform == 'win32'
+colorama==0.4.6 ; (python_full_version != '3.13.*' and os_name == 'nt') or (os_name == 'nt' and platform_machine != 'arm64') or (os_name != 'nt' and sys_platform == 'win32') or (os_name == 'nt' and sys_platform != 'darwin')
     # via
     #   build
     #   click
@@ -84,14 +86,16 @@ fastar==0.11.0
     #   fastapi
     #   fastapi-cloud-cli
 filelock==3.29.0
-    # via huggingface-hub
+    # via
+    #   huggingface-hub
+    #   transformers
 flatbuffers==25.12.19
     # via onnxruntime
 frozenlist==1.8.0
     # via
     #   aiohttp
     #   aiosignal
-fsspec==2026.4.0
+fsspec==2024.12.0
     # via huggingface-hub
 genai-prices==0.0.62
     # via pydantic-ai-slim
@@ -99,7 +103,9 @@ google-auth==2.53.0
     # via google-genai
 google-genai==2.7.0
     # via pydantic-ai-slim
-googleapis-common-protos==1.75.0
+googleapis-common-protos==1.73.0 ; python_full_version < '3.13'
+    # via opentelemetry-exporter-otlp-proto-grpc
+googleapis-common-protos==1.75.0 ; python_full_version >= '3.13'
     # via opentelemetry-exporter-otlp-proto-grpc
 griffelib==2.0.2
     # via pydantic-ai-slim
@@ -112,7 +118,7 @@ h11==0.16.0
     #   httpcore
     #   httpcore2
     #   uvicorn
-hf-xet==1.5.0 ; platform_machine == 'AMD64' or platform_machine == 'aarch64' or platform_machine == 'amd64' or platform_machine == 'arm64' or platform_machine == 'x86_64'
+hf-xet==1.5.0 ; (python_full_version < '3.13' and platform_machine == 'AMD64') or platform_machine == 'aarch64' or platform_machine == 'amd64' or platform_machine == 'arm64' or platform_machine == 'x86_64'
     # via huggingface-hub
 httpcore==1.0.9
     # via httpx
@@ -133,7 +139,12 @@ httpx==0.28.1
     #   pydantic-graph
 httpx2==2.2.0
     # via genai-prices
-huggingface-hub==1.16.1
+huggingface-hub==0.36.2 ; python_full_version >= '3.13'
+    # via
+    #   agent-cli
+    #   tokenizers
+    #   transformers
+huggingface-hub==1.16.1 ; python_full_version < '3.13'
     # via
     #   agent-cli
     #   tokenizers
@@ -172,7 +183,12 @@ multidict==6.7.1
     # via
     #   aiohttp
     #   yarl
-numpy==2.4.6
+numpy==1.26.4 ; python_full_version < '3.13'
+    # via
+    #   chromadb
+    #   onnxruntime
+    #   transformers
+numpy==2.4.6 ; python_full_version >= '3.13'
     # via
     #   chromadb
     #   onnxruntime
@@ -194,11 +210,15 @@ opentelemetry-api==1.42.1
     #   opentelemetry-sdk
     #   opentelemetry-semantic-conventions
     #   pydantic-ai-slim
-opentelemetry-exporter-otlp-proto-common==1.42.1
+opentelemetry-exporter-otlp-proto-common==1.42.1 ; python_full_version >= '3.13'
     # via opentelemetry-exporter-otlp-proto-grpc
-opentelemetry-exporter-otlp-proto-grpc==1.42.1
+opentelemetry-exporter-otlp-proto-grpc==1.15.0 ; python_full_version < '3.13'
     # via chromadb
-opentelemetry-proto==1.42.1
+opentelemetry-exporter-otlp-proto-grpc==1.42.1 ; python_full_version >= '3.13'
+    # via chromadb
+opentelemetry-proto==1.15.0 ; python_full_version < '3.13'
+    # via opentelemetry-exporter-otlp-proto-grpc
+opentelemetry-proto==1.42.1 ; python_full_version >= '3.13'
     # via
     #   opentelemetry-exporter-otlp-proto-common
     #   opentelemetry-exporter-otlp-proto-grpc
@@ -212,7 +232,7 @@ orjson==3.11.9
     # via chromadb
 overrides==7.7.0
     # via chromadb
-packaging==26.2
+packaging==24.2
     # via
     #   build
     #   huggingface-hub
@@ -222,7 +242,12 @@ propcache==0.5.2
     # via
     #   aiohttp
     #   yarl
-protobuf==6.33.6
+protobuf==4.24.4 ; python_full_version < '3.13'
+    # via
+    #   googleapis-common-protos
+    #   onnxruntime
+    #   opentelemetry-proto
+protobuf==5.29.6 ; python_full_version >= '3.13'
     # via
     #   googleapis-common-protos
     #   onnxruntime
@@ -298,9 +323,11 @@ requests==2.34.2
     # via
     #   google-auth
     #   google-genai
+    #   huggingface-hub
     #   kubernetes
     #   requests-oauthlib
     #   tiktoken
+    #   transformers
 requests-oauthlib==2.0.0
     # via kubernetes
 rich==15.0.0
@@ -353,7 +380,9 @@ tqdm==4.67.3
     #   huggingface-hub
     #   openai
     #   transformers
-transformers==5.9.0
+transformers==4.57.6 ; python_full_version >= '3.13'
+    # via agent-cli
+transformers==5.9.0 ; python_full_version < '3.13'
     # via agent-cli
 typer==0.26.3
     # via

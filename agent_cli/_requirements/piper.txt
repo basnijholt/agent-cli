@@ -73,17 +73,21 @@ markupsafe==3.0.3
     # via jinja2
 mdurl==0.1.2
     # via markdown-it-py
-numpy==2.4.6
+numpy==1.26.4 ; python_full_version < '3.13'
+    # via onnxruntime
+numpy==2.4.6 ; python_full_version >= '3.13'
     # via onnxruntime
 onnxruntime==1.26.0
     # via piper-tts
-packaging==26.2
+packaging==24.2
     # via onnxruntime
 pathvalidate==3.3.1
     # via piper-tts
 piper-tts==1.4.2
     # via agent-cli
-protobuf==6.33.6
+protobuf==4.24.4 ; python_full_version < '3.13'
+    # via onnxruntime
+protobuf==5.29.6 ; python_full_version >= '3.13'
     # via onnxruntime
 psutil==7.2.2 ; sys_platform == 'win32'
     # via agent-cli

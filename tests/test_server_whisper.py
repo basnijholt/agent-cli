@@ -12,7 +12,12 @@ import pytest
 import typer
 from fastapi.testclient import TestClient
 
-from agent_cli.server.cli import _check_whisper_deps, _resolve_whisper_required_extras
+from agent_cli.server.cli import (
+    _check_whisper_deps,
+    _client_host_for_usage,
+    _has,
+    _resolve_whisper_required_extras,
+)
 from agent_cli.server.model_manager import ModelStats
 from agent_cli.server.whisper.backends import TranscriptionResult
 from agent_cli.server.whisper.backends.base import UnsupportedRequestError
@@ -69,6 +74,30 @@ class TestModelConfig:
         assert config.default_language == "en"
         assert config.trust_remote_code is True
 
+    def test_zero_ttl_disables_auto_unload(self) -> None:
+        """TTL 0 should be accepted as keep-loaded mode."""
+        config = ModelConfig(model_name="small", ttl_seconds=0)
+        assert config.ttl_seconds == 0
+
+    def test_negative_ttl_is_rejected(self) -> None:
+        """Negative TTL values should remain invalid."""
+        with pytest.raises(ValueError, match="ttl_seconds must be >= 0"):
+            ModelConfig(model_name="small", ttl_seconds=-1)
+
+
+class TestServerCliHelpers:
+    """Tests for shared server CLI helpers."""
+
+    def test_client_host_for_usage_uses_localhost_for_bind_all(self) -> None:
+        """Client examples should not use wildcard bind hosts."""
+        assert _client_host_for_usage("0.0.0.0") == "localhost"  # noqa: S104
+        assert _client_host_for_usage("::") == "localhost"
+        assert _client_host_for_usage("192.168.1.20") == "192.168.1.20"
+
+    def test_has_returns_false_for_missing_nested_module(self) -> None:
+        """Nested optional dependency probes should not raise for missing roots."""
+        assert not _has("definitely_missing_agent_cli_module.submodule")
+
 
 class TestWhisperDependencyChecks:
     """Tests for server Whisper optional dependency handling."""
@@ -90,6 +119,11 @@ class TestWhisperDependencyChecks:
             "whisper-transformers",
             "wyoming",
         )
+        assert _resolve_whisper_required_extras({"backend": "nemo"}) == (
+            "server",
+            "nemo-whisper",
+            "wyoming",
+        )
 
     def test_resolve_whisper_required_extras_keeps_auto_backend_alternatives(self) -> None:
         """Auto backend should keep the existing Whisper backend fallback."""
@@ -99,12 +133,43 @@ class TestWhisperDependencyChecks:
             "wyoming",
         )
 
+    def test_resolve_whisper_required_extras_omits_wyoming_when_disabled(self) -> None:
+        """HTTP-only mode should not install Wyoming protocol dependencies."""
+        assert _resolve_whisper_required_extras(
+            {"backend": "nemo", "no_wyoming": True},
+        ) == (
+            "server",
+            "nemo-whisper",
+        )
+
+    @pytest.mark.parametrize(
+        "model_name",
+        [
+            "parakeet-tdt-0.6b-v2",
+            "parakeet-tdt-0.6b-v3",
+            "nvidia/parakeet-tdt-0.6b-v3",
+        ],
+    )
+    def test_resolve_whisper_required_extras_uses_nemo_for_parakeet_auto(
+        self,
+        model_name: str,
+    ) -> None:
+        """Auto backend should install the NeMo extra for Parakeet models."""
+        assert _resolve_whisper_required_extras(
+            {"backend": "auto", "model": [model_name]},
+        ) == (
+            "server",
+            "nemo-whisper",
+            "wyoming",
+        )
+
     @pytest.mark.parametrize(
         ("backend", "expected_extra"),
         [
             ("faster-whisper", "faster-whisper"),
             ("mlx", "mlx-whisper"),
             ("transformers", "whisper-transformers"),
+            ("nemo", "nemo-whisper"),
         ],
     )
     def test_backend_dependency_hint_uses_existing_extra(
@@ -126,6 +191,21 @@ class TestWhisperDependencyChecks:
         message = mock_print.call_args[0][0]
         assert f"agent-cli\\[{expected_extra}]" in message
         assert f"uv sync --extra {expected_extra}" in message
+
+    def test_nemo_dependency_check_requires_asr_leaf_module(self) -> None:
+        """A partial nemo namespace install should not satisfy the NeMo backend."""
+        with (
+            patch(
+                "agent_cli.server.cli._has",
+                side_effect=lambda package: package in {"uvicorn", "fastapi", "nemo"},
+            ),
+            patch("agent_cli.server.cli.err_console.print") as mock_print,
+            pytest.raises(typer.Exit),
+        ):
+            _check_whisper_deps("nemo")
+
+        message = mock_print.call_args[0][0]
+        assert "nemo_toolkit[asr]" in message
 
 
 class TestModelStats:
@@ -180,6 +260,18 @@ class TestWhisperModelManager:
         """Test starting and stopping the manager."""
         await manager.start()
         assert manager._manager._unload_task is not None
+
+        await manager.stop()
+        assert manager._manager._shutdown is True
+
+    @pytest.mark.asyncio
+    async def test_zero_ttl_does_not_start_unload_watcher(self, config: ModelConfig) -> None:
+        """TTL 0 should keep the model loaded until explicit shutdown."""
+        config.ttl_seconds = 0
+        manager = WhisperModelManager(config)
+
+        await manager.start()
+        assert manager._manager._unload_task is None
 
         await manager.stop()
         assert manager._manager._shutdown is True
@@ -727,6 +819,29 @@ class TestWhisperAPI:
 
         assert response.status_code == 200
         assert response.text == ""
+
+    def test_translate_endpoint_rejects_nemo_backend(self) -> None:
+        """Test translation endpoint returns 400 for NeMo models."""
+        from agent_cli.server.whisper.api import create_app  # noqa: PLC0415
+
+        registry = create_whisper_registry()
+        registry.register(
+            ModelConfig(model_name="parakeet-tdt-0.6b-v2", ttl_seconds=300, backend_type="nemo"),
+        )
+        manager = registry.get_manager()
+        app = create_app(registry, enable_wyoming=False)
+        client = TestClient(app)
+
+        with patch.object(manager, "transcribe", new_callable=AsyncMock) as mock_transcribe:
+            response = client.post(
+                "/v1/audio/translations",
+                files={"file": ("audio.wav", _create_test_wav(), "audio/wav")},
+                data={"model": "parakeet-tdt-0.6b-v2"},
+            )
+
+        assert response.status_code == 400
+        assert "Translation is not supported for NeMo models" in response.json()["detail"]
+        mock_transcribe.assert_not_called()
 
     def test_unload_model_success(
         self,

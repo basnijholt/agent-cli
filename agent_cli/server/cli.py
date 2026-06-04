@@ -19,12 +19,18 @@ from agent_cli.server.common import setup_rich_logging
 
 logger = logging.getLogger(__name__)
 
+_DEFAULT_WHISPER_MODEL = "large-v3"
+_DEFAULT_NEMO_WHISPER_MODEL = "parakeet-unified-en-0.6b"
+
 # Check for optional dependencies at call time (not module load time)
 # This is important because auto-install may install packages after the module is loaded
 
 
 def _has(package: str) -> bool:
-    return find_spec(package) is not None
+    try:
+        return find_spec(package) is not None
+    except ModuleNotFoundError:
+        return False
 
 
 app = typer.Typer(
@@ -41,7 +47,7 @@ app = typer.Typer(
 
 | Server | Backends | Default Ports |
 |--------|----------|---------------|
-| `whisper` | faster-whisper, MLX, transformers | HTTP: 10301, Wyoming: 10300 |
+| `whisper` | faster-whisper, MLX, transformers, NeMo | HTTP: 10301, Wyoming: 10300 |
 | `tts` | Piper (CPU), Kokoro (GPU) | HTTP: 10201, Wyoming: 10200 |
 | `transcribe-proxy` | OpenAI-compatible, Gemini, Wyoming | HTTP: 61337 |
 
@@ -91,7 +97,10 @@ def _resolve_tts_required_extras(kwargs: dict[str, object]) -> tuple[str, ...]:
     """Choose the TTS backend extra after Typer has parsed --backend."""
     backend = kwargs.get("backend")
     backend_extra = backend if backend in ("piper", "kokoro") else "piper|kokoro"
-    return ("server", str(backend_extra), "wyoming")
+    extras = ["server", str(backend_extra)]
+    if not kwargs.get("no_wyoming"):
+        extras.append("wyoming")
+    return tuple(extras)
 
 
 def _check_tts_deps(backend: str = "auto") -> None:
@@ -192,6 +201,16 @@ def _check_whisper_deps(backend: str, *, download_only: bool = False) -> None:
             raise typer.Exit(1)
         return
 
+    if backend == "nemo":
+        if not _has("nemo.collections.asr"):
+            err_console.print(
+                "[bold red]Error:[/bold red] NeMo backend requires nemo_toolkit[asr]. "
+                "Run: [cyan]pip install agent-cli\\[nemo-whisper][/cyan] "
+                "or [cyan]uv sync --extra nemo-whisper[/cyan]",
+            )
+            raise typer.Exit(1)
+        return
+
     if not _has("faster_whisper"):
         if download_only:
             err_console.print(
@@ -241,19 +260,39 @@ def _check_transformers_audio_model_deps(models: list[str]) -> None:
     raise typer.Exit(1)
 
 
+def _is_parakeet_model(model_name: str) -> bool:
+    """Return True when a model name targets NVIDIA Parakeet."""
+    from agent_cli.server.whisper.backends.nemo import (  # noqa: PLC0415
+        is_parakeet_model_name,
+    )
+
+    return is_parakeet_model_name(model_name)
+
+
 def _resolve_whisper_required_extras(kwargs: dict[str, object]) -> tuple[str, ...]:
     """Choose the Whisper backend extra after Typer has parsed --backend."""
     backend_extras = {
         "faster-whisper": "faster-whisper",
         "mlx": "mlx-whisper",
         "transformers": "whisper-transformers",
+        "nemo": "nemo-whisper",
     }
-    backend = kwargs.get("backend")
+    backend = str(kwargs.get("backend") or "auto")
+    models = kwargs.get("model")
+    if (
+        backend == "auto"
+        and isinstance(models, list)
+        and any(_is_parakeet_model(str(model_name)) for model_name in models)
+    ):
+        backend = "nemo"
     backend_extra = backend_extras.get(
-        str(backend),
+        backend,
         "faster-whisper|mlx-whisper|whisper-transformers",
     )
-    return ("server", backend_extra, "wyoming")
+    extras = ["server", backend_extra]
+    if not kwargs.get("no_wyoming"):
+        extras.append("wyoming")
+    return tuple(extras)
 
 
 def _print_optional_whisper_config(
@@ -271,14 +310,19 @@ def _print_optional_whisper_config(
             console.print(f"  {label}: [cyan]{value}[/cyan]")
 
 
+def _client_host_for_usage(host: str) -> str:
+    """Return a connectable host for local client examples."""
+    return "localhost" if host in {"0.0.0.0", "::"} else host  # noqa: S104
+
+
 @app.command("whisper")
 @requires_extras(
     "server",
-    "faster-whisper|mlx-whisper|whisper-transformers",
+    "faster-whisper|mlx-whisper|whisper-transformers|nemo-whisper",
     "wyoming",
     resolve_extras=_resolve_whisper_required_extras,
 )
-def whisper_cmd(  # noqa: PLR0912, PLR0915
+def whisper_cmd(  # noqa: C901, PLR0912, PLR0915
     model: Annotated[
         list[str] | None,
         typer.Option(
@@ -286,8 +330,11 @@ def whisper_cmd(  # noqa: PLR0912, PLR0915
             "-m",
             help=(
                 "Whisper model(s) to load. Common models: `tiny`, `base`, `small`, "
-                "`medium`, `large-v3`, `distil-large-v3`. Can specify multiple for "
-                "different accuracy/speed tradeoffs. Default: `large-v3`"
+                "`medium`, `large-v3`, `distil-large-v3`, `parakeet-tdt-0.6b-v3`, "
+                "`parakeet-unified-en-0.6b` "
+                "(NeMo backend). Can specify multiple for different "
+                "accuracy/speed tradeoffs. Default: `large-v3` "
+                "(`parakeet-unified-en-0.6b` with `--backend nemo`)"
             ),
         ),
     ] = None,
@@ -378,6 +425,7 @@ def whisper_cmd(  # noqa: PLR0912, PLR0915
         int,
         typer.Option(
             "--port",
+            "--asr-openai-port",
             "-p",
             help="Port for OpenAI-compatible HTTP API (`/v1/audio/transcriptions`)",
         ),
@@ -386,6 +434,7 @@ def whisper_cmd(  # noqa: PLR0912, PLR0915
         int,
         typer.Option(
             "--wyoming-port",
+            "--asr-wyoming-port",
             help="Port for Wyoming protocol (Home Assistant integration)",
         ),
     ] = 10300,
@@ -412,7 +461,8 @@ def whisper_cmd(  # noqa: PLR0912, PLR0915
             help=(
                 "Inference backend: `auto` (faster-whisper on CUDA/CPU, MLX on Apple Silicon), "
                 "`faster-whisper`, `mlx`, `transformers` (HuggingFace, supports safetensors "
-                "and known remote-code ASR models)"
+                "and known remote-code ASR models), "
+                "`nemo` (NVIDIA NeMo, supports Parakeet models)"
             ),
         ),
     ] = "auto",
@@ -438,13 +488,21 @@ def whisper_cmd(  # noqa: PLR0912, PLR0915
         # Run multiple models with different configs
         agent-cli server whisper --model large-v3 --model small
 
+        # Run NVIDIA Parakeet with NeMo backend
+        agent-cli server whisper --backend nemo
+
         # Download model without starting server
         agent-cli server whisper --model large-v3 --download-only
     """
     # Setup Rich logging for consistent output
     setup_rich_logging(log_level)
 
-    valid_backends = ("auto", "faster-whisper", "mlx", "transformers")
+    # Default model if none specified
+    if model is None:
+        model = [_DEFAULT_NEMO_WHISPER_MODEL if backend == "nemo" else _DEFAULT_WHISPER_MODEL]
+    requires_nemo = any(_is_parakeet_model(model_name) for model_name in model)
+
+    valid_backends = ("auto", "faster-whisper", "mlx", "transformers", "nemo")
     if backend not in valid_backends:
         err_console.print(
             f"[bold red]Error:[/bold red] --backend must be one of: {', '.join(valid_backends)}",
@@ -452,22 +510,28 @@ def whisper_cmd(  # noqa: PLR0912, PLR0915
         raise typer.Exit(1)
 
     resolved_backend = backend
+    auto_reason = "auto-detected"
     if backend == "auto":
-        from agent_cli.server.whisper.backends import detect_backend  # noqa: PLC0415
+        if requires_nemo:
+            resolved_backend = "nemo"
+            auto_reason = "Parakeet model requires NeMo"
+        else:
+            from agent_cli.server.whisper.backends import detect_backend  # noqa: PLC0415
 
-        resolved_backend = detect_backend()
+            resolved_backend = detect_backend()
+    elif requires_nemo and backend != "nemo":
+        err_console.print(
+            "[bold red]Error:[/bold red] Parakeet models require [cyan]--backend nemo[/cyan]",
+        )
+        raise typer.Exit(1)
 
     _check_whisper_deps(resolved_backend, download_only=download_only)
 
     if backend == "auto" and not download_only:
-        logger.info("Selected %s backend (auto-detected)", resolved_backend)
+        logger.info("Selected %s backend (%s)", resolved_backend, auto_reason)
 
     from agent_cli.server.whisper.model_manager import WhisperModelConfig  # noqa: PLC0415
     from agent_cli.server.whisper.model_registry import create_whisper_registry  # noqa: PLC0415
-
-    # Default model if none specified
-    if model is None:
-        model = ["large-v3"]
 
     if resolved_backend == "transformers" and not download_only:
         _check_transformers_audio_model_deps(model)
@@ -498,6 +562,12 @@ def whisper_cmd(  # noqa: PLR0912, PLR0915
                     )
 
                     download_mlx_model(model_name)
+                elif resolved_backend == "nemo":
+                    from agent_cli.server.whisper.backends.nemo import (  # noqa: PLC0415
+                        download_model as download_nemo_model,
+                    )
+
+                    download_nemo_model(model_name)
                 else:
                     from faster_whisper import WhisperModel  # noqa: PLC0415
 
@@ -568,8 +638,9 @@ def whisper_cmd(  # noqa: PLR0912, PLR0915
         f"--asr-openai-base-url http://localhost:{port}/v1[/cyan]",
     )
     if not no_wyoming:
+        client_host = _client_host_for_usage(host)
         console.print(
-            f"  [cyan]ag transcribe --asr-provider wyoming --asr-wyoming-ip {host} "
+            f"  [cyan]ag transcribe --asr-provider wyoming --asr-wyoming-ip {client_host} "
             f"--asr-wyoming-port {wyoming_port}[/cyan]",
         )
     console.print()
@@ -737,6 +808,7 @@ def tts_cmd(  # noqa: PLR0915
         int,
         typer.Option(
             "--port",
+            "--tts-openai-port",
             "-p",
             help="Port for OpenAI-compatible HTTP API (`/v1/audio/speech`)",
         ),
@@ -745,6 +817,7 @@ def tts_cmd(  # noqa: PLR0915
         int,
         typer.Option(
             "--wyoming-port",
+            "--tts-wyoming-port",
             help="Port for Wyoming protocol (Home Assistant integration)",
         ),
     ] = 10200,
@@ -917,8 +990,9 @@ def tts_cmd(  # noqa: PLR0915
         f"--tts-openai-base-url http://localhost:{port}/v1 --tts-openai-voice {voice}[/cyan]",
     )
     if not no_wyoming:
+        client_host = _client_host_for_usage(host)
         console.print(
-            f'  [cyan]ag speak "Hello" --tts-provider wyoming --tts-wyoming-ip {host} '
+            f'  [cyan]ag speak "Hello" --tts-provider wyoming --tts-wyoming-ip {client_host} '
             f"--tts-wyoming-port {wyoming_port}[/cyan]",
         )
     console.print()
