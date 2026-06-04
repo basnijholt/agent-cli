@@ -5,6 +5,21 @@
         <link>https://github.com/basnijholt/agent-cli</link>
         <description>Signed Agent CLI macOS app updates.</description>
         <item>
+            <title>0.98.2</title>
+            <pubDate>Thu, 04 Jun 2026 18:18:29 +0000</pubDate>
+            <link>https://github.com/basnijholt/agent-cli</link>
+            <sparkle:version>190</sparkle:version>
+            <sparkle:shortVersionString>0.98.2</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[## What’s Changed
+
+* Use MPS for NeMo on Apple Silicon (#580) @basnijholt
+
+]]></description>
+            <enclosure url="https://github.com/basnijholt/agent-cli/releases/download/v0.98.2/AgentCLI.zip" length="22896370" type="application/octet-stream" sparkle:edSignature="2yWD4AB0k4GCxWKbXVysPQ5Hy0ehhW9XYlLHTipGwOCscaa+ZDVvlzM2WQtQ1EHDIsMR07loArT6PGKbXyyEBg=="/>
+        </item>
+        <item>
             <title>0.98.1</title>
             <pubDate>Thu, 04 Jun 2026 16:50:48 +0000</pubDate>
             <link>https://github.com/basnijholt/agent-cli</link>
@@ -152,22 +167,6 @@
 
 ]]></description>
             <enclosure url="https://github.com/basnijholt/agent-cli/releases/download/v0.96.7/AgentCLI.zip" length="22743229" type="application/octet-stream" sparkle:edSignature="zHnPerZ3A607Dz0PIlVEwQtnUDd3zrbnVHxYJuSjb0Qu8TIUUtQZdxWGEhMTxkIn2LG6VJHaJSDvQ5JM27kDBA=="/>
-        </item>
-        <item>
-            <title>0.96.6</title>
-            <pubDate>Fri, 29 May 2026 16:58:43 +0000</pubDate>
-            <link>https://github.com/basnijholt/agent-cli</link>
-            <sparkle:version>180</sparkle:version>
-            <sparkle:shortVersionString>0.96.6</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[## What's Changed
-* Fix macOS setup badge color and light overlay by @marcellaholm in https://github.com/basnijholt/agent-cli/pull/557
-
-
-**Full Changelog**: https://github.com/basnijholt/agent-cli/compare/v0.96.5...v0.96.6
-]]></description>
-            <enclosure url="https://github.com/basnijholt/agent-cli/releases/download/v0.96.6/AgentCLI.zip" length="22742441" type="application/octet-stream" sparkle:edSignature="DriNk09uSrq9l20Pu7S+y34r4LvO+rfTHGOm1gsPDOd94FQZXqgDZxbVYYfTGgJ6eWSb0l3ljQokW6VQhJ97DQ=="/>
         </item>
     </channel>
 </rss>
