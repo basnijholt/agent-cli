@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import threading
+from contextlib import suppress
 from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -153,6 +154,45 @@ async def test_live_preview_streamer_ignores_partial_after_stop(tmp_path: Path) 
 
     entries = [json.loads(line) for line in log_file.read_text().splitlines()]
     assert [entry["type"] for entry in entries] == ["final"]
+
+
+@pytest.mark.asyncio
+async def test_live_preview_run_cancel_drops_resolved_partial_before_final(
+    tmp_path: Path,
+) -> None:
+    """A resolved preview response must not publish after the run task is canceled."""
+    log_file = tmp_path / "preview.jsonl"
+    preview = asr.LivePreviewStreamer(
+        asr.LivePreviewConfig(log_file=log_file, interval_seconds=0.01),
+        wyoming_asr_cfg=config.WyomingASR(asr_wyoming_ip="localhost", asr_wyoming_port=10300),
+        logger=MagicMock(),
+    )
+    preview.reset_log()
+    await preview.add_chunk(b"\x00\x00" * 16_000)
+
+    entered_transcription = asyncio.Event()
+    transcription_result: asyncio.Future[str] = asyncio.Future()
+
+    async def transcribe_after_signal(**_kwargs: object) -> str:
+        entered_transcription.set()
+        return await transcription_result
+
+    with patch(
+        "agent_cli.services.asr._transcribe_recorded_audio_wyoming",
+        side_effect=transcribe_after_signal,
+    ):
+        task = asyncio.create_task(preview.run())
+        await asyncio.wait_for(entered_transcription.wait(), timeout=1)
+        transcription_result.set_result("stale partial")
+        task.cancel()
+        with suppress(asyncio.CancelledError):
+            await task
+
+    await preview.stop("final words")
+
+    entries = [json.loads(line) for line in log_file.read_text().splitlines()]
+    assert [entry["type"] for entry in entries] == ["final"]
+    assert entries[0]["text"] == "final words"
 
 
 @pytest.mark.asyncio
