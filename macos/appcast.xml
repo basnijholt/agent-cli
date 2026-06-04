@@ -5,6 +5,21 @@
         <link>https://github.com/basnijholt/agent-cli</link>
         <description>Signed Agent CLI macOS app updates.</description>
         <item>
+            <title>0.97.2</title>
+            <pubDate>Thu, 04 Jun 2026 07:34:52 +0000</pubDate>
+            <link>https://github.com/basnijholt/agent-cli</link>
+            <sparkle:version>187</sparkle:version>
+            <sparkle:shortVersionString>0.97.2</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[Patch release for NeMo daemon runtime support and parakeet-unified-en-0.6b live transcription.
+
+- Propagate daemon uv path to child agent-cli process so NeMo runtime re-exec can find uv under launchd/systemd.
+- Normalize NeMo models with cfg.validation_ds=None before transcribe; fixes parakeet-unified-en-0.6b crash in NeMo RNNT transcribe.
+]]></description>
+            <enclosure url="https://github.com/basnijholt/agent-cli/releases/download/v0.97.2/AgentCLI.zip" length="22876496" type="application/octet-stream" sparkle:edSignature="72nAmUfSh/gUt4O4phVrYV+RvfsrhxzQzMlx67Q8dAwD3LXzRNwUyeop6KKaUqasT2QXVHnh8k1grjGDoOTyAA=="/>
+        </item>
+        <item>
             <title>0.97.1</title>
             <pubDate>Thu, 04 Jun 2026 07:09:14 +0000</pubDate>
             <link>https://github.com/basnijholt/agent-cli</link>
@@ -155,22 +170,6 @@
 
 ]]></description>
             <enclosure url="https://github.com/basnijholt/agent-cli/releases/download/v0.96.4/AgentCLI.zip" length="22738926" type="application/octet-stream" sparkle:edSignature="Ro8WhN/AVGWxCvG/C6//ISayy5lo5KiOJhvpVQdJKLBsPdZv96HmtZx7G2qeVG87sAmcyIR/84pW4zwzCR7lAA=="/>
-        </item>
-        <item>
-            <title>0.96.3</title>
-            <pubDate>Fri, 29 May 2026 06:09:58 +0000</pubDate>
-            <link>https://github.com/basnijholt/agent-cli</link>
-            <sparkle:version>177</sparkle:version>
-            <sparkle:shortVersionString>0.96.3</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[## What’s Changed
-
-* Restore volume-based wave overlay (#550) @basnijholt
-* Add live menu activity timers (#549) @basnijholt
-
-]]></description>
-            <enclosure url="https://github.com/basnijholt/agent-cli/releases/download/v0.96.3/AgentCLI.zip" length="22735617" type="application/octet-stream" sparkle:edSignature="GIH6s55wnjpesAtPrHdk5btvtZfxkFrqr1v0tX69WWlHdA9w+qTQFszuw8/K21wsmqnp3ynacGP7aa4YqrB7Bg=="/>
         </item>
     </channel>
 </rss>
