@@ -143,6 +143,21 @@ class TestServiceConfig:
         cmd = build_service_command(service, uv_path, use_macos_extra=True)
         assert "agent-cli[server,macos-dep]" in cmd
 
+    def test_build_service_command_uses_nemo_extra_for_nemo_backend(self, tmp_path: Path) -> None:
+        """NeMo daemon args should install the NeMo backend extra."""
+        uv_path = tmp_path / "uv"
+        uv_path.touch()
+
+        cmd = build_service_command(
+            SERVICES["whisper"],
+            uv_path,
+            use_macos_extra=True,
+            extra_command_args=["--backend", "nemo", "--model", "parakeet-tdt-0.6b-v3"],
+        )
+
+        assert "agent-cli[server,nemo-whisper,wyoming]" in cmd
+        assert cmd[cmd.index("--python") + 1] == "3.13"
+
     def test_build_service_command_uses_app_package_source(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:

@@ -15,6 +15,7 @@ struct AgentCommand {
     let title: String
     let arguments: [String]
     let appliesTranscriptionExtraInstructions: Bool
+    let appliesTranscriptionDaemonSettings: Bool
     let forceBootstrap: Bool
     let bootstrapRequirement: AgentBootstrapRequirement
     let showsRecordingIndicator: Bool
@@ -27,6 +28,7 @@ struct AgentCommand {
         title: String,
         arguments: [String],
         appliesTranscriptionExtraInstructions: Bool = false,
+        appliesTranscriptionDaemonSettings: Bool = false,
         forceBootstrap: Bool = false,
         bootstrapRequirement: AgentBootstrapRequirement = .cliRuntime,
         showsRecordingIndicator: Bool = false,
@@ -38,6 +40,7 @@ struct AgentCommand {
         self.title = title
         self.arguments = arguments
         self.appliesTranscriptionExtraInstructions = appliesTranscriptionExtraInstructions
+        self.appliesTranscriptionDaemonSettings = appliesTranscriptionDaemonSettings
         self.forceBootstrap = forceBootstrap
         self.bootstrapRequirement = bootstrapRequirement
         self.showsRecordingIndicator = showsRecordingIndicator
@@ -46,7 +49,14 @@ struct AgentCommand {
         self.finishNotificationTitle = finishNotificationTitle
     }
 
-    func resolvedArguments(extraInstructions: String?) -> [String] {
+    func resolvedArguments(
+        extraInstructions: String?,
+        transcriptionDaemonArguments: [String]? = nil
+    ) -> [String] {
+        if appliesTranscriptionDaemonSettings {
+            return transcriptionDaemonArguments ?? arguments
+        }
+
         guard appliesTranscriptionExtraInstructions else { return arguments }
 
         let trimmedInstructions = extraInstructions?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
@@ -110,7 +120,8 @@ struct AgentCommand {
     static let installVoiceService = AgentCommand(
         identifier: "install-voice-service",
         title: "Install Voice Service",
-        arguments: ["daemon", "install", "whisper", "-y"]
+        arguments: ["daemon", "install", "whisper", "-y"],
+        appliesTranscriptionDaemonSettings: true
     )
 
     static let installOrUpdateCLI = AgentCommand(

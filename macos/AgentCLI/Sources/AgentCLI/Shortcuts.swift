@@ -281,9 +281,17 @@ struct SettingsView: View {
     private var useUserInstalledAgentCLI = false
     @AppStorage(RecordingSoundSettings.enabledKey)
     private var recordingSoundsEnabled = false
+    @AppStorage(TranscriptionSettings.transcriptionBackendKey)
+    private var transcriptionBackend = TranscriptionBackend.whisper.rawValue
+    @AppStorage(TranscriptionSettings.transcriptionModelKey)
+    private var transcriptionModel = TranscriptionBackend.whisper.defaultModelName
     @AppStorage(TranscriptionSettings.transcriptionExtraInstructionsKey)
     private var transcriptionExtraInstructions = ""
     @State private var shortcutRevision = 0
+
+    private var selectedTranscriptionBackend: TranscriptionBackend {
+        TranscriptionBackend(rawValue: transcriptionBackend) ?? .whisper
+    }
 
     var body: some View {
         Form {
@@ -309,6 +317,32 @@ struct SettingsView: View {
                 Text("General")
             } footer: {
                 Text("Runs the agent-cli found on PATH with your normal config instead of the app's private bundled-uv runtime. Recording sounds use Frog when recording starts and Purr when recording ends.")
+            }
+
+            Section {
+                Picker("Backend", selection: $transcriptionBackend) {
+                    ForEach(TranscriptionBackend.allCases) { backend in
+                        Text(backend.title).tag(backend.rawValue)
+                    }
+                }
+                .pickerStyle(.menu)
+                .disabled(useUserInstalledAgentCLI)
+
+                Picker("Model", selection: $transcriptionModel) {
+                    ForEach(selectedTranscriptionBackend.modelOptions) { model in
+                        Text(model.title).tag(model.id)
+                    }
+                }
+                .pickerStyle(.menu)
+                .disabled(useUserInstalledAgentCLI)
+            } header: {
+                Text("Voice Service")
+            } footer: {
+                Text(
+                    useUserInstalledAgentCLI
+                        ? "Disabled while User-Installed agent-cli is active."
+                        : "Changing these settings restarts the bundled voice service on next transcription."
+                )
             }
 
             Section {
@@ -378,9 +412,19 @@ struct SettingsView: View {
         }
         .formStyle(.grouped)
         .padding()
+        .onChange(of: transcriptionBackend) { _ in
+            normalizeTranscriptionModel()
+        }
         .onAppear {
             loginItemController.refresh()
+            normalizeTranscriptionModel()
         }
+    }
+
+    private func normalizeTranscriptionModel() {
+        let backend = selectedTranscriptionBackend
+        guard backend.modelOption(named: transcriptionModel) == nil else { return }
+        transcriptionModel = backend.defaultModelName
     }
 }
 
