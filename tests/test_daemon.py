@@ -842,9 +842,9 @@ class TestSystemdModule:
         assert status.pid == 12345
         mock_exists.assert_called()
 
-    def test_systemd_generate_unit_file(self, tmp_path: Path) -> None:
+    def test_systemd_generate_unit_file(self) -> None:
         """Test systemd unit file generation."""
-        uv_path = tmp_path / "uv"
+        uv_path = Path("/usr/bin/uv")
         service = SERVICES["whisper"]
         unit_content = systemd_generate_unit_file(service, uv_path)
 
@@ -855,9 +855,9 @@ class TestSystemdModule:
         assert str(uv_path) in unit_content
         assert "Restart=on-failure" in unit_content
 
-    def test_systemd_generate_unit_file_appends_extra_args(self, tmp_path: Path) -> None:
+    def test_systemd_generate_unit_file_appends_extra_args(self) -> None:
         """Systemd unit file persists user-provided daemon args."""
-        uv_path = tmp_path / "uv"
+        uv_path = Path("/usr/bin/uv")
         service = SERVICES["whisper"]
 
         unit_content = systemd_generate_unit_file(
@@ -868,9 +868,9 @@ class TestSystemdModule:
 
         assert "--model small --port 10311" in unit_content
 
-    def test_systemd_generate_unit_file_escapes_percent_args(self, tmp_path: Path) -> None:
+    def test_systemd_generate_unit_file_escapes_percent_args(self) -> None:
         """Systemd unit file escapes literal percent signs in args."""
-        uv_path = tmp_path / "uv"
+        uv_path = Path("/usr/bin/uv")
         service = SERVICES["whisper"]
 
         unit_content = systemd_generate_unit_file(
@@ -881,9 +881,9 @@ class TestSystemdModule:
 
         assert "audio%%20files" in unit_content
 
-    def test_systemd_generate_unit_file_escapes_dollar_args(self, tmp_path: Path) -> None:
+    def test_systemd_generate_unit_file_escapes_dollar_args(self) -> None:
         """Systemd unit file escapes literal dollar signs in args."""
-        uv_path = tmp_path / "uv"
+        uv_path = Path("/usr/bin/uv")
         service = SERVICES["whisper"]
 
         unit_content = systemd_generate_unit_file(
@@ -894,9 +894,9 @@ class TestSystemdModule:
 
         assert "$$HOME/agent-cache" in unit_content
 
-    def test_systemd_generate_unit_file_uses_systemd_quotes(self, tmp_path: Path) -> None:
+    def test_systemd_generate_unit_file_uses_systemd_quotes(self) -> None:
         """Systemd unit file avoids shell-only quote concatenation."""
-        uv_path = tmp_path / "uv"
+        uv_path = Path("/usr/bin/uv")
         service = SERVICES["whisper"]
 
         unit_content = systemd_generate_unit_file(
