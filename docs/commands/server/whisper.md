@@ -98,7 +98,7 @@ agent-cli server whisper \
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--model, -m` | - | Whisper model(s) to load. Common models: `tiny`, `base`, `small`, `medium`, `large-v3`, `distil-large-v3`, `parakeet-tdt-0.6b-v3` (NeMo backend). Can specify multiple for different accuracy/speed tradeoffs. Default: `large-v3` |
+| `--model, -m` | - | Whisper model(s) to load. Common models: `tiny`, `base`, `small`, `medium`, `large-v3`, `distil-large-v3`, `parakeet-tdt-0.6b-v3`, `parakeet-unified-en-0.6b` (NeMo backend). Can specify multiple for different accuracy/speed tradeoffs. Default: `large-v3` (`parakeet-unified-en-0.6b` with `--backend nemo`) |
 | `--default-model` | - | Model to use when client doesn't specify one. Must be in the `--model` list |
 | `--device, -d` | `auto` | Compute device: `auto` (detect GPU), `cuda`, `cuda:0`, `cpu`. MLX backend always uses Apple Silicon |
 | `--compute-type` | `auto` | Precision for faster-whisper: `auto`, `float16`, `int8`, `int8_float16`. Lower precision = faster + less VRAM |

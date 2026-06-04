@@ -187,6 +187,42 @@ def test_server_whisper_accepts_asr_openai_port_alias(mock_uvicorn_run: MagicMoc
     assert mock_uvicorn_run.call_args.kwargs["port"] == 10303
 
 
+@patch("uvicorn.run")
+def test_server_whisper_backend_nemo_defaults_to_unified_parakeet(
+    mock_uvicorn_run: MagicMock,
+) -> None:
+    """NeMo backend should default to the unified Parakeet model."""
+    runner = CliRunner()
+    registry = MagicMock()
+    registry.default_model = "parakeet-unified-en-0.6b"
+
+    with (
+        patch("agent_cli.core.deps._check_and_install_extras", return_value=[]),
+        patch("agent_cli.server.cli._check_whisper_deps"),
+        patch(
+            "agent_cli.server.whisper.model_registry.create_whisper_registry",
+            return_value=registry,
+        ) as mock_create_registry,
+    ):
+        result = runner.invoke(
+            cli_app,
+            [
+                "server",
+                "whisper",
+                "--backend",
+                "nemo",
+                "--no-wyoming",
+            ],
+        )
+
+    assert result.exit_code == 0
+    mock_create_registry.assert_called_once_with(default_model="parakeet-unified-en-0.6b")
+    registered_config = registry.register.call_args.args[0]
+    assert registered_config.model_name == "parakeet-unified-en-0.6b"
+    assert registered_config.backend_type == "nemo"
+    mock_uvicorn_run.assert_called_once()
+
+
 def test_server_tts_command_in_cli() -> None:
     """Test that the server tts command exposes Wyoming port config."""
     runner = CliRunner()

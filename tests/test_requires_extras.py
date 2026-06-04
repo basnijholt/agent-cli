@@ -297,8 +297,8 @@ class TestCheckAndInstallExtras:
             uv_available=False,
         ) == ["nemo-whisper"]
 
-    def test_uv_pip_install_uses_nemo_override(self) -> None:
-        """Uv pip installs NeMo with the temporary kaldialign override."""
+    def test_uv_pip_install_uses_nemo_git_override(self) -> None:
+        """Uv pip installs NeMo from a pinned Git revision with the kaldialign override."""
         with (
             patch("agent_cli.core.deps.is_uv_tool_install", return_value=False),
             patch(
@@ -314,10 +314,15 @@ class TestCheckAndInstallExtras:
         cmd = mock_run.call_args.args[0]
         assert "--overrides" in cmd
         assert "nemo-whisper.txt" in cmd[cmd.index("--overrides") + 1]
-        assert "nemo_toolkit[asr]>=2.2.0" in cmd
+        assert (
+            "nemo-toolkit[asr] @ "
+            "git+https://github.com/NVIDIA-NeMo/NeMo.git@"
+            "be23ce1ee6594da3d7fa2f37e603d3b3ba230a9e"
+        ) in cmd
+        assert "nemo_toolkit[asr]>=2.2.0" not in cmd
 
-    def test_uv_tool_install_uses_nemo_override(self) -> None:
-        """Uv tool installs NeMo with a direct requirement and override."""
+    def test_uv_tool_install_uses_nemo_git_override(self) -> None:
+        """Uv tool installs NeMo from a pinned Git revision with override."""
         with (
             patch("agent_cli.core.deps._get_current_uv_tool_extras", return_value=["server"]),
             patch("agent_cli.core.deps.subprocess.run") as mock_run,
@@ -331,9 +336,23 @@ class TestCheckAndInstallExtras:
         assert cmd[:3] == ["uv", "tool", "install"]
         assert "agent-cli[nemo-whisper,server]" in cmd
         assert "--with" in cmd
-        assert cmd[cmd.index("--with") + 1] == "nemo_toolkit[asr]>=2.2.0"
+        assert (
+            cmd[cmd.index("--with") + 1] == "nemo-toolkit[asr] @ "
+            "git+https://github.com/NVIDIA-NeMo/NeMo.git@"
+            "be23ce1ee6594da3d7fa2f37e603d3b3ba230a9e"
+        )
         assert "--overrides" in cmd
         assert "nemo-whisper.txt" in cmd[cmd.index("--overrides") + 1]
+
+    def test_nemo_override_file_pins_nemo_git_requirement(self) -> None:
+        """Override file should replace released NeMo pins with the Git revision."""
+        override = Path("agent_cli/_overrides/nemo-whisper.txt").read_text()
+        assert "kaldialign==0.9.3" in override
+        assert (
+            "nemo-toolkit[asr] @ "
+            "git+https://github.com/NVIDIA-NeMo/NeMo.git@"
+            "be23ce1ee6594da3d7fa2f37e603d3b3ba230a9e"
+        ) in override
 
     def test_nemo_python314_hint_prefers_runtime_installer(self) -> None:
         """Python 3.14 NeMo hints should prefer the uv-aware runtime installer."""

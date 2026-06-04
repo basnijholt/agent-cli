@@ -25,6 +25,7 @@ logger = logging.getLogger(__name__)
 _PARAKEET_ALIASES = (
     "parakeet-tdt-0.6b-v2",
     "parakeet-tdt-0.6b-v3",
+    "parakeet-unified-en-0.6b",
     "parakeet-tdt-1.1b",
     "parakeet-ctc-0.6b",
     "parakeet-ctc-1.1b",

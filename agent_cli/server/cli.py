@@ -19,6 +19,9 @@ from agent_cli.server.common import setup_rich_logging
 
 logger = logging.getLogger(__name__)
 
+_DEFAULT_WHISPER_MODEL = "large-v3"
+_DEFAULT_NEMO_WHISPER_MODEL = "parakeet-unified-en-0.6b"
+
 # Check for optional dependencies at call time (not module load time)
 # This is important because auto-install may install packages after the module is loaded
 
@@ -324,9 +327,11 @@ def whisper_cmd(  # noqa: C901, PLR0912, PLR0915
             "-m",
             help=(
                 "Whisper model(s) to load. Common models: `tiny`, `base`, `small`, "
-                "`medium`, `large-v3`, `distil-large-v3`, `parakeet-tdt-0.6b-v3` "
+                "`medium`, `large-v3`, `distil-large-v3`, `parakeet-tdt-0.6b-v3`, "
+                "`parakeet-unified-en-0.6b` "
                 "(NeMo backend). Can specify multiple for different "
-                "accuracy/speed tradeoffs. Default: `large-v3`"
+                "accuracy/speed tradeoffs. Default: `large-v3` "
+                "(`parakeet-unified-en-0.6b` with `--backend nemo`)"
             ),
         ),
     ] = None,
@@ -481,7 +486,7 @@ def whisper_cmd(  # noqa: C901, PLR0912, PLR0915
         agent-cli server whisper --model large-v3 --model small
 
         # Run NVIDIA Parakeet with NeMo backend
-        agent-cli server whisper --backend nemo --model parakeet-tdt-0.6b-v3
+        agent-cli server whisper --backend nemo
 
         # Download model without starting server
         agent-cli server whisper --model large-v3 --download-only
@@ -491,7 +496,7 @@ def whisper_cmd(  # noqa: C901, PLR0912, PLR0915
 
     # Default model if none specified
     if model is None:
-        model = ["large-v3"]
+        model = [_DEFAULT_NEMO_WHISPER_MODEL if backend == "nemo" else _DEFAULT_WHISPER_MODEL]
     requires_nemo = any(_is_parakeet_model(model_name) for model_name in model)
 
     valid_backends = ("auto", "faster-whisper", "mlx", "transformers", "nemo")

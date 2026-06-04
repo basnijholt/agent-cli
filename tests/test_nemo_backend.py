@@ -58,6 +58,7 @@ def _install_mock_torch(monkeypatch: pytest.MonkeyPatch, *, cuda_available: bool
     [
         ("parakeet-tdt-0.6b-v2", "nvidia/parakeet-tdt-0.6b-v2"),
         ("parakeet-tdt-0.6b-v3", "nvidia/parakeet-tdt-0.6b-v3"),
+        ("parakeet-unified-en-0.6b", "nvidia/parakeet-unified-en-0.6b"),
         ("parakeet-tdt-1.1b", "nvidia/parakeet-tdt-1.1b"),
         ("parakeet-ctc-0.6b", "nvidia/parakeet-ctc-0.6b"),
         ("parakeet-ctc-1.1b", "nvidia/parakeet-ctc-1.1b"),
@@ -229,6 +230,7 @@ def test_is_parakeet_model_matches_only_supported_identifiers() -> None:
     """Ensure Parakeet detection aligns with NeMo model-name resolution."""
     assert _is_parakeet_model("parakeet-tdt-0.6b-v2")
     assert _is_parakeet_model("parakeet-tdt-0.6b-v3")
+    assert _is_parakeet_model("parakeet-unified-en-0.6b")
     assert _is_parakeet_model("parakeet-tdt-1.1b")
     assert _is_parakeet_model("parakeet-ctc-0.6b")
     assert _is_parakeet_model("nvidia/parakeet-tdt-0.6b-v2")

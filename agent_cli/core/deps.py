@@ -32,11 +32,17 @@ _EXTRA_PYTHON_MAX_EXCLUSIVE: dict[str, tuple[int, int]] = {
     "nemo-whisper": (3, 14),
 }
 
+_NEMO_GIT_REF = "be23ce1ee6594da3d7fa2f37e603d3b3ba230a9e"
+_NEMO_GIT_REQUIREMENT = (
+    f"nemo-toolkit[asr] @ git+https://github.com/NVIDIA-NeMo/NeMo.git@{_NEMO_GIT_REF}"
+)
+
 _EXTRA_UV_RUNTIME_REQUIREMENTS: dict[str, tuple[str, ...]] = {
-    # The published NeMo 2.7.x metadata still caps kaldialign below the first
-    # release with Python 3.14 macOS wheels. Keep agent-cli's public extra
-    # publishable, and apply this only for runtime uv installs.
-    "nemo-whisper": ("nemo_toolkit[asr]>=2.2.0",),
+    # NeMo 2.7.3 cannot load parakeet-unified-en-0.6b and still caps
+    # kaldialign below the first Python 3.14 macOS wheel. Keep agent-cli's
+    # public extra publishable, and apply this pinned Git build plus override
+    # only for runtime uv installs.
+    "nemo-whisper": (_NEMO_GIT_REQUIREMENT,),
 }
 
 _OVERRIDES_DIR = Path(__file__).parent.parent / "_overrides"

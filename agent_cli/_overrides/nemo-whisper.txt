@@ -1,7 +1,9 @@
 # Temporary NeMo runtime install override.
 #
-# NeMo 2.7.x caps kaldialign to <=0.9.1 in released PyPI metadata. That cap
-# blocks Python 3.14 because cp314 wheels first appear in kaldialign 0.9.3.
+# Runtime installs pin NeMo to Git until a PyPI release can load
+# parakeet-unified-en-0.6b. Released NeMo metadata also caps kaldialign below
+# the first Python 3.14 macOS wheel, so override that cap here.
 # Pin exact 0.9.3 instead of >=0.9.3 because 0.10.0 currently lacks macOS
-# wheels. Remove after NVIDIA-NeMo/NeMo#15438 reaches a PyPI release.
+# wheels. Remove after the needed NeMo fixes reach a PyPI release.
+nemo-toolkit[asr] @ git+https://github.com/NVIDIA-NeMo/NeMo.git@be23ce1ee6594da3d7fa2f37e603d3b3ba230a9e
 kaldialign==0.9.3
