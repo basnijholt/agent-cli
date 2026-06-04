@@ -147,6 +147,8 @@ def test_server_whisper_accepts_asr_wyoming_port_alias(mock_uvicorn_run: MagicMo
                 "whisper",
                 "--model",
                 "tiny",
+                "--backend",
+                "faster-whisper",
                 "--no-wyoming",
                 "--asr-wyoming-port",
                 "10302",
