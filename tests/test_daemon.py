@@ -867,3 +867,44 @@ class TestSystemdModule:
         )
 
         assert "--model small --port 10311" in unit_content
+
+    def test_systemd_generate_unit_file_escapes_percent_args(self, tmp_path: Path) -> None:
+        """Systemd unit file escapes literal percent signs in args."""
+        uv_path = tmp_path / "uv"
+        service = SERVICES["whisper"]
+
+        unit_content = systemd_generate_unit_file(
+            service,
+            uv_path,
+            ["--base-url", "http://localhost/audio%20files"],
+        )
+
+        assert "audio%%20files" in unit_content
+
+    def test_systemd_generate_unit_file_escapes_dollar_args(self, tmp_path: Path) -> None:
+        """Systemd unit file escapes literal dollar signs in args."""
+        uv_path = tmp_path / "uv"
+        service = SERVICES["whisper"]
+
+        unit_content = systemd_generate_unit_file(
+            service,
+            uv_path,
+            ["--cache-dir", "$HOME/agent-cache"],
+        )
+
+        assert "$$HOME/agent-cache" in unit_content
+
+    def test_systemd_generate_unit_file_uses_systemd_quotes(self, tmp_path: Path) -> None:
+        """Systemd unit file avoids shell-only quote concatenation."""
+        uv_path = tmp_path / "uv"
+        service = SERVICES["whisper"]
+
+        unit_content = systemd_generate_unit_file(
+            service,
+            uv_path,
+            ["--cache-dir", "/var/lib/O'Connor/cache", "--prompt", "hello world"],
+        )
+
+        assert "'\"'\"'" not in unit_content
+        assert '"/var/lib/O\'Connor/cache"' in unit_content
+        assert '"hello world"' in unit_content

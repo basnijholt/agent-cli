@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import shlex
 import subprocess
 from pathlib import Path
 
@@ -20,6 +19,40 @@ from agent_cli.install.service_config import (
 
 # Linux-specific paths for uv
 _LINUX_UV_PATHS = [Path("/usr/bin/uv")]
+
+_SYSTEMD_ESCAPE_CHARS = {
+    "\a": r"\a",
+    "\b": r"\b",
+    "\f": r"\f",
+    "\n": r"\n",
+    "\r": r"\r",
+    "\t": r"\t",
+    "\v": r"\v",
+    "\\": r"\\",
+    '"': r"\"",
+}
+
+
+def _format_exec_start_arg(arg: str) -> str:
+    """Format one argv item for systemd ExecStart syntax."""
+    needs_quotes = arg == "" or any(char.isspace() or char in {'"', "'", "\\", ";"} for char in arg)
+
+    escaped_parts: list[str] = []
+    for char in arg:
+        if char == "%":
+            escaped_parts.append("%%")
+        elif char == "$":
+            escaped_parts.append("$$")
+        else:
+            escaped_parts.append(_SYSTEMD_ESCAPE_CHARS.get(char, char))
+
+    escaped = "".join(escaped_parts)
+    return f'"{escaped}"' if needs_quotes else escaped
+
+
+def _format_exec_start(args: list[str]) -> str:
+    """Format argv for systemd ExecStart without shell quoting."""
+    return " ".join(_format_exec_start_arg(arg) for arg in args)
 
 
 def _get_unit_name(service_name: str) -> str:
@@ -68,7 +101,7 @@ def _generate_unit_file(
     extra_command_args: list[str] | None = None,
 ) -> str:
     """Generate systemd unit file content for a service."""
-    exec_start = shlex.join(
+    exec_start = _format_exec_start(
         build_service_command(service, uv_path, extra_command_args=extra_command_args),
     )
 
