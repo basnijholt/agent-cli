@@ -109,6 +109,7 @@ def _generate_plist(
     uv_path: Path,
     home_dir: Path,
     log_dir: Path,
+    extra_command_args: list[str] | None = None,
 ) -> dict:
     """Generate plist dictionary for a launchd service."""
     environment = {"PATH": _MACOS_DAEMON_PATH}
@@ -119,7 +120,12 @@ def _generate_plist(
 
     return {
         "Label": _get_label(service.name),
-        "ProgramArguments": build_service_command(service, uv_path, use_macos_extra=True),
+        "ProgramArguments": build_service_command(
+            service,
+            uv_path,
+            use_macos_extra=True,
+            extra_command_args=extra_command_args,
+        ),
         "RunAtLoad": True,
         "KeepAlive": True,
         "WorkingDirectory": str(home_dir),
@@ -170,7 +176,10 @@ def _get_service_status(service_name: str) -> ServiceStatus:
     )
 
 
-def _install_service(service_name: str) -> InstallResult:
+def _install_service(
+    service_name: str,
+    extra_command_args: list[str] | None = None,
+) -> InstallResult:
     """Install a service as a macOS launchd service.
 
     Returns an InstallResult with success status and message.
@@ -200,7 +209,7 @@ def _install_service(service_name: str) -> InstallResult:
     plist_path.parent.mkdir(parents=True, exist_ok=True)
 
     # Generate and write plist
-    plist_data = _generate_plist(service, uv_path, home_dir, log_dir)
+    plist_data = _generate_plist(service, uv_path, home_dir, log_dir, extra_command_args)
 
     with plist_path.open("wb") as f:
         plistlib.dump(plist_data, f)

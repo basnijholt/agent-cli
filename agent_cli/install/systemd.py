@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import shlex
 import subprocess
 from pathlib import Path
 
@@ -64,9 +65,12 @@ def _get_recent_logs(service_name: str, num_lines: int = 10) -> list[str]:
 def _generate_unit_file(
     service: ServiceConfig,
     uv_path: Path,
+    extra_command_args: list[str] | None = None,
 ) -> str:
     """Generate systemd unit file content for a service."""
-    exec_start = " ".join(build_service_command(service, uv_path))
+    exec_start = shlex.join(
+        build_service_command(service, uv_path, extra_command_args=extra_command_args),
+    )
 
     return f"""[Unit]
 Description=agent-cli {service.display_name}
@@ -129,7 +133,10 @@ def _get_service_status(service_name: str) -> ServiceStatus:
     )
 
 
-def _install_service(service_name: str) -> InstallResult:
+def _install_service(
+    service_name: str,
+    extra_command_args: list[str] | None = None,
+) -> InstallResult:
     """Install a service as a Linux systemd user service.
 
     Returns an InstallResult with success status and message.
@@ -157,7 +164,7 @@ def _install_service(service_name: str) -> InstallResult:
     unit_path.parent.mkdir(parents=True, exist_ok=True)
 
     # Generate and write unit file
-    unit_content = _generate_unit_file(service, uv_path)
+    unit_content = _generate_unit_file(service, uv_path, extra_command_args)
     unit_path.write_text(unit_content)
 
     # Stop service if running (ignore errors if not running)

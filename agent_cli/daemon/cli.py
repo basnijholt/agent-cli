@@ -50,6 +50,9 @@ agent-cli daemon ensure whisper
 # Install whisper as a background daemon
 agent-cli daemon install whisper
 
+# Install whisper with custom server args
+agent-cli daemon install whisper -- --model small --port 10311
+
 # Install GPU-accelerated TTS
 agent-cli daemon install tts-kokoro
 
@@ -220,6 +223,17 @@ def _service_status_payload(
     }
 
 
+def _split_services_and_command_args(tokens: list[str]) -> tuple[list[str], list[str]]:
+    """Split daemon names from trailing service command args."""
+    services: list[str] = []
+    for index, token in enumerate(tokens):
+        if token.startswith("-"):
+            return services, tokens[index:]
+        services.append(token)
+
+    return services, []
+
+
 @app.command("ensure")
 def ensure_cmd(
     service: Annotated[
@@ -363,13 +377,26 @@ def install_cmd(  # noqa: PLR0912, PLR0915
         # Skip confirmation prompts
         agent-cli daemon install whisper -y
 
+        # Pass server args to one daemon command
+        agent-cli daemon install whisper -- --model small --port 10311
+
     After installation, check status with:
         agent-cli daemon status
     """
-    if not services and not all_services:
+    raw_services = services or []
+    requested_services, command_args = _split_services_and_command_args(raw_services)
+
+    if not raw_services and not all_services:
         err_console.print(
             f"[bold red]Error:[/bold red] Specify services to install or use --all. "
             f"Available: {', '.join(SERVICES.keys())}",
+        )
+        raise typer.Exit(1)
+
+    if command_args and (all_services or len(requested_services) != 1):
+        err_console.print(
+            "[bold red]Error:[/bold red] Custom service command args are only supported "
+            "when installing exactly one service.",
         )
         raise typer.Exit(1)
 
@@ -384,15 +411,20 @@ def install_cmd(  # noqa: PLR0912, PLR0915
         # Get default services (auto-selects one TTS backend based on platform)
         selected_services = get_default_services()
     else:
-        assert services is not None  # Already checked above
-        invalid = [s for s in services if s not in SERVICES]
+        if not requested_services:
+            err_console.print(
+                f"[bold red]Error:[/bold red] Specify services to install or use --all. "
+                f"Available: {', '.join(SERVICES.keys())}",
+            )
+            raise typer.Exit(1)
+        invalid = [s for s in requested_services if s not in SERVICES]
         if invalid:
             err_console.print(
                 f"[bold red]Error:[/bold red] Unknown service(s): {', '.join(invalid)}. "
                 f"Available: {', '.join(SERVICES.keys())}",
             )
             raise typer.Exit(1)
-        selected_services = services
+        selected_services = requested_services
 
     # Check uv dependency
     if not skip_deps:
@@ -402,6 +434,8 @@ def install_cmd(  # noqa: PLR0912, PLR0915
     if not no_confirm:
         console.print()
         console.print(f"[bold]Will install:[/bold] {', '.join(selected_services)}")
+        if command_args:
+            console.print(f"[bold]With args:[/bold] {' '.join(command_args)}")
         if not _confirm_action("Continue?"):
             console.print("[dim]Cancelled.[/dim]")
             raise typer.Exit(0)
@@ -414,7 +448,11 @@ def install_cmd(  # noqa: PLR0912, PLR0915
     failed = []
 
     for svc_name in selected_services:
-        result = manager.install_service(svc_name)
+        result = (
+            manager.install_service(svc_name, command_args)
+            if command_args
+            else manager.install_service(svc_name)
+        )
         if result.success:
             if result.log_dir:
                 console.print(

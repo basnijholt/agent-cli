@@ -59,6 +59,9 @@ agent-cli daemon install --all
 
 # Skip confirmation prompts
 agent-cli daemon install whisper -y
+
+# Pass server args to one daemon command
+agent-cli daemon install whisper -- --model small --port 10311
 ```
 
 **Options:**
@@ -68,6 +71,8 @@ agent-cli daemon install whisper -y
 | `--all, -a` | Install all available services |
 | `--skip-deps` | Skip uv dependency check |
 | `--no-confirm, -y` | Skip confirmation prompts |
+
+Arguments after `--` are appended to the installed service command. This is only supported when installing exactly one daemon.
 
 ### `uninstall`
 
@@ -93,6 +98,9 @@ agent-cli daemon uninstall --all
 ```bash
 # Install whisper as a background daemon
 agent-cli daemon install whisper
+
+# Install whisper with custom server args
+agent-cli daemon install whisper -- --model small --port 10311
 
 # Check status of all daemons
 agent-cli daemon status
@@ -152,6 +160,9 @@ agent-cli daemon uninstall whisper
 
   # Install whisper as a background daemon
   agent-cli daemon install whisper
+
+  # Install whisper with custom server args
+  agent-cli daemon install whisper -- --model small --port 10311
 
   # Install GPU-accelerated TTS
   agent-cli daemon install tts-kokoro

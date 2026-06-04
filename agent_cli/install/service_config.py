@@ -123,6 +123,7 @@ def build_service_command(
     uv_path: Path,
     *,
     use_macos_extra: bool = False,
+    extra_command_args: list[str] | None = None,
 ) -> list[str]:
     """Build the command args for running a service via uv tool run."""
     extra = (service.macos_extra or service.extra) if use_macos_extra else service.extra
@@ -145,6 +146,7 @@ def build_service_command(
             "agent-cli",
             *cmd_path,
             *service.command_args,
+            *(extra_command_args or []),
         ],
     )
     return args
@@ -239,7 +241,7 @@ class ServiceManager(NamedTuple):
 
     check_uv_installed: Callable[[], tuple[bool, Path | None]]
     install_uv: Callable[[], tuple[bool, str]]
-    install_service: Callable[[str], InstallResult]
+    install_service: Callable[..., InstallResult]
     uninstall_service: Callable[[str], UninstallResult]
     get_service_status: Callable[[str], ServiceStatus]
     get_log_command: Callable[[str], str]
