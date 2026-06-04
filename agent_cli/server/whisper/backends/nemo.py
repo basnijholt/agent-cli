@@ -209,6 +209,40 @@ def _build_transcribe_kwargs(
     return transcribe_kwargs
 
 
+def _set_config_value(config: Any, key: str, value: Any) -> None:
+    """Set a NeMo config value, including OmegaConf configs in struct mode."""
+    try:
+        setattr(config, key, value)
+        return
+    except (AttributeError, TypeError):
+        if isinstance(config, dict):
+            config[key] = value
+            return
+        raise
+    except Exception:
+        from omegaconf import open_dict  # noqa: PLC0415
+
+        with open_dict(config):
+            setattr(config, key, value)
+
+
+def _ensure_validation_ds_config(model: Any) -> None:
+    """NeMo RNNT transcribe expects cfg.validation_ds to be a mapping."""
+    config = getattr(model, "cfg", None)
+    if config is None:
+        return
+
+    try:
+        validation_ds = (
+            config.get("validation_ds") if hasattr(config, "get") else config.validation_ds
+        )
+    except (AttributeError, KeyError):
+        return
+
+    if validation_ds is None:
+        _set_config_value(config, "validation_ds", {})
+
+
 def _load_model_in_subprocess(model_name: str, device: str) -> str:
     """Load model in subprocess. Returns actual device string."""
     import nemo.collections.asr as nemo_asr  # noqa: PLC0415
@@ -217,6 +251,7 @@ def _load_model_in_subprocess(model_name: str, device: str) -> str:
 
     resolved_device = _resolve_device(device)
     model = nemo_asr.models.ASRModel.from_pretrained(model_name=model_name)
+    _ensure_validation_ds_config(model)
     if hasattr(model, "to"):
         model = model.to(resolved_device)
     if hasattr(model, "eval"):

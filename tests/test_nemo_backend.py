@@ -23,6 +23,8 @@ if TYPE_CHECKING:
 def _install_mock_nemo(
     monkeypatch: pytest.MonkeyPatch,
     calls: dict[str, object],
+    *,
+    model: object | None = None,
 ) -> None:
     """Install a minimal mock of nemo.collections.asr in sys.modules."""
 
@@ -30,7 +32,7 @@ def _install_mock_nemo(
         @staticmethod
         def from_pretrained(*, model_name: str) -> object:
             calls["model_name"] = model_name
-            return object()
+            return model if model is not None else object()
 
     nemo_module: Any = ModuleType("nemo")
     collections_module: Any = ModuleType("nemo.collections")
@@ -233,6 +235,36 @@ def test_resolve_device_preserves_explicit_cpu(
     """Ensure explicit non-auto device values are preserved."""
     _install_mock_torch(monkeypatch, cuda_available=False)
     assert backend._resolve_device("cpu") == "cpu"
+
+
+def test_load_model_fills_missing_validation_ds_for_unified_parakeet(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """NeMo transcribe expects validation_ds to be a mapping, not None."""
+
+    class _Model:
+        def __init__(self) -> None:
+            self.cfg = SimpleNamespace(validation_ds=None)
+
+        def to(self, device: str) -> _Model:
+            assert device == "cpu"
+            return self
+
+        def eval(self) -> None:
+            return None
+
+    calls: dict[str, object] = {}
+    model = _Model()
+    _install_mock_torch(monkeypatch, cuda_available=False)
+    _install_mock_nemo(monkeypatch, calls, model=model)
+    monkeypatch.setattr(backend._state, "model", None)
+    monkeypatch.setattr(backend._state, "device", None)
+
+    assert backend._load_model_in_subprocess("nvidia/parakeet-unified-en-0.6b", "cpu") == "cpu"
+
+    assert calls["model_name"] == "nvidia/parakeet-unified-en-0.6b"
+    assert model.cfg.validation_ds == {}
+    assert backend._state.model is model
 
 
 def test_audio_duration_seconds_returns_zero_for_non_wav(tmp_path: Path) -> None:
