@@ -210,6 +210,31 @@ def create_recorded_audio_transcriber(
     raise ValueError(msg)
 
 
+def _schedule_audio_level_callback(
+    pending_tasks: set[asyncio.Task[None]],
+    audio_level_callback: Callable[[bytes], None],
+    chunk: bytes,
+    logger: logging.Logger,
+) -> None:
+    """Run level callbacks off the event loop so UI metering cannot delay ASR sends."""
+
+    async def run_callback() -> None:
+        try:
+            await asyncio.to_thread(audio_level_callback, chunk)
+        except Exception:
+            logger.exception("Audio level callback failed")
+
+    task = asyncio.create_task(run_callback())
+    pending_tasks.add(task)
+    task.add_done_callback(pending_tasks.discard)
+
+
+async def _finish_audio_level_callbacks(pending_tasks: set[asyncio.Task[None]]) -> None:
+    """Wait for scheduled level callbacks to finish before returning."""
+    if pending_tasks:
+        await asyncio.gather(*pending_tasks, return_exceptions=True)
+
+
 async def _send_audio(
     client: AsyncClient,
     stream: sd.InputStream,
@@ -221,6 +246,7 @@ async def _send_audio(
     save_recording: bool = True,
     initial_prompt: str | None = None,
     recording_path_callback: Callable[[Path], None] | None = None,
+    audio_level_callback: Callable[[bytes], None] | None = None,
 ) -> None:
     """Read from mic and send to Wyoming server."""
     from wyoming.asr import Transcribe  # noqa: PLC0415
@@ -233,11 +259,19 @@ async def _send_audio(
 
     # Buffer to save audio if requested
     audio_buffer = io.BytesIO() if save_recording else None
+    pending_audio_level_tasks: set[asyncio.Task[None]] = set()
 
     async def send_chunk(chunk: bytes) -> None:
         """Send audio chunk to ASR server and optionally buffer it."""
         if audio_buffer is not None:
             audio_buffer.write(chunk)
+        if audio_level_callback:
+            _schedule_audio_level_callback(
+                pending_audio_level_tasks,
+                audio_level_callback,
+                chunk,
+                logger,
+            )
         await client.write_event(AudioChunk(audio=chunk, **constants.WYOMING_AUDIO_CONFIG).event())
 
     try:
@@ -252,16 +286,19 @@ async def _send_audio(
             progress_style="blue",
         )
     finally:
-        await client.write_event(AudioStop().event())
-        logger.debug("Sent AudioStop")
+        try:
+            await client.write_event(AudioStop().event())
+            logger.debug("Sent AudioStop")
 
-        # Save the recording to disk if requested
-        if save_recording and audio_buffer:
-            audio_data = audio_buffer.getvalue()
-            if audio_data:
-                saved_path = _save_audio_to_file(audio_data, logger)
-                if saved_path and recording_path_callback:
-                    recording_path_callback(saved_path)
+            # Save the recording to disk if requested
+            if save_recording and audio_buffer:
+                audio_data = audio_buffer.getvalue()
+                if audio_data:
+                    saved_path = _save_audio_to_file(audio_data, logger)
+                    if saved_path and recording_path_callback:
+                        recording_path_callback(saved_path)
+        finally:
+            await _finish_audio_level_callbacks(pending_audio_level_tasks)
 
 
 async def record_audio_to_buffer(queue: asyncio.Queue, logger: logging.Logger) -> bytes:
@@ -328,6 +365,7 @@ async def record_audio_with_manual_stop(
     live: Live | None = None,
     save_recording: bool = True,
     recording_path_callback: Callable[[Path], None] | None = None,
+    audio_level_callback: Callable[[bytes], None] | None = None,
 ) -> bytes:
     """Record audio to a buffer using a manual stop signal.
 
@@ -339,29 +377,41 @@ async def record_audio_with_manual_stop(
         live: Rich Live display for progress
         save_recording: If True, save the recording to disk
         recording_path_callback: Optional callback invoked with the saved WAV path.
+        audio_level_callback: Optional callback invoked with each PCM chunk.
 
     Returns:
         The recorded audio data as bytes
 
     """
     audio_buffer = io.BytesIO()
+    pending_audio_level_tasks: set[asyncio.Task[None]] = set()
 
     def buffer_chunk(chunk: bytes) -> None:
         """Buffer audio chunk."""
         audio_buffer.write(chunk)
+        if audio_level_callback:
+            _schedule_audio_level_callback(
+                pending_audio_level_tasks,
+                audio_level_callback,
+                chunk,
+                logger,
+            )
 
     stream_config = setup_input_stream(input_device_index)
     with open_audio_stream(stream_config) as stream:
-        await read_audio_stream(
-            stream=stream,
-            stop_event=stop_event,
-            chunk_handler=buffer_chunk,
-            logger=logger,
-            live=live,
-            quiet=quiet,
-            progress_message="Recording",
-            progress_style="green",
-        )
+        try:
+            await read_audio_stream(
+                stream=stream,
+                stop_event=stop_event,
+                chunk_handler=buffer_chunk,
+                logger=logger,
+                live=live,
+                quiet=quiet,
+                progress_message="Recording",
+                progress_style="green",
+            )
+        finally:
+            await _finish_audio_level_callbacks(pending_audio_level_tasks)
 
     audio_data = audio_buffer.getvalue()
 
@@ -431,6 +481,7 @@ async def _transcribe_live_audio_wyoming(
     final_callback: Callable[[str], None] | None = None,
     extra_instructions: str | None = None,
     recording_path_callback: Callable[[Path], None] | None = None,
+    audio_level_callback: Callable[[bytes], None] | None = None,
     **_kwargs: object,
 ) -> str | None:
     """Unified ASR transcription function."""
@@ -460,6 +511,7 @@ async def _transcribe_live_audio_wyoming(
                         save_recording=save_recording,
                         initial_prompt=effective_prompt,
                         recording_path_callback=recording_path_callback,
+                        audio_level_callback=audio_level_callback,
                     ),
                     _receive_transcript(
                         client,
@@ -488,6 +540,7 @@ async def _transcribe_live_audio_buffered(
     save_recording: bool = True,
     extra_instructions: str | None = None,
     recording_path_callback: Callable[[Path], None] | None = None,
+    audio_level_callback: Callable[[bytes], None] | None = None,
     **_kwargs: object,
 ) -> str | None:
     """Record audio to buffer, then transcribe.
@@ -502,6 +555,7 @@ async def _transcribe_live_audio_buffered(
         live=live,
         save_recording=save_recording,
         recording_path_callback=recording_path_callback,
+        audio_level_callback=audio_level_callback,
     )
     if not audio_data:
         return None

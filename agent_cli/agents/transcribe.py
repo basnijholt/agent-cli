@@ -10,14 +10,14 @@ import time
 from contextlib import suppress
 from datetime import UTC, datetime, timedelta
 from pathlib import Path  # noqa: TC003
-from typing import Any, TypedDict
+from typing import TYPE_CHECKING, Any, TypedDict
 
 import typer
 
 from agent_cli import config, opts
 from agent_cli.cli import app
 from agent_cli.core import process
-from agent_cli.core.audio import setup_devices
+from agent_cli.core.audio import AudioLevelLogWriter, setup_devices
 from agent_cli.core.deps import requires_extras
 from agent_cli.core.diarization import (
     SpeakerDiarizer,
@@ -53,6 +53,9 @@ from agent_cli.services.asr import (
 from agent_cli.services.llm import process_and_update_clipboard
 
 LOGGER = logging.getLogger()
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 class TranscriptResult(TypedDict, total=False):
@@ -361,6 +364,7 @@ async def _async_main(  # noqa: PLR0912, PLR0915, C901
     diarization_cfg: config.Diarization | None = None,
     emit_output: bool = True,
     raise_diarization_errors: bool = False,
+    audio_level_callback: Callable[[bytes], None] | None = None,
 ) -> TranscriptResult:
     """Unified async entry point for both live and file-based transcription."""
     start_time = time.monotonic()
@@ -451,6 +455,7 @@ async def _async_main(  # noqa: PLR0912, PLR0915, C901
                     save_recording=save_recording,
                     extra_instructions=extra_instructions,
                     recording_path_callback=_set_saved_recording_path,
+                    audio_level_callback=audio_level_callback,
                 )
 
         elapsed = time.monotonic() - start_time
@@ -641,6 +646,7 @@ def transcribe(  # noqa: PLR0912, PLR0911, PLR0915, C901
     config_file: str | None = opts.CONFIG_FILE,
     print_args: bool = opts.PRINT_ARGS,
     transcription_log: Path | None = opts.TRANSCRIPTION_LOG,
+    voice_level_log: Path | None = opts.VOICE_LEVEL_LOG,
     # --- Diarization Options ---
     diarize: bool = opts.DIARIZE,
     diarize_format: opts.DiarizeFormat = opts.DIARIZE_FORMAT,
@@ -691,6 +697,9 @@ def transcribe(  # noqa: PLR0912, PLR0911, PLR0915, C901
     # Expand user path for transcription log
     if transcription_log:
         transcription_log = transcription_log.expanduser()
+    voice_level_log = _option_default(voice_level_log)
+    if voice_level_log:
+        voice_level_log = voice_level_log.expanduser()
 
     enroll_speakers = _option_default(enroll_speakers)
     identify_speakers = _option_default(identify_speakers)
@@ -895,6 +904,7 @@ def transcribe(  # noqa: PLR0912, PLR0911, PLR0915, C901
     # Use context manager before audio setup so --stop can target startup reliably.
     try:
         with process.pid_file_context(process_name), suppress(KeyboardInterrupt):
+            audio_level_writer = AudioLevelLogWriter(voice_level_log) if voice_level_log else None
             audio_in_cfg = config.AudioInput(
                 input_device_index=input_device_index,
                 input_device_name=input_device_name,
@@ -926,6 +936,9 @@ def transcribe(  # noqa: PLR0912, PLR0911, PLR0915, C901
                     diarization_cfg=diarization_cfg,
                     emit_output=not json_output,
                     raise_diarization_errors=diarize,
+                    audio_level_callback=audio_level_writer.write_chunk
+                    if audio_level_writer
+                    else None,
                 ),
             )
     except ImportError as exc:

@@ -1,5 +1,4 @@
 import AppKit
-import AVFoundation
 import Foundation
 import SwiftUI
 
@@ -136,82 +135,147 @@ final class VoiceLevelOverlayController {
     }
 }
 
-final class VoiceLevelMeter: NSObject, ObservableObject {
+enum VoiceLevelLog {
+    static let defaultLogPath = "~/.config/agent-cli/voice-levels.jsonl"
+    static var defaultLogURL: URL {
+        URL(fileURLWithPath: NSString(string: defaultLogPath).expandingTildeInPath)
+    }
+
+    private static let maximumFreshness: TimeInterval = 1.5
+    private static let maximumTailBytes = 16 * 1024
+
+    static func reset(_ url: URL = defaultLogURL) {
+        do {
+            try FileManager.default.createDirectory(
+                at: url.deletingLastPathComponent(),
+                withIntermediateDirectories: true
+            )
+            try "".write(to: url, atomically: true, encoding: .utf8)
+        } catch {
+            try? FileManager.default.removeItem(at: url)
+        }
+    }
+
+    static func latestLevel(
+        from url: URL = defaultLogURL,
+        now: Date = Date(),
+        maxAge: TimeInterval = maximumFreshness
+    ) -> CGFloat? {
+        for line in recentLines(from: url) {
+            guard let sample = parseLine(line) else { continue }
+            let age = now.timeIntervalSince(sample.timestamp)
+            guard age >= 0, age <= maxAge else { return nil }
+            return sample.level
+        }
+        return nil
+    }
+
+    private static func recentLines(from url: URL) -> [String] {
+        guard let file = try? FileHandle(forReadingFrom: url) else {
+            return []
+        }
+        defer { try? file.close() }
+
+        do {
+            let fileSize = try file.seekToEnd()
+            guard fileSize > 0 else { return [] }
+
+            let bytesToRead = min(fileSize, UInt64(maximumTailBytes))
+            try file.seek(toOffset: fileSize - bytesToRead)
+            guard let data = try file.readToEnd(),
+                  let text = String(data: data, encoding: .utf8) else {
+                return []
+            }
+            return text
+                .split(whereSeparator: { $0.isNewline })
+                .reversed()
+                .map(String.init)
+        } catch {
+            return []
+        }
+    }
+
+    private static func parseLine(_ line: String) -> (timestamp: Date, level: CGFloat)? {
+        let trimmedLine = line.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedLine.isEmpty,
+              let data = trimmedLine.data(using: .utf8),
+              let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let timestampText = object["timestamp"] as? String,
+              let timestamp = parseTimestamp(timestampText),
+              let rawLevel = object["level"] as? Double else {
+            return nil
+        }
+
+        return (timestamp, CGFloat(max(0, min(1, rawLevel))))
+    }
+
+    private static func parseTimestamp(_ text: String) -> Date? {
+        if let date = iso8601WithFractionalSeconds.date(from: text) {
+            return date
+        }
+        return iso8601.date(from: text)
+    }
+
+    private static let iso8601WithFractionalSeconds: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter
+    }()
+
+    private static let iso8601: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime]
+        return formatter
+    }()
+}
+
+final class VoiceLevelMeter: ObservableObject {
     static let shared = VoiceLevelMeter()
 
     @Published private(set) var amplitudes = VoiceLevelMeter.idleAmplitudes
 
     private static let barCount = 16
     private static let idleAmplitudes = Array(repeating: CGFloat(0.16), count: barCount)
+    private static let idleLevel = CGFloat(0.16)
     private static let minimumDisplayAmplitude = CGFloat(0.12)
-    private static let minimumInputDecibels: Float = -55
-    private var engine: AVAudioEngine?
+    private static let pollInterval: TimeInterval = 0.06
+    private let levelLogURL: URL
+    private let now: () -> Date
+    private var timer: Timer?
     private var phase = 0.0
     private var smoothedLevel = CGFloat(0.16)
 
-    private override init() {}
+    init(levelLogURL: URL = VoiceLevelLog.defaultLogURL, now: @escaping () -> Date = Date.init) {
+        self.levelLogURL = levelLogURL
+        self.now = now
+    }
 
     func start() {
-        guard engine == nil else { return }
+        guard timer == nil else { return }
+        VoiceLevelLog.reset(levelLogURL)
+        phase = 0
+        smoothedLevel = Self.idleLevel
+        amplitudes = Self.idleAmplitudes
 
-        switch AVCaptureDevice.authorizationStatus(for: .audio) {
-        case .authorized:
-            startMetering()
-        case .notDetermined:
-            AVCaptureDevice.requestAccess(for: .audio) { [weak self] granted in
-                DispatchQueue.main.async {
-                    if granted {
-                        self?.startMetering()
-                    } else {
-                        self?.amplitudes = Self.idleAmplitudes
-                    }
-                }
-            }
-        default:
-            amplitudes = Self.idleAmplitudes
+        let timer = Timer(timeInterval: Self.pollInterval, repeats: true) { [weak self] _ in
+            self?.pollLevel()
         }
+        self.timer = timer
+        RunLoop.main.add(timer, forMode: .common)
+        pollLevel()
     }
 
     func stop() {
-        engine?.inputNode.removeTap(onBus: 0)
-        engine?.stop()
-        engine = nil
+        timer?.invalidate()
+        timer = nil
         phase = 0
-        smoothedLevel = 0.16
+        smoothedLevel = Self.idleLevel
         amplitudes = Self.idleAmplitudes
     }
 
-    private func startMetering() {
-        phase = 0
-        smoothedLevel = 0.16
-        let engine = AVAudioEngine()
-        let input = engine.inputNode
-        let format = input.outputFormat(forBus: 0)
-        guard format.sampleRate > 0, format.channelCount > 0 else {
-            amplitudes = Self.idleAmplitudes
-            return
-        }
-
-        do {
-            input.installTap(onBus: 0, bufferSize: 1_024, format: format) { [weak self] buffer, _ in
-                self?.process(buffer: buffer)
-            }
-            try engine.start()
-            self.engine = engine
-        } catch {
-            input.removeTap(onBus: 0)
-            amplitudes = Self.idleAmplitudes
-        }
-    }
-
-    private func process(buffer: AVAudioPCMBuffer) {
-        guard let samples = Self.samples(from: buffer) else { return }
-        let level = Self.normalizedLevel(from: samples)
-
-        DispatchQueue.main.async { [weak self] in
-            guard let self, self.engine != nil else { return }
-            self.updateDisplay(level: level)
-        }
+    private func pollLevel() {
+        let level = VoiceLevelLog.latestLevel(from: levelLogURL, now: now()) ?? Self.idleLevel
+        updateDisplay(level: level)
     }
 
     private func updateDisplay(level: CGFloat) {
@@ -226,58 +290,6 @@ final class VoiceLevelMeter: NSObject, ObservableObject {
         (0..<Self.barCount).map { index in
             let wave = 0.74 + 0.26 * sin(phase + Double(index) * 0.74)
             return max(Self.minimumDisplayAmplitude, min(1, level * CGFloat(wave)))
-        }
-    }
-
-    static func normalizedLevel(from samples: [Float]) -> CGFloat {
-        guard !samples.isEmpty else { return 0.08 }
-
-        let meanSquare = samples.reduce(0.0) { partialResult, sample in
-            let value = Double(sample)
-            return partialResult + (value * value)
-        } / Double(samples.count)
-        guard meanSquare > 0 else { return 0.08 }
-
-        let rootMeanSquare = sqrt(meanSquare)
-        let decibels = Float(20 * log10(rootMeanSquare))
-        return normalizedPower(decibels, minimumPower: minimumInputDecibels)
-    }
-
-    private static func normalizedPower(_ power: Float, minimumPower: Float) -> CGFloat {
-        guard power > minimumPower else { return 0.08 }
-        let linearLevel = CGFloat((power - minimumPower) / abs(minimumPower))
-        return CGFloat(sqrt(Double(linearLevel)))
-    }
-
-    private static func samples(from buffer: AVAudioPCMBuffer) -> [Float]? {
-        guard let channelData = buffer.floatChannelData else { return nil }
-        let frameLength = Int(buffer.frameLength)
-        guard frameLength > 0 else { return nil }
-
-        let channelCount = Int(buffer.format.channelCount)
-        guard channelCount > 0 else { return nil }
-
-        if channelCount == 1 {
-            return Array(UnsafeBufferPointer(start: channelData[0], count: frameLength))
-        }
-
-        if buffer.format.isInterleaved {
-            return (0..<frameLength).map { frameIndex in
-                var mixedSample = Float(0)
-                let sampleIndex = frameIndex * channelCount
-                for channelIndex in 0..<channelCount {
-                    mixedSample += channelData[0][sampleIndex + channelIndex]
-                }
-                return mixedSample / Float(channelCount)
-            }
-        }
-
-        return (0..<frameLength).map { frameIndex in
-            var mixedSample = Float(0)
-            for channelIndex in 0..<channelCount {
-                mixedSample += channelData[channelIndex][frameIndex]
-            }
-            return mixedSample / Float(channelCount)
         }
     }
 }

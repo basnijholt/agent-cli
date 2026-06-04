@@ -76,6 +76,8 @@ struct AgentCommand {
             "transcribe",
             "--toggle",
             "--quiet",
+            "--voice-level-log",
+            VoiceLevelLog.defaultLogPath,
             "--transcription-log",
             RecentTranscriptionReader.defaultLogPath,
         ],
@@ -97,7 +99,13 @@ struct AgentCommand {
     static let voiceEdit = AgentCommand(
         identifier: "voice-edit",
         title: "Voice Edit Clipboard",
-        arguments: ["voice-edit", "--toggle", "--quiet"],
+        arguments: [
+            "voice-edit",
+            "--toggle",
+            "--quiet",
+            "--voice-level-log",
+            VoiceLevelLog.defaultLogPath,
+        ],
         bootstrapRequirement: .transcription,
         showsRecordingIndicator: true,
         startNotificationTitle: "Voice Edit Started",

@@ -4,25 +4,60 @@ import XCTest
 @testable import AgentCLI
 
 final class VoiceLevelMeterTests: XCTestCase {
-    func testQuietInputProducesVisibleLevel() {
-        let quietTone = Self.sineWave(amplitude: Float(pow(10.0, -35.0 / 20.0)))
-
-        let level = VoiceLevelMeter.normalizedLevel(from: quietTone)
-
-        XCTAssertGreaterThan(level, 0.5)
-    }
-
-    func testSilenceUsesIdleLevel() {
-        let level = VoiceLevelMeter.normalizedLevel(from: Array(repeating: Float(0), count: 1_024))
-
-        XCTAssertEqual(level, CGFloat(0.08))
-    }
-
     func testDisplayAmplitudesUseSineWaveShape() {
         let amplitudes = VoiceLevelMeter.displayAmplitudes(level: 0.6, phase: 0.22)
 
         XCTAssertEqual(amplitudes.count, 16)
         XCTAssertGreaterThan((amplitudes.max() ?? 0) - (amplitudes.min() ?? 0), 0.1)
+    }
+
+    func testVoiceLevelLogReadsMostRecentFreshLevel() throws {
+        let logURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+            .appendingPathExtension("jsonl")
+        defer { try? FileManager.default.removeItem(at: logURL) }
+        try """
+        {"timestamp":"2026-06-04T12:00:00Z","level":0.21}
+        {"timestamp":"2026-06-04T12:00:01Z","level":0.73}
+        """.write(to: logURL, atomically: true, encoding: .utf8)
+
+        let now = try XCTUnwrap(Self.iso8601.date(from: "2026-06-04T12:00:01Z"))
+        let level = try XCTUnwrap(VoiceLevelLog.latestLevel(from: logURL, now: now))
+
+        XCTAssertEqual(level, CGFloat(0.73), accuracy: 0.0001)
+    }
+
+    func testVoiceLevelLogIgnoresStaleLevel() throws {
+        let logURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+            .appendingPathExtension("jsonl")
+        defer { try? FileManager.default.removeItem(at: logURL) }
+        try #"{"timestamp":"2026-06-04T12:00:00Z","level":0.91}"#
+            .write(to: logURL, atomically: true, encoding: .utf8)
+        let now = try XCTUnwrap(Self.iso8601.date(from: "2026-06-04T12:00:05Z"))
+
+        XCTAssertNil(VoiceLevelLog.latestLevel(from: logURL, now: now, maxAge: 1.0))
+    }
+
+    func testVoiceLevelLogScansTailAndSkipsInvalidTrailingLine() throws {
+        let logURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+            .appendingPathExtension("jsonl")
+        defer { try? FileManager.default.removeItem(at: logURL) }
+        let staleLines = Array(
+            repeating: #"{"timestamp":"2026-06-04T11:00:00Z","level":0.12}"#,
+            count: 2_000
+        ).joined(separator: "\n")
+        try """
+        \(staleLines)
+        {"timestamp":"2026-06-04T12:00:01Z","level":0.64}
+        not-json
+        """.write(to: logURL, atomically: true, encoding: .utf8)
+        let now = try XCTUnwrap(Self.iso8601.date(from: "2026-06-04T12:00:01Z"))
+
+        let level = try XCTUnwrap(VoiceLevelLog.latestLevel(from: logURL, now: now))
+
+        XCTAssertEqual(level, CGFloat(0.64), accuracy: 0.0001)
     }
 
     func testOverlayPanelLeavesRoomForShadowBlur() {
@@ -42,15 +77,10 @@ final class VoiceLevelMeterTests: XCTestCase {
         )
     }
 
-    private static func sineWave(
-        frequency: Double = 220,
-        sampleRate: Double = 16_000,
-        sampleCount: Int = 2_048,
-        amplitude: Float = 1
-    ) -> [Float] {
-        (0..<sampleCount).map { index in
-            amplitude * Float(sin(2 * Double.pi * frequency * Double(index) / sampleRate))
-        }
-    }
+    private static let iso8601: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime]
+        return formatter
+    }()
 }
 #endif

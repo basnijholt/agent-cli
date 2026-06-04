@@ -11,6 +11,8 @@ final class AgentCommandTests: XCTestCase {
                 "transcribe",
                 "--toggle",
                 "--quiet",
+                "--voice-level-log",
+                "~/.config/agent-cli/voice-levels.jsonl",
                 "--transcription-log",
                 "~/.config/agent-cli/transcriptions.jsonl",
             ]
@@ -27,6 +29,8 @@ final class AgentCommandTests: XCTestCase {
                 "transcribe",
                 "--toggle",
                 "--quiet",
+                "--voice-level-log",
+                "~/.config/agent-cli/voice-levels.jsonl",
                 "--transcription-log",
                 "~/.config/agent-cli/transcriptions.jsonl",
                 "--extra-instructions",

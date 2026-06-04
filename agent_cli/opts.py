@@ -429,6 +429,13 @@ TRANSCRIPTION_LOG: Path | None = typer.Option(
     "Recent entries provide context for LLM cleanup.",
     rich_help_panel="General Options",
 )
+VOICE_LEVEL_LOG: Path | None = typer.Option(
+    None,
+    "--voice-level-log",
+    help="Append normalized microphone levels to a JSONL file for UI indicators.",
+    hidden=True,
+    rich_help_panel="General Options",
+)
 
 # --- Server Options ---
 SERVER_HOST: str = typer.Option(

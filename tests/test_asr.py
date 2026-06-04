@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import asyncio
+import threading
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -26,6 +28,7 @@ async def test_send_audio() -> None:
     mock_data.tobytes.return_value = b"fake_audio_chunk"
     stream.read.return_value = (mock_data, False)
     logger = MagicMock()
+    levels: list[bytes] = []
 
     # Act
     # No need to create a task and sleep, just await the coroutine.
@@ -38,6 +41,7 @@ async def test_send_audio() -> None:
         live=MagicMock(),
         quiet=False,
         save_recording=False,
+        audio_level_callback=levels.append,
     )
 
     # Assert
@@ -55,6 +59,55 @@ async def test_send_audio() -> None:
         ).event(),
     )
     client.write_event.assert_any_call(AudioStop().event())
+    assert levels == [b"fake_audio_chunk"]
+
+
+@pytest.mark.asyncio
+async def test_send_audio_does_not_wait_for_audio_level_callback() -> None:
+    """Test that level callbacks cannot block audio delivery to Wyoming."""
+    client = AsyncMock()
+    stream = MagicMock()
+    stop_event = MagicMock()
+    stop_event.is_set.side_effect = [False, True]
+    stop_event.ctrl_c_pressed = False
+
+    mock_data = MagicMock()
+    mock_data.tobytes.return_value = b"fake_audio_chunk"
+    stream.read.return_value = (mock_data, False)
+    logger = MagicMock()
+    callback_started = threading.Event()
+    release_callback = threading.Event()
+
+    def slow_audio_level_callback(_chunk: bytes) -> None:
+        callback_started.set()
+        release_callback.wait(timeout=2)
+
+    send_task = asyncio.create_task(
+        asr._send_audio(
+            client,
+            stream,
+            stop_event,
+            logger,
+            live=MagicMock(),
+            quiet=False,
+            save_recording=False,
+            audio_level_callback=slow_audio_level_callback,
+        ),
+    )
+
+    try:
+        for _ in range(100):
+            if callback_started.is_set() and client.write_event.call_count >= 3:
+                break
+            await asyncio.sleep(0.01)
+
+        assert callback_started.is_set()
+        assert client.write_event.call_count >= 3
+        assert not send_task.done()
+    finally:
+        release_callback.set()
+
+    await asyncio.wait_for(send_task, timeout=2)
 
 
 @pytest.mark.asyncio
