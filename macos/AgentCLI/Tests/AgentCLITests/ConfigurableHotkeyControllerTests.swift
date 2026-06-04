@@ -7,7 +7,7 @@ final class ConfigurableHotkeyControllerTests: XCTestCase {
         var state = HoldToTranscribeKeyState()
 
         XCTAssertTrue(state.requestStart())
-        XCTAssertEqual(state.release(), .waitForStart)
+        XCTAssertEqual(state.releaseKey(), .deferUntilStartCompletes)
 
         XCTAssertEqual(state.completeStart(started: true), .stopNow)
         XCTAssertFalse(state.isStartPendingOrRecording)
@@ -19,7 +19,7 @@ final class ConfigurableHotkeyControllerTests: XCTestCase {
         XCTAssertTrue(state.requestStart())
         XCTAssertEqual(state.completeStart(started: true), .none)
 
-        XCTAssertEqual(state.release(), .stopNow)
+        XCTAssertEqual(state.releaseKey(), .stopNow)
         XCTAssertFalse(state.isStartPendingOrRecording)
     }
 
@@ -27,7 +27,7 @@ final class ConfigurableHotkeyControllerTests: XCTestCase {
         var state = HoldToTranscribeKeyState()
 
         XCTAssertTrue(state.requestStart())
-        XCTAssertEqual(state.release(), .waitForStart)
+        XCTAssertEqual(state.releaseKey(), .deferUntilStartCompletes)
 
         XCTAssertEqual(state.completeStart(started: false), .none)
         XCTAssertFalse(state.isStartPendingOrRecording)
