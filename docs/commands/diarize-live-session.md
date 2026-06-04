@@ -110,7 +110,7 @@ agent-cli diarize-live-session \
 | `--date` | - | Date of the live session in YYYY-MM-DD format. Defaults to today. |
 | `--start` | - | Start time of the session in HH:MM or HH:MM:SS. Required unless --last-session is used. |
 | `--end` | - | End time of the session in HH:MM or HH:MM:SS. Required unless --last-session is used. |
-| `--last-recording` | - | Select the Nth most recent inferred transcribe-live recording session (1=most recent, 2=second-to-last). |
+| `--last-session, --last-recording` | - | Select the Nth most recent inferred transcribe-live recording session (1=most recent, 2=second-to-last). |
 | `--session-gap` | `300.0` | Maximum seconds between saved chunks before they are treated as separate sessions. |
 | `--transcription-log` | `/home/runner/.config/agent-cli/transcriptions.jsonl` | Path to the transcribe-live JSONL log file. |
 | `--output-dir` | `/home/runner/.cache/agent-cli/live-diarization` | Directory where the combined audio and diarized transcript will be saved. |
