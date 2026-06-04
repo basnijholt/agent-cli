@@ -844,7 +844,7 @@ class TestSystemdModule:
 
     def test_systemd_generate_unit_file(self) -> None:
         """Test systemd unit file generation."""
-        uv_path = Path("/usr/bin/uv")
+        uv_path = Path("uv")
         service = SERVICES["whisper"]
         unit_content = systemd_generate_unit_file(service, uv_path)
 
@@ -857,7 +857,7 @@ class TestSystemdModule:
 
     def test_systemd_generate_unit_file_appends_extra_args(self) -> None:
         """Systemd unit file persists user-provided daemon args."""
-        uv_path = Path("/usr/bin/uv")
+        uv_path = Path("uv")
         service = SERVICES["whisper"]
 
         unit_content = systemd_generate_unit_file(
@@ -870,7 +870,7 @@ class TestSystemdModule:
 
     def test_systemd_generate_unit_file_escapes_percent_args(self) -> None:
         """Systemd unit file escapes literal percent signs in args."""
-        uv_path = Path("/usr/bin/uv")
+        uv_path = Path("uv")
         service = SERVICES["whisper"]
 
         unit_content = systemd_generate_unit_file(
@@ -883,7 +883,7 @@ class TestSystemdModule:
 
     def test_systemd_generate_unit_file_escapes_dollar_args(self) -> None:
         """Systemd unit file escapes literal dollar signs in args."""
-        uv_path = Path("/usr/bin/uv")
+        uv_path = Path("uv")
         service = SERVICES["whisper"]
 
         unit_content = systemd_generate_unit_file(
@@ -896,7 +896,7 @@ class TestSystemdModule:
 
     def test_systemd_generate_unit_file_uses_systemd_quotes(self) -> None:
         """Systemd unit file avoids shell-only quote concatenation."""
-        uv_path = Path("/usr/bin/uv")
+        uv_path = Path("uv")
         service = SERVICES["whisper"]
 
         unit_content = systemd_generate_unit_file(
