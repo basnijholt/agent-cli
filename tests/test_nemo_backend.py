@@ -458,6 +458,44 @@ async def test_unload_waits_for_subprocess_shutdown() -> None:
 
 
 @pytest.mark.asyncio
+async def test_transcribe_warns_once_when_initial_prompt_is_ignored(
+    caplog: pytest.LogCaptureFixture,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """NeMo should make unsupported ASR prompts visible in logs."""
+    nemo_backend = backend.NemoWhisperBackend(
+        BackendConfig(model_name="parakeet-unified-en-0.6b"),
+    )
+    nemo_backend._executor = ThreadPoolExecutor(max_workers=1)  # type: ignore[assignment]
+
+    def transcribe(
+        audio: bytes,  # noqa: ARG001
+        kwargs: dict[str, Any],  # noqa: ARG001
+    ) -> dict[str, Any]:
+        return {
+            "text": "ok",
+            "language": "en",
+            "language_probability": 0.95,
+            "duration": 1.0,
+            "segments": [],
+        }
+
+    monkeypatch.setattr(backend, "_transcribe_in_subprocess", transcribe)
+
+    with caplog.at_level("WARNING", logger=backend.__name__):
+        await nemo_backend.transcribe(_create_test_wav(), initial_prompt="Bas Nijholt")
+        await nemo_backend.transcribe(_create_test_wav(), initial_prompt="Bas Nijholt")
+
+    await nemo_backend.unload()
+    assert (
+        caplog.text.count(
+            "Whisper-style initial prompts are not supported by the agent-cli NeMo backend",
+        )
+        == 1
+    )
+
+
+@pytest.mark.asyncio
 async def test_transcribe_recovers_from_broken_process_pool(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

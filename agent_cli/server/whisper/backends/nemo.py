@@ -344,6 +344,7 @@ class NemoWhisperBackend:
         self._resolved_model = _resolve_model_name(config.model_name)
         self._executor: ProcessPoolExecutor | None = None
         self._device: str | None = None
+        self._warned_initial_prompt_ignored = False
 
     @property
     def is_loaded(self) -> bool:
@@ -415,7 +416,7 @@ class NemoWhisperBackend:
         source_filename: str | None = None,
         language: str | None = None,
         task: Literal["transcribe", "translate"] = "transcribe",  # noqa: ARG002
-        initial_prompt: str | None = None,  # noqa: ARG002
+        initial_prompt: str | None = None,
         temperature: float = 0.0,  # noqa: ARG002
         vad_filter: bool = True,  # noqa: ARG002
         word_timestamps: bool = False,
@@ -424,6 +425,13 @@ class NemoWhisperBackend:
         if self._executor is None:
             msg = "Model not loaded. Call load() first."
             raise RuntimeError(msg)
+        if initial_prompt and not self._warned_initial_prompt_ignored:
+            logger.warning(
+                "Whisper-style initial prompts are not supported by the agent-cli NeMo backend; "
+                "ignoring prompt for model %s",
+                self._config.model_name,
+            )
+            self._warned_initial_prompt_ignored = True
 
         audio = await asyncio.to_thread(_prepare_audio_for_nemo, audio, source_filename)
 

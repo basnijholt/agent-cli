@@ -598,7 +598,10 @@ def transcribe(  # noqa: PLR0912, PLR0911, PLR0915, C901
     extra_instructions: str | None = typer.Option(
         None,
         "--extra-instructions",
-        help="Extra instructions appended to the LLM cleanup prompt (requires `--llm`).",
+        help=(
+            "Extra ASR context where supported, and LLM cleanup instructions when "
+            "`--llm` is enabled. The NeMo backend ignores ASR text prompts."
+        ),
         rich_help_panel="LLM Configuration",
     ),
     from_file: Path | None = opts.FROM_FILE,
