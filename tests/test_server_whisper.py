@@ -12,7 +12,11 @@ import pytest
 import typer
 from fastapi.testclient import TestClient
 
-from agent_cli.server.cli import _check_whisper_deps, _resolve_whisper_required_extras
+from agent_cli.server.cli import (
+    _check_whisper_deps,
+    _client_host_for_usage,
+    _resolve_whisper_required_extras,
+)
 from agent_cli.server.model_manager import ModelStats
 from agent_cli.server.whisper.backends import TranscriptionResult
 from agent_cli.server.whisper.backends.base import UnsupportedRequestError
@@ -78,6 +82,16 @@ class TestModelConfig:
         """Negative TTL values should remain invalid."""
         with pytest.raises(ValueError, match="ttl_seconds must be >= 0"):
             ModelConfig(model_name="small", ttl_seconds=-1)
+
+
+class TestServerCliHelpers:
+    """Tests for shared server CLI helpers."""
+
+    def test_client_host_for_usage_uses_localhost_for_bind_all(self) -> None:
+        """Client examples should not use wildcard bind hosts."""
+        assert _client_host_for_usage("0.0.0.0") == "localhost"  # noqa: S104
+        assert _client_host_for_usage("::") == "localhost"
+        assert _client_host_for_usage("192.168.1.20") == "192.168.1.20"
 
 
 class TestWhisperDependencyChecks:

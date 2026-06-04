@@ -304,6 +304,11 @@ def _print_optional_whisper_config(
             console.print(f"  {label}: [cyan]{value}[/cyan]")
 
 
+def _client_host_for_usage(host: str) -> str:
+    """Return a connectable host for local client examples."""
+    return "localhost" if host in {"0.0.0.0", "::"} else host  # noqa: S104
+
+
 @app.command("whisper")
 @requires_extras(
     "server",
@@ -420,6 +425,7 @@ def whisper_cmd(  # noqa: C901, PLR0912, PLR0915
         int,
         typer.Option(
             "--wyoming-port",
+            "--asr-wyoming-port",
             help="Port for Wyoming protocol (Home Assistant integration)",
         ),
     ] = 10300,
@@ -623,8 +629,9 @@ def whisper_cmd(  # noqa: C901, PLR0912, PLR0915
         f"--asr-openai-base-url http://localhost:{port}/v1[/cyan]",
     )
     if not no_wyoming:
+        client_host = _client_host_for_usage(host)
         console.print(
-            f"  [cyan]ag transcribe --asr-provider wyoming --asr-wyoming-ip {host} "
+            f"  [cyan]ag transcribe --asr-provider wyoming --asr-wyoming-ip {client_host} "
             f"--asr-wyoming-port {wyoming_port}[/cyan]",
         )
     console.print()
@@ -800,6 +807,7 @@ def tts_cmd(  # noqa: PLR0915
         int,
         typer.Option(
             "--wyoming-port",
+            "--tts-wyoming-port",
             help="Port for Wyoming protocol (Home Assistant integration)",
         ),
     ] = 10200,
@@ -972,8 +980,9 @@ def tts_cmd(  # noqa: PLR0915
         f"--tts-openai-base-url http://localhost:{port}/v1 --tts-openai-voice {voice}[/cyan]",
     )
     if not no_wyoming:
+        client_host = _client_host_for_usage(host)
         console.print(
-            f'  [cyan]ag speak "Hello" --tts-provider wyoming --tts-wyoming-ip {host} '
+            f'  [cyan]ag speak "Hello" --tts-provider wyoming --tts-wyoming-ip {client_host} '
             f"--tts-wyoming-port {wyoming_port}[/cyan]",
         )
     console.print()

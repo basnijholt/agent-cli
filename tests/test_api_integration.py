@@ -133,6 +133,67 @@ def test_server_whisper_command_in_cli() -> None:
 
 
 @patch("uvicorn.run")
+def test_server_whisper_accepts_asr_wyoming_port_alias(mock_uvicorn_run: MagicMock) -> None:
+    """Whisper server should accept the client-style ASR Wyoming port alias."""
+    runner = CliRunner()
+    with (
+        patch("agent_cli.core.deps._check_and_install_extras", return_value=[]),
+        patch("agent_cli.server.cli._check_whisper_deps"),
+    ):
+        result = runner.invoke(
+            cli_app,
+            [
+                "server",
+                "whisper",
+                "--model",
+                "tiny",
+                "--no-wyoming",
+                "--asr-wyoming-port",
+                "10302",
+            ],
+        )
+
+    assert result.exit_code == 0
+    mock_uvicorn_run.assert_called_once()
+
+
+def test_server_tts_command_in_cli() -> None:
+    """Test that the server tts command exposes Wyoming port config."""
+    runner = CliRunner()
+    result = runner.invoke(cli_app, ["server", "tts", "--help"])
+
+    assert result.exit_code == 0
+
+    clean_output = re.sub(r"\x1b\[[0-9;]*m", "", result.stdout)
+    assert "--wyoming-port" in clean_output
+
+
+@patch("uvicorn.run")
+def test_server_tts_accepts_tts_wyoming_port_alias(mock_uvicorn_run: MagicMock) -> None:
+    """TTS server should accept the client-style TTS Wyoming port alias."""
+    runner = CliRunner()
+    with (
+        patch("agent_cli.core.deps._check_and_install_extras", return_value=[]),
+        patch("agent_cli.server.cli._check_tts_deps"),
+    ):
+        result = runner.invoke(
+            cli_app,
+            [
+                "server",
+                "tts",
+                "--backend",
+                "piper",
+                "--no-wyoming",
+                "--tts-wyoming-port",
+                "10202",
+            ],
+        )
+
+    assert result.exit_code == 0
+    mock_uvicorn_run.assert_called_once()
+
+
+@patch("uvicorn.run")
 def test_server_transcribe_proxy_runs_uvicorn(mock_uvicorn_run: MagicMock) -> None:
     """Test the server transcribe-proxy command runs uvicorn."""
     runner = CliRunner()
