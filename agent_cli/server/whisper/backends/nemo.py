@@ -203,10 +203,6 @@ def _build_transcribe_kwargs(
         parameter.kind is inspect.Parameter.VAR_KEYWORD for parameter in parameters.values()
     )
 
-    if "task" in parameters:
-        transcribe_kwargs["task"] = "asr"
-    if "source_lang" in parameters:
-        transcribe_kwargs["source_lang"] = language
     if "target_lang" in parameters or has_var_keyword:
         transcribe_kwargs["target_lang"] = language
 

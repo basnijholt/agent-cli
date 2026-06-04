@@ -368,31 +368,6 @@ def test_build_transcribe_kwargs_passes_target_lang_for_prompt_models() -> None:
     ) == {"timestamps": True, "target_lang": "de-DE"}
 
 
-def test_build_transcribe_kwargs_passes_multitask_language_args() -> None:
-    """Multitask NeMo signatures should receive ASR source/target language args."""
-
-    def transcribe(
-        audio: list[str],  # noqa: ARG001
-        *,
-        timestamps: bool,  # noqa: ARG001
-        task: str,  # noqa: ARG001
-        source_lang: str,  # noqa: ARG001
-        target_lang: str,  # noqa: ARG001
-    ) -> None:
-        return None
-
-    assert backend._build_transcribe_kwargs(
-        transcribe,
-        language="fr",
-        word_timestamps=False,
-    ) == {
-        "timestamps": True,
-        "task": "asr",
-        "source_lang": "fr",
-        "target_lang": "fr",
-    }
-
-
 @pytest.mark.asyncio
 async def test_unload_waits_for_subprocess_shutdown() -> None:
     """NeMo unload should wait for subprocess shutdown before reporting unloaded."""
