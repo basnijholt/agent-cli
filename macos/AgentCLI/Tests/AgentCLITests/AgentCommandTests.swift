@@ -56,6 +56,24 @@ final class AgentCommandTests: XCTestCase {
         )
     }
 
+    func testInstallVoiceServiceUsesResolvedTranscriptionDaemonArguments() {
+        XCTAssertEqual(
+            AgentCommand.installVoiceService.resolvedArguments(
+                extraInstructions: nil,
+                transcriptionDaemonArguments: [
+                    "daemon", "install", "whisper", "-y", "--",
+                    "--backend", "nemo",
+                    "--model", "parakeet-tdt-0.6b-v3",
+                ]
+            ),
+            [
+                "daemon", "install", "whisper", "-y", "--",
+                "--backend", "nemo",
+                "--model", "parakeet-tdt-0.6b-v3",
+            ]
+        )
+    }
+
     func testAutocorrectOnlyRequiresCliRuntime() {
         XCTAssertEqual(AgentCommand.autocorrect.arguments, ["autocorrect", "--quiet"])
         XCTAssertEqual(AgentCommand.autocorrect.bootstrapRequirement, .cliRuntime)
@@ -202,7 +220,7 @@ final class AgentCommandTests: XCTestCase {
             userDefaults: defaults,
             processRunner: { _, arguments, _ in
                 processArguments.append(arguments)
-                if arguments == ["daemon", "ensure", "whisper", "--quiet"] {
+                if arguments == ["daemon", "install", "whisper", "-y", "--", "--backend", "auto", "--model", "large-v3"] {
                     installedWhisper = true
                     return CommandResult(exitCode: 0, output: "Installed and started")
                 }
@@ -223,10 +241,206 @@ final class AgentCommandTests: XCTestCase {
         XCTAssertEqual(
             processArguments,
             [
-                ["daemon", "ensure", "whisper", "--quiet"],
+                ["daemon", "install", "whisper", "-y", "--", "--backend", "auto", "--model", "large-v3"],
             ]
         )
-        XCTAssertEqual(phases, [.waitingForVoiceService, .installingVoiceService, .waitingForVoiceService])
+        XCTAssertEqual(phases, [.installingVoiceService, .waitingForVoiceService])
+    }
+
+    func testTranscriptionBootstrapInstallsDefaultWhisperModel() throws {
+        let tempURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("AgentCLITests-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: tempURL) }
+
+        let binURL = tempURL.appendingPathComponent("bin", isDirectory: true)
+        try FileManager.default.createDirectory(at: binURL, withIntermediateDirectories: true)
+        let agentCLIURL = binURL.appendingPathComponent("agent-cli")
+        _ = FileManager.default.createFile(atPath: agentCLIURL.path, contents: Data())
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: agentCLIURL.path)
+
+        try """
+        packageSource=agent-cli
+        installRequirement=agent-cli[audio,llm]
+
+        """.write(
+            to: tempURL.appendingPathComponent(".agent-cli-installed"),
+            atomically: true,
+            encoding: .utf8
+        )
+
+        let defaults = UserDefaults(suiteName: "AgentCLITests.default-whisper-model")!
+        defaults.removePersistentDomain(forName: "AgentCLITests.default-whisper-model")
+        var installedWhisper = false
+        var processArguments: [[String]] = []
+        let runtime = AgentRuntime(
+            environment: ["AGENTCLI_APP_SUPPORT_DIR": tempURL.path],
+            userDefaults: defaults,
+            processRunner: { _, arguments, _ in
+                processArguments.append(arguments)
+                if arguments == ["daemon", "install", "whisper", "-y", "--", "--backend", "auto", "--model", "large-v3"] {
+                    installedWhisper = true
+                    return CommandResult(exitCode: 0, output: "Installed and started")
+                }
+                XCTFail("Unexpected process arguments: \(arguments)")
+                return CommandResult(exitCode: 1, output: "unexpected")
+            },
+            localhostConnector: { port in
+                XCTAssertEqual(port, 10300)
+                return installedWhisper
+            },
+            whisperReadyTimeout: 0.01
+        )
+
+        let result = runtime.ensureReady(for: .transcription)
+
+        XCTAssertEqual(result.exitCode, 0)
+        XCTAssertEqual(
+            processArguments,
+            [
+                ["daemon", "install", "whisper", "-y", "--", "--backend", "auto", "--model", "large-v3"],
+            ]
+        )
+    }
+
+    func testTranscriptionBootstrapInstallsSelectedNemoModel() throws {
+        let tempURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("AgentCLITests-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: tempURL) }
+
+        let binURL = tempURL.appendingPathComponent("bin", isDirectory: true)
+        try FileManager.default.createDirectory(at: binURL, withIntermediateDirectories: true)
+        let agentCLIURL = binURL.appendingPathComponent("agent-cli")
+        _ = FileManager.default.createFile(atPath: agentCLIURL.path, contents: Data())
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: agentCLIURL.path)
+
+        try """
+        packageSource=agent-cli
+        installRequirement=agent-cli[audio,llm]
+
+        """.write(
+            to: tempURL.appendingPathComponent(".agent-cli-installed"),
+            atomically: true,
+            encoding: .utf8
+        )
+
+        let defaults = UserDefaults(suiteName: "AgentCLITests.nemo-model")!
+        defaults.removePersistentDomain(forName: "AgentCLITests.nemo-model")
+        defaults.set("nemo", forKey: "transcriptionBackend")
+        defaults.set("parakeet-tdt-0.6b-v3", forKey: "transcriptionModel")
+
+        var installedWhisper = false
+        var processArguments: [[String]] = []
+        let runtime = AgentRuntime(
+            environment: ["AGENTCLI_APP_SUPPORT_DIR": tempURL.path],
+            userDefaults: defaults,
+            processRunner: { _, arguments, _ in
+                processArguments.append(arguments)
+                if arguments == [
+                    "daemon", "install", "whisper", "-y", "--",
+                    "--backend", "nemo",
+                    "--model", "parakeet-tdt-0.6b-v3",
+                ] {
+                    installedWhisper = true
+                    return CommandResult(exitCode: 0, output: "Installed and started")
+                }
+                XCTFail("Unexpected process arguments: \(arguments)")
+                return CommandResult(exitCode: 1, output: "unexpected")
+            },
+            localhostConnector: { port in
+                XCTAssertEqual(port, 10300)
+                return installedWhisper
+            },
+            whisperReadyTimeout: 0.01
+        )
+
+        let result = runtime.ensureReady(for: .transcription)
+
+        XCTAssertEqual(result.exitCode, 0)
+        XCTAssertEqual(
+            processArguments,
+            [
+                [
+                    "daemon", "install", "whisper", "-y", "--",
+                    "--backend", "nemo",
+                    "--model", "parakeet-tdt-0.6b-v3",
+                ],
+            ]
+        )
+    }
+
+    func testSelectedWhisperModelInvalidatesBundledDaemonMarker() throws {
+        let tempURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("AgentCLITests-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: tempURL) }
+
+        let binURL = tempURL.appendingPathComponent("bin", isDirectory: true)
+        try FileManager.default.createDirectory(at: binURL, withIntermediateDirectories: true)
+        let agentCLIURL = binURL.appendingPathComponent("agent-cli")
+        _ = FileManager.default.createFile(atPath: agentCLIURL.path, contents: Data())
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: agentCLIURL.path)
+
+        try """
+        packageSource=agent-cli
+        installRequirement=agent-cli[audio,llm]
+
+        """.write(
+            to: tempURL.appendingPathComponent(".agent-cli-installed"),
+            atomically: true,
+            encoding: .utf8
+        )
+        try """
+        runtimeMode=bundled
+        packageSource=agent-cli
+
+        """.write(
+            to: tempURL.appendingPathComponent(".whisper-daemon-installed"),
+            atomically: true,
+            encoding: .utf8
+        )
+
+        let defaults = UserDefaults(suiteName: "AgentCLITests.whisper-marker")!
+        defaults.removePersistentDomain(forName: "AgentCLITests.whisper-marker")
+        defaults.set("nemo", forKey: "transcriptionBackend")
+        defaults.set("parakeet-tdt-0.6b-v3", forKey: "transcriptionModel")
+        var installedWhisper = false
+        var processArguments: [[String]] = []
+        let runtime = AgentRuntime(
+            environment: ["AGENTCLI_APP_SUPPORT_DIR": tempURL.path],
+            userDefaults: defaults,
+            processRunner: { _, arguments, _ in
+                processArguments.append(arguments)
+                if arguments == [
+                    "daemon", "install", "whisper", "-y", "--",
+                    "--backend", "nemo",
+                    "--model", "parakeet-tdt-0.6b-v3",
+                ] {
+                    installedWhisper = true
+                    return CommandResult(exitCode: 0, output: "Installed and started")
+                }
+                XCTFail("Unexpected process arguments: \(arguments)")
+                return CommandResult(exitCode: 1, output: "unexpected")
+            },
+            localhostConnector: { port in
+                XCTAssertEqual(port, 10300)
+                return installedWhisper
+            },
+            whisperReadyTimeout: 0.01
+        )
+
+        XCTAssertEqual(
+            runtime.ensureReady(for: .transcription).exitCode,
+            0
+        )
+        XCTAssertEqual(
+            processArguments,
+            [
+                [
+                    "daemon", "install", "whisper", "-y", "--",
+                    "--backend", "nemo",
+                    "--model", "parakeet-tdt-0.6b-v3",
+                ],
+            ]
+        )
     }
 
     func testAppVersionDisplayIncludesShortVersionAndBuild() {

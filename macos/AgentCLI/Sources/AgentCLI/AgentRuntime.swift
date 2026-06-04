@@ -338,7 +338,10 @@ struct AgentRuntime {
 
     private func installWhisperDaemon(progress: AgentBootstrapProgress) -> CommandResult {
         progress(.installingVoiceService)
-        let result = runAgentCLI(arguments: ["daemon", "ensure", "whisper", "--quiet"])
+        let arguments = runtimeMode == .bundled
+            ? TranscriptionSettings.whisperDaemonInstallArguments(userDefaults: userDefaults)
+            : ["daemon", "ensure", "whisper", "--quiet"]
+        let result = runAgentCLI(arguments: arguments)
         guard result.exitCode == 0 else {
             return result
         }
@@ -354,7 +357,13 @@ struct AgentRuntime {
 
     private var whisperDaemonMarkerContents: String {
         let modeName = runtimeMode == .userInstalled ? "user-installed" : "bundled"
-        return "runtimeMode=\(modeName)\npackageSource=\(agentCLIPackageSource)\n"
+        var contents = "runtimeMode=\(modeName)\npackageSource=\(agentCLIPackageSource)\n"
+        if runtimeMode == .bundled {
+            let backend = TranscriptionSettings.selectedBackend(userDefaults: userDefaults)
+            contents += "transcriptionBackend=\(backend.rawValue)\n"
+            contents += "transcriptionModel=\(TranscriptionSettings.selectedModelName(userDefaults: userDefaults))\n"
+        }
+        return contents
     }
 
     private func warmUpWhisperModel() -> CommandResult {

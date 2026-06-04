@@ -207,7 +207,13 @@ final class AgentCommandRunner: ObservableObject {
 
         let bootstrap = self.bootstrap
         let reportBootstrapPhase = makeBootstrapProgressReporter()
-        let commandArguments = command.resolvedArguments(extraInstructions: TranscriptionSettings.extraInstructions)
+        let transcriptionDaemonArguments = AgentRuntime.shared.usesUserInstalledAgentCLI
+            ? nil
+            : TranscriptionSettings.whisperDaemonInstallArguments()
+        let commandArguments = command.resolvedArguments(
+            extraInstructions: TranscriptionSettings.extraInstructions,
+            transcriptionDaemonArguments: transcriptionDaemonArguments
+        )
         DispatchQueue.global(qos: .userInitiated).async {
             let bootstrapResult = bootstrap(command.bootstrapRequirement, command.forceBootstrap, reportBootstrapPhase)
             guard bootstrapResult.exitCode == 0 else {
