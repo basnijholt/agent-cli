@@ -417,6 +417,7 @@ def whisper_cmd(  # noqa: C901, PLR0912, PLR0915
         int,
         typer.Option(
             "--port",
+            "--asr-openai-port",
             "-p",
             help="Port for OpenAI-compatible HTTP API (`/v1/audio/transcriptions`)",
         ),
@@ -799,6 +800,7 @@ def tts_cmd(  # noqa: PLR0915
         int,
         typer.Option(
             "--port",
+            "--tts-openai-port",
             "-p",
             help="Port for OpenAI-compatible HTTP API (`/v1/audio/speech`)",
         ),

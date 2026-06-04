@@ -86,11 +86,13 @@ def test_get_command_options_dev_new_uses_start_agent_and_agent_name() -> None:
 
 
 def test_get_command_options_server_wyoming_ports_include_aliases() -> None:
-    """Server Wyoming port docs should show canonical flags and client-style aliases."""
+    """Server port docs should show canonical flags and client-style aliases."""
     whisper_names = {opt["name"] for opt in _get_command_options("server.whisper")}
     tts_names = {opt["name"] for opt in _get_command_options("server.tts")}
 
+    assert "--port, --asr-openai-port, -p" in whisper_names
     assert "--wyoming-port, --asr-wyoming-port" in whisper_names
+    assert "--port, --tts-openai-port, -p" in tts_names
     assert "--wyoming-port, --tts-wyoming-port" in tts_names
 
 

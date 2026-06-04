@@ -159,6 +159,34 @@ def test_server_whisper_accepts_asr_wyoming_port_alias(mock_uvicorn_run: MagicMo
     mock_uvicorn_run.assert_called_once()
 
 
+@patch("uvicorn.run")
+def test_server_whisper_accepts_asr_openai_port_alias(mock_uvicorn_run: MagicMock) -> None:
+    """Whisper server should accept the client-style ASR OpenAI-compatible port alias."""
+    runner = CliRunner()
+    with (
+        patch("agent_cli.core.deps._check_and_install_extras", return_value=[]),
+        patch("agent_cli.server.cli._check_whisper_deps"),
+    ):
+        result = runner.invoke(
+            cli_app,
+            [
+                "server",
+                "whisper",
+                "--model",
+                "tiny",
+                "--backend",
+                "faster-whisper",
+                "--no-wyoming",
+                "--asr-openai-port",
+                "10303",
+            ],
+        )
+
+    assert result.exit_code == 0
+    mock_uvicorn_run.assert_called_once()
+    assert mock_uvicorn_run.call_args.kwargs["port"] == 10303
+
+
 def test_server_tts_command_in_cli() -> None:
     """Test that the server tts command exposes Wyoming port config."""
     runner = CliRunner()
@@ -193,6 +221,32 @@ def test_server_tts_accepts_tts_wyoming_port_alias(mock_uvicorn_run: MagicMock) 
 
     assert result.exit_code == 0
     mock_uvicorn_run.assert_called_once()
+
+
+@patch("uvicorn.run")
+def test_server_tts_accepts_tts_openai_port_alias(mock_uvicorn_run: MagicMock) -> None:
+    """TTS server should accept the client-style TTS OpenAI-compatible port alias."""
+    runner = CliRunner()
+    with (
+        patch("agent_cli.core.deps._check_and_install_extras", return_value=[]),
+        patch("agent_cli.server.cli._check_tts_deps"),
+    ):
+        result = runner.invoke(
+            cli_app,
+            [
+                "server",
+                "tts",
+                "--backend",
+                "piper",
+                "--no-wyoming",
+                "--tts-openai-port",
+                "10203",
+            ],
+        )
+
+    assert result.exit_code == 0
+    mock_uvicorn_run.assert_called_once()
+    assert mock_uvicorn_run.call_args.kwargs["port"] == 10203
 
 
 @patch("uvicorn.run")
