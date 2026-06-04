@@ -27,7 +27,10 @@ _DEFAULT_NEMO_WHISPER_MODEL = "parakeet-unified-en-0.6b"
 
 
 def _has(package: str) -> bool:
-    return find_spec(package) is not None
+    try:
+        return find_spec(package) is not None
+    except ModuleNotFoundError:
+        return False
 
 
 app = typer.Typer(
@@ -199,7 +202,7 @@ def _check_whisper_deps(backend: str, *, download_only: bool = False) -> None:
         return
 
     if backend == "nemo":
-        if not _has("nemo"):
+        if not _has("nemo.collections.asr"):
             err_console.print(
                 "[bold red]Error:[/bold red] NeMo backend requires nemo_toolkit[asr]. "
                 "Run: [cyan]pip install agent-cli\\[nemo-whisper][/cyan] "

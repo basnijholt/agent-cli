@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import inspect
+import io
 import logging
 import tempfile
 import time
@@ -15,9 +16,11 @@ from multiprocessing import get_context
 from pathlib import Path
 from typing import Any, Literal
 
+from agent_cli.core.audio_format import convert_audio_to_wav_format
 from agent_cli.core.process import set_process_title
 from agent_cli.server.whisper.backends.base import (
     BackendConfig,
+    InvalidAudioError,
     TranscriptionResult,
 )
 
@@ -160,14 +163,34 @@ def _audio_duration_seconds(wav_path: str) -> float:
         return 0.0
 
 
+def _prepare_audio_for_nemo(audio_bytes: bytes, source_filename: str | None) -> bytes:
+    """Return a WAV container suitable for NeMo file-path transcription."""
+    try:
+        with wave.open(io.BytesIO(audio_bytes), "rb"):
+            return audio_bytes
+    except (wave.Error, EOFError):
+        pass
+
+    filename = source_filename or "audio"
+    try:
+        return convert_audio_to_wav_format(audio_bytes, filename)
+    except RuntimeError as exc:
+        logger.warning("FFmpeg conversion failed for NeMo Whisper: %s", exc)
+        msg = (
+            "Unsupported audio format for NeMo Whisper. "
+            "Provide a WAV file or install ffmpeg to convert uploads."
+        )
+        raise InvalidAudioError(msg) from exc
+
+
 def _build_transcribe_kwargs(
     transcribe_func: Any,
     *,
     language: str | None,
-    word_timestamps: bool,
+    word_timestamps: bool,  # noqa: ARG001 - extraction granularity; NeMo always computes timestamps.
 ) -> dict[str, Any]:
     """Build NeMo transcribe kwargs supported by the loaded model signature."""
-    transcribe_kwargs: dict[str, Any] = {"timestamps": word_timestamps}
+    transcribe_kwargs: dict[str, Any] = {"timestamps": True}
     if not language:
         return transcribe_kwargs
 
@@ -338,7 +361,7 @@ class NemoWhisperBackend:
         self,
         audio: bytes,
         *,
-        source_filename: str | None = None,  # noqa: ARG002
+        source_filename: str | None = None,
         language: str | None = None,
         task: Literal["transcribe", "translate"] = "transcribe",  # noqa: ARG002
         initial_prompt: str | None = None,  # noqa: ARG002
@@ -350,6 +373,8 @@ class NemoWhisperBackend:
         if self._executor is None:
             msg = "Model not loaded. Call load() first."
             raise RuntimeError(msg)
+
+        audio = await asyncio.to_thread(_prepare_audio_for_nemo, audio, source_filename)
 
         kwargs: dict[str, Any] = {
             "language": language,

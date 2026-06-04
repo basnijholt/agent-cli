@@ -15,6 +15,7 @@ from fastapi.testclient import TestClient
 from agent_cli.server.cli import (
     _check_whisper_deps,
     _client_host_for_usage,
+    _has,
     _resolve_whisper_required_extras,
 )
 from agent_cli.server.model_manager import ModelStats
@@ -92,6 +93,10 @@ class TestServerCliHelpers:
         assert _client_host_for_usage("0.0.0.0") == "localhost"  # noqa: S104
         assert _client_host_for_usage("::") == "localhost"
         assert _client_host_for_usage("192.168.1.20") == "192.168.1.20"
+
+    def test_has_returns_false_for_missing_nested_module(self) -> None:
+        """Nested optional dependency probes should not raise for missing roots."""
+        assert not _has("definitely_missing_agent_cli_module.submodule")
 
 
 class TestWhisperDependencyChecks:
@@ -186,6 +191,21 @@ class TestWhisperDependencyChecks:
         message = mock_print.call_args[0][0]
         assert f"agent-cli\\[{expected_extra}]" in message
         assert f"uv sync --extra {expected_extra}" in message
+
+    def test_nemo_dependency_check_requires_asr_leaf_module(self) -> None:
+        """A partial nemo namespace install should not satisfy the NeMo backend."""
+        with (
+            patch(
+                "agent_cli.server.cli._has",
+                side_effect=lambda package: package in {"uvicorn", "fastapi", "nemo"},
+            ),
+            patch("agent_cli.server.cli.err_console.print") as mock_print,
+            pytest.raises(typer.Exit),
+        ):
+            _check_whisper_deps("nemo")
+
+        message = mock_print.call_args[0][0]
+        assert "nemo_toolkit[asr]" in message
 
 
 class TestModelStats:

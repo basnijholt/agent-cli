@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import io
 import sys
+import wave
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures.process import BrokenProcessPool
 from types import ModuleType, SimpleNamespace
@@ -12,7 +14,7 @@ import pytest
 
 from agent_cli.server.cli import _is_parakeet_model
 from agent_cli.server.whisper.backends import nemo as backend
-from agent_cli.server.whisper.backends.base import BackendConfig
+from agent_cli.server.whisper.backends.base import BackendConfig, InvalidAudioError
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -54,6 +56,17 @@ def _install_mock_torch(monkeypatch: pytest.MonkeyPatch, *, cuda_available: bool
     torch_module: Any = ModuleType("torch")
     torch_module.cuda = _Cuda()
     monkeypatch.setitem(sys.modules, "torch", torch_module)
+
+
+def _create_test_wav() -> bytes:
+    """Create a tiny valid WAV file."""
+    buffer = io.BytesIO()
+    with wave.open(buffer, "wb") as wav_file:
+        wav_file.setnchannels(1)
+        wav_file.setsampwidth(2)
+        wav_file.setframerate(16_000)
+        wav_file.writeframes(b"\x00\x00" * 160)
+    return buffer.getvalue()
 
 
 @pytest.mark.parametrize(
@@ -229,6 +242,53 @@ def test_audio_duration_seconds_returns_zero_for_non_wav(tmp_path: Path) -> None
     assert backend._audio_duration_seconds(str(audio_path)) == 0.0
 
 
+def test_prepare_audio_for_nemo_keeps_valid_wav(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Valid WAV uploads should not require FFmpeg conversion."""
+    audio = _create_test_wav()
+    monkeypatch.setattr(
+        backend,
+        "convert_audio_to_wav_format",
+        lambda *_args, **_kwargs: pytest.fail("unexpected conversion"),
+    )
+
+    assert backend._prepare_audio_for_nemo(audio, "sample.wav") == audio
+
+
+def test_prepare_audio_for_nemo_converts_non_wav(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Non-WAV uploads should be converted to a WAV container before NeMo sees them."""
+    converted = _create_test_wav()
+    calls: dict[str, object] = {}
+
+    def fake_convert(audio: bytes, source_filename: str) -> bytes:
+        calls["audio"] = audio
+        calls["source_filename"] = source_filename
+        return converted
+
+    monkeypatch.setattr(backend, "convert_audio_to_wav_format", fake_convert)
+
+    assert backend._prepare_audio_for_nemo(b"ID3", "sample.mp3") == converted
+    assert calls == {"audio": b"ID3", "source_filename": "sample.mp3"}
+
+
+def test_prepare_audio_for_nemo_raises_invalid_audio_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Conversion failures should become API-visible invalid-audio errors."""
+
+    def fake_convert(audio: bytes, source_filename: str) -> bytes:  # noqa: ARG001
+        msg = "ffmpeg failed"
+        raise RuntimeError(msg)
+
+    monkeypatch.setattr(backend, "convert_audio_to_wav_format", fake_convert)
+
+    with pytest.raises(InvalidAudioError, match="Unsupported audio format for NeMo"):
+        backend._prepare_audio_for_nemo(b"not audio", "sample.mp3")
+
+
 def test_build_transcribe_kwargs_omits_language_for_plain_asr_models() -> None:
     """Plain NeMo ASR transcribe signatures should not receive unsupported language args."""
 
@@ -240,6 +300,59 @@ def test_build_transcribe_kwargs_omits_language_for_plain_asr_models() -> None:
         language="de",
         word_timestamps=True,
     ) == {"timestamps": True}
+
+
+def test_build_transcribe_kwargs_requests_segment_timestamps_by_default() -> None:
+    """NeMo should request segment timestamps even when word timestamps are off."""
+
+    def transcribe(audio: list[str], *, timestamps: bool) -> None:  # noqa: ARG001
+        return None
+
+    assert backend._build_transcribe_kwargs(
+        transcribe,
+        language=None,
+        word_timestamps=False,
+    ) == {"timestamps": True}
+
+
+def test_transcribe_in_subprocess_requests_and_extracts_segment_timestamps(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """SRT/VTT/verbose_json need segment timestamps with word_timestamps=False."""
+    calls: dict[str, object] = {}
+
+    class _Model:
+        @staticmethod
+        def transcribe(audio: list[str], **kwargs: object) -> list[object]:  # noqa: ARG004
+            calls["kwargs"] = kwargs
+            return [
+                SimpleNamespace(
+                    text="hello",
+                    timestamp={
+                        "segment": [{"segment": "hello", "start": 0.0, "end": 0.01}],
+                    },
+                ),
+            ]
+
+    monkeypatch.setattr(backend._state, "model", _Model())
+
+    result = backend._transcribe_in_subprocess(
+        _create_test_wav(),
+        {"language": None, "word_timestamps": False},
+    )
+
+    assert calls["kwargs"] == {"timestamps": True}
+    assert result["segments"] == [
+        {
+            "id": 0,
+            "start": 0.0,
+            "end": 0.01,
+            "text": "hello",
+            "tokens": [],
+            "avg_logprob": 0.0,
+            "no_speech_prob": 0.0,
+        },
+    ]
 
 
 def test_build_transcribe_kwargs_passes_target_lang_for_prompt_models() -> None:
@@ -273,7 +386,7 @@ def test_build_transcribe_kwargs_passes_multitask_language_args() -> None:
         language="fr",
         word_timestamps=False,
     ) == {
-        "timestamps": False,
+        "timestamps": True,
         "task": "asr",
         "source_lang": "fr",
         "target_lang": "fr",
@@ -337,7 +450,7 @@ async def test_transcribe_recovers_from_broken_process_pool(
     monkeypatch.setattr(backend, "_transcribe_in_subprocess", transcribe_once_then_succeed)
     monkeypatch.setattr(nemo_backend, "load", fake_load)
 
-    result = await nemo_backend.transcribe(b"audio")
+    result = await nemo_backend.transcribe(_create_test_wav())
 
     await nemo_backend.unload()
     assert result.text == "ok"
