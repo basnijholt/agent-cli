@@ -4,8 +4,22 @@ import Testing
 @testable import AgentCLI
 
 @Test
-func toggleTranscriptionEnablesLivePreviewArguments() {
+func toggleTranscriptionDisablesLivePreviewArgumentsByDefault() {
     #expect(AgentCommand.toggleTranscription.arguments == [
+        "transcribe",
+        "--toggle",
+        "--quiet",
+        "--transcription-log",
+        "~/.config/agent-cli/transcriptions.jsonl",
+    ])
+}
+
+@Test
+func toggleTranscriptionEnablesLivePreviewArgumentsWhenConfigured() {
+    #expect(AgentCommand.toggleTranscription.resolvedArguments(
+        extraInstructions: nil,
+        livePreviewOverlayEnabled: true
+    ) == [
         "transcribe",
         "--toggle",
         "--quiet",

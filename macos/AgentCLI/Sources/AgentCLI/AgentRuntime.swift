@@ -272,15 +272,24 @@ struct AgentRuntime {
     }
 
     private func runLivePreviewSelfTest() throws {
-        let arguments = AgentCommand.toggleTranscription.arguments
+        let defaultArguments = AgentCommand.toggleTranscription.arguments
+        guard !defaultArguments.contains("--live-preview-log"),
+              !defaultArguments.contains("--live-preview-interval"),
+              !defaultArguments.contains("--live-preview-window") else {
+            throw Self.selfTestError("toggle transcription command enables live preview by default")
+        }
+        let previewArguments = AgentCommand.toggleTranscription.resolvedArguments(
+            extraInstructions: nil,
+            livePreviewOverlayEnabled: true
+        )
         guard Self.argumentsContainOption(
-            arguments,
+            previewArguments,
             "--live-preview-log",
             value: LiveTranscriptionPreview.defaultLogPath
         ),
-        Self.argumentsContainOption(arguments, "--live-preview-interval", value: "1"),
-        Self.argumentsContainOption(arguments, "--live-preview-window", value: "10") else {
-            throw Self.selfTestError("toggle transcription command does not enable live preview")
+        Self.argumentsContainOption(previewArguments, "--live-preview-interval", value: "1"),
+        Self.argumentsContainOption(previewArguments, "--live-preview-window", value: "10") else {
+            throw Self.selfTestError("toggle transcription command does not enable live preview when requested")
         }
 
         let preview = LiveTranscriptionPreview.shared

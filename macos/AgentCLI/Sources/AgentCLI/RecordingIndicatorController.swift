@@ -29,7 +29,8 @@ final class RecordingIndicatorController {
         if !wasRecording {
             play(.startedRecording)
         }
-        if command.identifier == AgentCommand.toggleTranscription.identifier {
+        if command.identifier == AgentCommand.toggleTranscription.identifier,
+           TranscriptionSettings.isLivePreviewOverlayEnabled(defaults: defaults) {
             LiveTranscriptionPreview.shared.start()
         }
         VoiceLevelOverlayController.shared.show()

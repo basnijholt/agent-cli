@@ -281,6 +281,8 @@ struct SettingsView: View {
     private var useUserInstalledAgentCLI = false
     @AppStorage(RecordingSoundSettings.enabledKey)
     private var recordingSoundsEnabled = false
+    @AppStorage(TranscriptionSettings.livePreviewOverlayEnabledKey)
+    private var livePreviewOverlayEnabled = false
     @AppStorage(TranscriptionSettings.transcriptionBackendKey)
     private var transcriptionBackend = TranscriptionBackend.whisper.rawValue
     @AppStorage(TranscriptionSettings.transcriptionModelKey)
@@ -315,10 +317,11 @@ struct SettingsView: View {
 
                 Toggle("Use User-Installed agent-cli", isOn: $useUserInstalledAgentCLI)
                 Toggle("Play Recording Sounds", isOn: $recordingSoundsEnabled)
+                Toggle("Show Live Transcription Preview", isOn: $livePreviewOverlayEnabled)
             } header: {
                 Text("General")
             } footer: {
-                Text("Runs the agent-cli found on PATH with your normal config instead of the app's private bundled-uv runtime. Recording sounds use Frog when recording starts and Purr when recording ends.")
+                Text("Runs the agent-cli found on PATH with your normal config instead of the app's private bundled-uv runtime. Live preview shows provisional transcription text above the recording meter.")
             }
 
             Section {

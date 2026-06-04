@@ -59,6 +59,7 @@ enum TranscriptionBackend: String, CaseIterable, Identifiable {
 
 enum TranscriptionSettings {
     static let transcriptionExtraInstructionsKey = "transcriptionExtraInstructions"
+    static let livePreviewOverlayEnabledKey = "livePreviewOverlayEnabled"
     static let transcriptionBackendKey = "transcriptionBackend"
     static let transcriptionModelKey = "transcriptionModel"
     static let transcriptionModelTTLSecondsKey = "transcriptionModelTTLSeconds"
@@ -66,6 +67,10 @@ enum TranscriptionSettings {
 
     static var extraInstructions: String {
         UserDefaults.standard.string(forKey: transcriptionExtraInstructionsKey) ?? ""
+    }
+
+    static func isLivePreviewOverlayEnabled(defaults: UserDefaults = .standard) -> Bool {
+        defaults.bool(forKey: livePreviewOverlayEnabledKey)
     }
 
     static func selectedBackend(userDefaults: UserDefaults = .standard) -> TranscriptionBackend {

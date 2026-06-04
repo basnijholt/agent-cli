@@ -15,6 +15,23 @@ final class AgentCommandTests: XCTestCase {
                 "~/.config/agent-cli/voice-levels.jsonl",
                 "--transcription-log",
                 "~/.config/agent-cli/transcriptions.jsonl",
+            ]
+        )
+        XCTAssertEqual(AgentCommand.toggleTranscription.bootstrapRequirement, .transcription)
+    }
+
+    func testToggleTranscriptionAddsLivePreviewArgumentsWhenEnabled() {
+        XCTAssertEqual(
+            AgentCommand.toggleTranscription.resolvedArguments(
+                extraInstructions: nil,
+                livePreviewOverlayEnabled: true
+            ),
+            [
+                "transcribe",
+                "--toggle",
+                "--quiet",
+                "--transcription-log",
+                "~/.config/agent-cli/transcriptions.jsonl",
                 "--live-preview-log",
                 "~/.config/agent-cli/live-preview.jsonl",
                 "--live-preview-interval",
@@ -23,13 +40,13 @@ final class AgentCommandTests: XCTestCase {
                 "10",
             ]
         )
-        XCTAssertEqual(AgentCommand.toggleTranscription.bootstrapRequirement, .transcription)
     }
 
     func testToggleTranscriptionAppendsConfiguredExtraInstructions() {
         XCTAssertEqual(
             AgentCommand.toggleTranscription.resolvedArguments(
-                extraInstructions: "  Remember Bas and Henk.\nPrefer project names.  "
+                extraInstructions: "  Remember Bas and Henk.\nPrefer project names.  ",
+                livePreviewOverlayEnabled: true
             ),
             [
                 "transcribe",
@@ -53,14 +70,20 @@ final class AgentCommandTests: XCTestCase {
 
     func testBlankExtraInstructionsAreIgnored() {
         XCTAssertEqual(
-            AgentCommand.toggleTranscription.resolvedArguments(extraInstructions: "  \n\t  "),
+            AgentCommand.toggleTranscription.resolvedArguments(
+                extraInstructions: "  \n\t  ",
+                livePreviewOverlayEnabled: false
+            ),
             AgentCommand.toggleTranscription.arguments
         )
     }
 
     func testVisuallyBlankExtraInstructionsAreIgnored() {
         XCTAssertEqual(
-            AgentCommand.toggleTranscription.resolvedArguments(extraInstructions: "\u{2060}\u{FEFF}"),
+            AgentCommand.toggleTranscription.resolvedArguments(
+                extraInstructions: "\u{2060}\u{FEFF}",
+                livePreviewOverlayEnabled: false
+            ),
             AgentCommand.toggleTranscription.arguments
         )
     }
