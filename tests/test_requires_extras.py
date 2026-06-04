@@ -15,10 +15,12 @@ from agent_cli.core.deps import (
     EXTRAS,
     _check_and_install_extras,
     _find_python_incompatible_extras,
+    _find_runtime_uv,
     _get_auto_install_setting,
     _get_install_hint,
     _install_via_uv_tool,
     _maybe_reexec_after_install,
+    _maybe_reexec_with_uvx,
     _resolve_extras_for_install,
     _should_skip_extra_check_for_process_control,
     get_combined_install_hint,
@@ -296,6 +298,65 @@ class TestCheckAndInstallExtras:
             python_version=(3, 14),
             uv_available=False,
         ) == ["nemo-whisper"]
+
+    def test_python_incompatible_extra_detection_uses_bundled_uv(self, tmp_path: Path) -> None:
+        """Bundled uv should enable NeMo runtime overrides even when uv is not on PATH."""
+        uv_path = tmp_path / "uv"
+        uv_path.touch()
+        uv_path.chmod(0o755)
+
+        with (
+            patch.dict(os.environ, {"AGENTCLI_BUNDLED_UV": str(uv_path)}, clear=True),
+            patch("agent_cli.core.deps.shutil.which", return_value=None),
+        ):
+            assert _find_runtime_uv() == str(uv_path)
+            assert (
+                _find_python_incompatible_extras(
+                    ["nemo-whisper"],
+                    python_version=(3, 14),
+                )
+                == []
+            )
+
+    def test_uvx_cache_reexec_uses_bundled_uv_with_nemo_overrides(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """uvx-cache NeMo commands should re-exec via bundled uv with runtime overrides."""
+        uv_path = tmp_path / "uv"
+        uv_path.touch()
+        uv_path.chmod(0o755)
+        package_source = tmp_path / "agent_cli.whl"
+        captured: dict[str, object] = {}
+
+        def fake_execvpe(file: str, cmd: list[str], env: dict[str, str]) -> None:
+            captured["file"] = file
+            captured["cmd"] = cmd
+            captured["env"] = env
+
+        monkeypatch.setenv("AGENTCLI_BUNDLED_UV", str(uv_path))
+        monkeypatch.setenv("AGENTCLI_PACKAGE_SOURCE", str(package_source))
+        monkeypatch.setattr("agent_cli.core.deps.shutil.which", lambda _: None)
+        monkeypatch.setattr("agent_cli.core.deps._is_uvx_cache", lambda: True)
+        monkeypatch.setattr("agent_cli.core.deps.os.execvpe", fake_execvpe)
+        monkeypatch.setattr(
+            "sys.argv",
+            ["agent-cli", "server", "whisper", "--backend", "nemo"],
+        )
+
+        _maybe_reexec_with_uvx(["server", "nemo-whisper", "wyoming"])
+
+        cmd = captured["cmd"]
+        assert isinstance(cmd, list)
+        assert cmd[:5] == [str(uv_path), "tool", "run", "--python", "3.13"]
+        assert "--overrides" in cmd
+        assert "nemo-whisper.txt" in cmd[cmd.index("--overrides") + 1]
+        assert "--with" in cmd
+        assert (
+            "NVIDIA-NeMo/NeMo.git@be23ce1ee6594da3d7fa2f37e603d3b3ba230a9e"
+            in cmd[cmd.index("--with") + 1]
+        )
+        assert cmd[cmd.index("--from") + 1] == f"{package_source}[server,nemo-whisper,wyoming]"
+        assert cmd[-4:] == ["server", "whisper", "--backend", "nemo"]
 
     def test_uv_pip_install_uses_nemo_git_override(self) -> None:
         """Uv pip installs NeMo from a pinned Git revision with the kaldialign override."""

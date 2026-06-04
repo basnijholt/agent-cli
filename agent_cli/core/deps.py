@@ -70,6 +70,18 @@ def _is_uvx_cache() -> bool:
     return "/cache/uv/" in prefix_str or "/archive-v" in prefix_str
 
 
+def _find_runtime_uv() -> str | None:
+    """Find uv for runtime dependency installs, including bundled app uv."""
+    for env_name in ("AGENTCLI_UV_PATH", "AGENTCLI_BUNDLED_UV"):
+        value = os.environ.get(env_name)
+        if not value:
+            continue
+        uv_path = Path(value).expanduser()
+        if uv_path.is_file() and os.access(uv_path, os.X_OK):
+            return str(uv_path)
+    return shutil.which("uv")
+
+
 # -- Package Checking --
 
 # Load extras from JSON file
@@ -252,8 +264,9 @@ def _install_via_uv_tool(extras: list[str], *, quiet: bool = False) -> bool:
 def _install_cmd() -> list[str]:
     """Build the install command with appropriate flags."""
     in_venv = _in_virtualenv()
-    if shutil.which("uv"):
-        cmd = ["uv", "pip", "install", "--python", sys.executable]
+    uv_path = _find_runtime_uv()
+    if uv_path:
+        cmd = [uv_path, "pip", "install", "--python", sys.executable]
         if not in_venv:
             cmd.append("--system")
         return cmd
@@ -281,7 +294,7 @@ def _supports_uv_runtime_override(
     """Return True when uv can install an extra with runtime overrides."""
     if extra not in _EXTRA_UV_RUNTIME_REQUIREMENTS:
         return False
-    has_uv = shutil.which("uv") is not None if uv_available is None else uv_available
+    has_uv = _find_runtime_uv() is not None if uv_available is None else uv_available
     return has_uv and _uv_override_path(extra).exists()
 
 
@@ -299,11 +312,15 @@ def _uv_pip_extra_requirements(extra: str, cmd: list[str]) -> list[str]:
     return list(_EXTRA_UV_RUNTIME_REQUIREMENTS[extra])
 
 
-def _uv_tool_extra_args(extras: list[str]) -> list[str]:
+def _uv_tool_extra_args(
+    extras: list[str],
+    *,
+    uv_available: bool | None = None,
+) -> list[str]:
     """Return uv tool arguments needed for extras with runtime overrides."""
     args: list[str] = []
     for extra in extras:
-        if not _supports_uv_runtime_override(extra):
+        if not _supports_uv_runtime_override(extra, uv_available=uv_available):
             continue
         args.extend(["--overrides", str(_uv_override_path(extra))])
         for requirement in _EXTRA_UV_RUNTIME_REQUIREMENTS[extra]:
@@ -409,19 +426,33 @@ def _maybe_exec_with_marker(cmd: list[str], message: str) -> None:
 
 
 def _maybe_reexec_with_uvx(extras: list[str]) -> None:
-    """Try to re-execute with uvx running agent-cli[extras] directly.
+    """Try to re-execute with uv running agent-cli[extras] directly.
 
     If successful, replaces the current process (never returns).
-    If not in uvx cache or uvx unavailable, returns normally.
+    If not in uvx cache or uv unavailable, returns normally.
     """
     if os.environ.get(_REEXEC_MARKER) or not _is_uvx_cache():
         return
-    uvx_path = shutil.which("uvx")
-    if not uvx_path:
+
+    uv_path = _find_runtime_uv()
+    if not uv_path:
         return
+
     extras_str = ",".join(extras)
-    # Run agent-cli[extras] directly with Python 3.13 (some deps lack 3.14 wheels)
-    cmd = [uvx_path, "--python", "3.13", f"agent-cli[{extras_str}]", *sys.argv[1:]]
+    package_source = os.environ.get("AGENTCLI_PACKAGE_SOURCE", "agent-cli")
+    package_spec = f"{package_source}[{extras_str}]"
+    cmd = [
+        uv_path,
+        "tool",
+        "run",
+        "--python",
+        "3.13",
+        *_uv_tool_extra_args(extras, uv_available=True),
+        "--from",
+        package_spec,
+        "agent-cli",
+        *sys.argv[1:],
+    ]
     _maybe_exec_with_marker(cmd, f"Re-running with extras: {extras_str}")
 
 
