@@ -45,6 +45,12 @@ The first transcription can take longer because AgentCLI installs the private CL
 
 Open **Settings...** from the menu bar app to change shortcuts, enable **Start at Login**, or switch runtime modes.
 
+## Live Transcription Preview
+
+The menu bar app can show provisional transcription text above the recording meter while you speak. Enable **Show Live Transcription Preview** in **Settings...** to turn it on.
+
+This setting is off by default. When enabled, AgentCLI writes rolling preview events to `~/.config/agent-cli/live-preview.jsonl` and updates the overlay during toggle or hold-to-transcribe recordings. Preview text is best-effort and may revise earlier words as more audio arrives; the final transcript is still produced and inserted after recording stops.
+
 ## Runtime Modes
 
 By default, the app manages its own private `agent-cli` install so the menu bar workflow is zero-config and does not depend on your shell PATH.

@@ -236,6 +236,19 @@ agent-cli transcribe --toggle
 cmd + shift + r : /path/to/agent-cli transcribe --toggle --input-device-index 1
 ```
 
+### Live Preview
+
+Use live preview options when another UI should display provisional transcription text during a recording. The transcriber periodically reprocesses the most recent audio window, so preview text can rewrite earlier words until the final transcription is ready.
+
+```bash
+agent-cli transcribe --toggle \
+  --live-preview-log ~/.config/agent-cli/live-preview.jsonl \
+  --live-preview-interval 1 \
+  --live-preview-window 10
+```
+
+For terminal testing, add `--live-preview-console` to print each rolling update while recording. The macOS menu bar app uses the JSONL log when **Show Live Transcription Preview** is enabled in Settings; that setting is off by default.
+
 ### Transcription Log
 
 Log all transcriptions with timestamps:
