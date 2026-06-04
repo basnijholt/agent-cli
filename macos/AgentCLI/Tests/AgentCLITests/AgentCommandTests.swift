@@ -64,12 +64,32 @@ final class AgentCommandTests: XCTestCase {
                     "daemon", "install", "whisper", "-y", "--",
                     "--backend", "nemo",
                     "--model", "parakeet-tdt-0.6b-v3",
+                    "--ttl", "86400",
                 ]
             ),
             [
                 "daemon", "install", "whisper", "-y", "--",
                 "--backend", "nemo",
                 "--model", "parakeet-tdt-0.6b-v3",
+                "--ttl", "86400",
+            ]
+        )
+    }
+
+    func testTranscriptionDaemonArgumentsIncludeConfiguredTTL() {
+        let defaults = UserDefaults(suiteName: "AgentCLITests.transcription-ttl")!
+        defaults.removePersistentDomain(forName: "AgentCLITests.transcription-ttl")
+        defaults.set("nemo", forKey: TranscriptionSettings.transcriptionBackendKey)
+        defaults.set("parakeet-unified-en-0.6b", forKey: TranscriptionSettings.transcriptionModelKey)
+        defaults.set(86400, forKey: TranscriptionSettings.transcriptionModelTTLSecondsKey)
+
+        XCTAssertEqual(
+            TranscriptionSettings.whisperDaemonInstallArguments(userDefaults: defaults),
+            [
+                "daemon", "install", "whisper", "-y", "--",
+                "--backend", "nemo",
+                "--model", "parakeet-unified-en-0.6b",
+                "--ttl", "86400",
             ]
         )
     }
@@ -220,7 +240,12 @@ final class AgentCommandTests: XCTestCase {
             userDefaults: defaults,
             processRunner: { _, arguments, _ in
                 processArguments.append(arguments)
-                if arguments == ["daemon", "install", "whisper", "-y", "--", "--backend", "auto", "--model", "large-v3"] {
+                if arguments == [
+                    "daemon", "install", "whisper", "-y", "--",
+                    "--backend", "auto",
+                    "--model", "large-v3",
+                    "--ttl", "300",
+                ] {
                     installedWhisper = true
                     return CommandResult(exitCode: 0, output: "Installed and started")
                 }
@@ -241,7 +266,12 @@ final class AgentCommandTests: XCTestCase {
         XCTAssertEqual(
             processArguments,
             [
-                ["daemon", "install", "whisper", "-y", "--", "--backend", "auto", "--model", "large-v3"],
+                [
+                    "daemon", "install", "whisper", "-y", "--",
+                    "--backend", "auto",
+                    "--model", "large-v3",
+                    "--ttl", "300",
+                ],
             ]
         )
         XCTAssertEqual(phases, [.installingVoiceService, .waitingForVoiceService])
@@ -277,7 +307,12 @@ final class AgentCommandTests: XCTestCase {
             userDefaults: defaults,
             processRunner: { _, arguments, _ in
                 processArguments.append(arguments)
-                if arguments == ["daemon", "install", "whisper", "-y", "--", "--backend", "auto", "--model", "large-v3"] {
+                if arguments == [
+                    "daemon", "install", "whisper", "-y", "--",
+                    "--backend", "auto",
+                    "--model", "large-v3",
+                    "--ttl", "300",
+                ] {
                     installedWhisper = true
                     return CommandResult(exitCode: 0, output: "Installed and started")
                 }
@@ -297,7 +332,12 @@ final class AgentCommandTests: XCTestCase {
         XCTAssertEqual(
             processArguments,
             [
-                ["daemon", "install", "whisper", "-y", "--", "--backend", "auto", "--model", "large-v3"],
+                [
+                    "daemon", "install", "whisper", "-y", "--",
+                    "--backend", "auto",
+                    "--model", "large-v3",
+                    "--ttl", "300",
+                ],
             ]
         )
     }
@@ -339,6 +379,7 @@ final class AgentCommandTests: XCTestCase {
                     "daemon", "install", "whisper", "-y", "--",
                     "--backend", "nemo",
                     "--model", "parakeet-tdt-0.6b-v3",
+                    "--ttl", "300",
                 ] {
                     installedWhisper = true
                     return CommandResult(exitCode: 0, output: "Installed and started")
@@ -363,6 +404,7 @@ final class AgentCommandTests: XCTestCase {
                     "daemon", "install", "whisper", "-y", "--",
                     "--backend", "nemo",
                     "--model", "parakeet-tdt-0.6b-v3",
+                    "--ttl", "300",
                 ],
             ]
         )
@@ -413,6 +455,7 @@ final class AgentCommandTests: XCTestCase {
                     "daemon", "install", "whisper", "-y", "--",
                     "--backend", "nemo",
                     "--model", "parakeet-tdt-0.6b-v3",
+                    "--ttl", "300",
                 ] {
                     installedWhisper = true
                     return CommandResult(exitCode: 0, output: "Installed and started")
@@ -438,6 +481,7 @@ final class AgentCommandTests: XCTestCase {
                     "daemon", "install", "whisper", "-y", "--",
                     "--backend", "nemo",
                     "--model", "parakeet-tdt-0.6b-v3",
+                    "--ttl", "300",
                 ],
             ]
         )

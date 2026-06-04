@@ -61,6 +61,8 @@ enum TranscriptionSettings {
     static let transcriptionExtraInstructionsKey = "transcriptionExtraInstructions"
     static let transcriptionBackendKey = "transcriptionBackend"
     static let transcriptionModelKey = "transcriptionModel"
+    static let transcriptionModelTTLSecondsKey = "transcriptionModelTTLSeconds"
+    static let defaultModelTTLSeconds = 300
 
     static var extraInstructions: String {
         UserDefaults.standard.string(forKey: transcriptionExtraInstructionsKey) ?? ""
@@ -77,6 +79,13 @@ enum TranscriptionSettings {
         return backend.modelOption(named: storedModelName)?.id ?? backend.defaultModelName
     }
 
+    static func selectedModelTTLSeconds(userDefaults: UserDefaults = .standard) -> Int {
+        guard let storedValue = userDefaults.object(forKey: transcriptionModelTTLSecondsKey) as? NSNumber else {
+            return defaultModelTTLSeconds
+        }
+        return max(0, storedValue.intValue)
+    }
+
     static func whisperDaemonInstallArguments(userDefaults: UserDefaults = .standard) -> [String] {
         let backend = selectedBackend(userDefaults: userDefaults)
         return [
@@ -89,6 +98,8 @@ enum TranscriptionSettings {
             backend.cliBackend,
             "--model",
             selectedModelName(userDefaults: userDefaults),
+            "--ttl",
+            "\(selectedModelTTLSeconds(userDefaults: userDefaults))",
         ]
     }
 }

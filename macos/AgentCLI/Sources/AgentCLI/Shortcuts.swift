@@ -285,6 +285,8 @@ struct SettingsView: View {
     private var transcriptionBackend = TranscriptionBackend.whisper.rawValue
     @AppStorage(TranscriptionSettings.transcriptionModelKey)
     private var transcriptionModel = TranscriptionBackend.whisper.defaultModelName
+    @AppStorage(TranscriptionSettings.transcriptionModelTTLSecondsKey)
+    private var transcriptionModelTTLSeconds = TranscriptionSettings.defaultModelTTLSeconds
     @AppStorage(TranscriptionSettings.transcriptionExtraInstructionsKey)
     private var transcriptionExtraInstructions = ""
     @State private var shortcutRevision = 0
@@ -335,13 +337,31 @@ struct SettingsView: View {
                 }
                 .pickerStyle(.menu)
                 .disabled(useUserInstalledAgentCLI)
+
+                Stepper(
+                    value: Binding(
+                        get: { max(0, transcriptionModelTTLSeconds) },
+                        set: { transcriptionModelTTLSeconds = max(0, $0) }
+                    ),
+                    in: 0...86_400,
+                    step: 60
+                ) {
+                    HStack {
+                        Text("Model TTL")
+                        Spacer()
+                        Text(Self.formatTTLSeconds(transcriptionModelTTLSeconds))
+                            .foregroundStyle(.secondary)
+                            .monospacedDigit()
+                    }
+                }
+                .disabled(useUserInstalledAgentCLI)
             } header: {
                 Text("Voice Service")
             } footer: {
                 Text(
                     useUserInstalledAgentCLI
                         ? "Disabled while User-Installed agent-cli is active."
-                        : "Changing these settings restarts the bundled voice service on next transcription."
+                        : "TTL is how long the selected model lives in memory after the last transcription. Set to 0 to keep it loaded until the voice service restarts."
                 )
             }
 
@@ -425,6 +445,26 @@ struct SettingsView: View {
         let backend = selectedTranscriptionBackend
         guard backend.modelOption(named: transcriptionModel) == nil else { return }
         transcriptionModel = backend.defaultModelName
+    }
+
+    private static func formatTTLSeconds(_ seconds: Int) -> String {
+        let clampedSeconds = max(0, seconds)
+        if clampedSeconds == 0 {
+            return "Never"
+        }
+        if clampedSeconds < 60 {
+            return "\(clampedSeconds)s"
+        }
+        if clampedSeconds < 3_600 {
+            return "\(clampedSeconds / 60)m"
+        }
+
+        let hours = clampedSeconds / 3_600
+        let minutes = (clampedSeconds % 3_600) / 60
+        if minutes == 0 {
+            return "\(hours)h"
+        }
+        return "\(hours)h \(minutes)m"
     }
 }
 

@@ -360,8 +360,10 @@ struct AgentRuntime {
         var contents = "runtimeMode=\(modeName)\npackageSource=\(agentCLIPackageSource)\n"
         if runtimeMode == .bundled {
             let backend = TranscriptionSettings.selectedBackend(userDefaults: userDefaults)
+            let ttlSeconds = TranscriptionSettings.selectedModelTTLSeconds(userDefaults: userDefaults)
             contents += "transcriptionBackend=\(backend.rawValue)\n"
             contents += "transcriptionModel=\(TranscriptionSettings.selectedModelName(userDefaults: userDefaults))\n"
+            contents += "transcriptionModelTTLSeconds=\(ttlSeconds)\n"
         }
         return contents
     }
