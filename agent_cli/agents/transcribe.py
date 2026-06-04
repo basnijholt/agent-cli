@@ -969,7 +969,9 @@ def transcribe(  # noqa: PLR0912, PLR0911, PLR0915, C901
                     diarization_cfg=diarization_cfg,
                     emit_output=not json_output,
                     raise_diarization_errors=diarize,
-                    audio_level_callback=audio_level_writer.write_chunk if audio_level_writer else None,
+                    audio_level_callback=audio_level_writer.write_chunk
+                    if audio_level_writer
+                    else None,
                     live_preview_log=live_preview_log,
                     live_preview_interval=live_preview_interval,
                     live_preview_window=live_preview_window,
