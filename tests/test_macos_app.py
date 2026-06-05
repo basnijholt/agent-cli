@@ -103,6 +103,36 @@ def test_macos_app_depends_on_keyboardshortcuts_package() -> None:
     assert '.product(name: "KeyboardShortcuts", package: "KeyboardShortcuts")' in package
 
 
+def test_macos_app_checks_function_row_keys_without_invalid_carbon_range() -> None:
+    """Carbon function-row key codes are not an ordered contiguous Swift range."""
+    shortcuts = (SWIFT_SOURCE_DIR / "Shortcuts.swift").read_text(encoding="utf-8")
+
+    assert "case kVK_F1...kVK_F20:" not in shortcuts
+    for key in (
+        "kVK_F1",
+        "kVK_F2",
+        "kVK_F3",
+        "kVK_F4",
+        "kVK_F5",
+        "kVK_F6",
+        "kVK_F7",
+        "kVK_F8",
+        "kVK_F9",
+        "kVK_F10",
+        "kVK_F11",
+        "kVK_F12",
+        "kVK_F13",
+        "kVK_F14",
+        "kVK_F15",
+        "kVK_F16",
+        "kVK_F17",
+        "kVK_F18",
+        "kVK_F19",
+        "kVK_F20",
+    ):
+        assert key in shortcuts
+
+
 def test_macos_app_has_swift_unit_test_target() -> None:
     """Pure macOS app behavior should have an XCTest target."""
     package = (MACOS_APP / "Package.swift").read_text(encoding="utf-8")
