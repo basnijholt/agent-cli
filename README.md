@@ -923,6 +923,21 @@ the `[defaults]` section of your configuration file.
 │                                                                  provide context for   │
 │                                                                  LLM cleanup.          │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Live Preview ─────────────────────────────────────────────────────────────────────────╮
+│ --live-preview-log                          PATH   Write rolling live transcription    │
+│                                                    preview events to JSONL while       │
+│                                                    recording.                          │
+│ --live-preview-interval                     FLOAT  Seconds between live preview        │
+│                                                    retranscriptions.                   │
+│                                                    [default: 2.0]                      │
+│ --live-preview-window                       FLOAT  Seconds of recent audio to include  │
+│                                                    in each live preview                │
+│                                                    retranscription.                    │
+│                                                    [default: 15.0]                     │
+│ --live-preview-console,--live-previ…               Print rolling live transcription    │
+│                                                    preview updates to the terminal     │
+│                                                    while recording.                    │
+╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Diarization ──────────────────────────────────────────────────────────────────────────╮
 │ --diarize               --no-diarize                               Enable speaker      │
 │                                                                    diarization         │

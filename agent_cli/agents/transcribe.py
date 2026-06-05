@@ -365,13 +365,20 @@ async def _async_main(  # noqa: PLR0912, PLR0915, C901
     emit_output: bool = True,
     raise_diarization_errors: bool = False,
     audio_level_callback: Callable[[bytes], None] | None = None,
+    live_preview_log: Path | None = None,
+    live_preview_interval: float = 2.0,
+    live_preview_window: float = 15.0,
+    live_preview_console: bool = False,
 ) -> TranscriptResult:
     """Unified async entry point for both live and file-based transcription."""
     start_time = time.monotonic()
     transcript: str | None
     saved_recording_path: Path | None = None
+    live_preview_console_active = (
+        live_preview_console and audio_file_path is None and provider_cfg.asr_provider == "wyoming"
+    )
 
-    with maybe_live(not general_cfg.quiet) as live:
+    with maybe_live(not general_cfg.quiet and not live_preview_console_active) as live:
         if audio_file_path:
             # File-based transcription
             # Determine if we can use native format support (skip PCM conversion)
@@ -447,6 +454,17 @@ async def _async_main(  # noqa: PLR0912, PLR0915, C901
                     openai_asr_cfg,
                     gemini_asr_cfg,
                 )
+                live_preview_config = (
+                    asr.LivePreviewConfig(
+                        log_file=live_preview_log,
+                        interval_seconds=live_preview_interval,
+                        window_seconds=live_preview_window,
+                        console=live_preview_console,
+                    )
+                    if (live_preview_log or live_preview_console)
+                    and provider_cfg.asr_provider == "wyoming"
+                    else None
+                )
                 transcript = await live_transcriber(
                     logger=LOGGER,
                     stop_event=stop_event,
@@ -456,6 +474,7 @@ async def _async_main(  # noqa: PLR0912, PLR0915, C901
                     extra_instructions=extra_instructions,
                     recording_path_callback=_set_saved_recording_path,
                     audio_level_callback=audio_level_callback,
+                    live_preview_config=live_preview_config,
                 )
 
         elapsed = time.monotonic() - start_time
@@ -650,6 +669,10 @@ def transcribe(  # noqa: PLR0912, PLR0911, PLR0915, C901
     print_args: bool = opts.PRINT_ARGS,
     transcription_log: Path | None = opts.TRANSCRIPTION_LOG,
     voice_level_log: Path | None = opts.VOICE_LEVEL_LOG,
+    live_preview_log: Path | None = opts.LIVE_PREVIEW_LOG,
+    live_preview_interval: float = opts.LIVE_PREVIEW_INTERVAL,
+    live_preview_window: float = opts.LIVE_PREVIEW_WINDOW,
+    live_preview_console: bool = opts.LIVE_PREVIEW_CONSOLE,
     # --- Diarization Options ---
     diarize: bool = opts.DIARIZE,
     diarize_format: opts.DiarizeFormat = opts.DIARIZE_FORMAT,
@@ -697,18 +720,24 @@ def transcribe(  # noqa: PLR0912, PLR0911, PLR0915, C901
 
     setup_logging(log_level, log_file, quiet=effective_quiet)
 
+    enroll_speakers = _option_default(enroll_speakers)
+    identify_speakers = _option_default(identify_speakers)
+    remember_unknown_speakers = _option_default(remember_unknown_speakers)
+    speaker_profiles_file = _option_default(speaker_profiles_file)
+    speaker_match_threshold = _option_default(speaker_match_threshold)
+    live_preview_log = _option_default(live_preview_log)
+    live_preview_interval = _option_default(live_preview_interval)
+    live_preview_window = _option_default(live_preview_window)
+    live_preview_console = _option_default(live_preview_console)
+
     # Expand user path for transcription log
     if transcription_log:
         transcription_log = transcription_log.expanduser()
     voice_level_log = _option_default(voice_level_log)
     if voice_level_log:
         voice_level_log = voice_level_log.expanduser()
-
-    enroll_speakers = _option_default(enroll_speakers)
-    identify_speakers = _option_default(identify_speakers)
-    remember_unknown_speakers = _option_default(remember_unknown_speakers)
-    speaker_profiles_file = _option_default(speaker_profiles_file)
-    speaker_match_threshold = _option_default(speaker_match_threshold)
+    if live_preview_log:
+        live_preview_log = live_preview_log.expanduser()
 
     # Validate diarization options
     if not diarize and (enroll_speakers or remember_unknown_speakers):
@@ -850,6 +879,10 @@ def transcribe(  # noqa: PLR0912, PLR0911, PLR0915, C901
                     diarization_cfg=diarization_cfg,
                     emit_output=not json_output,
                     raise_diarization_errors=diarize,
+                    live_preview_log=live_preview_log,
+                    live_preview_interval=live_preview_interval,
+                    live_preview_window=live_preview_window,
+                    live_preview_console=live_preview_console,
                 ),
             )
         except ImportError as exc:
@@ -942,6 +975,10 @@ def transcribe(  # noqa: PLR0912, PLR0911, PLR0915, C901
                     audio_level_callback=audio_level_writer.write_chunk
                     if audio_level_writer
                     else None,
+                    live_preview_log=live_preview_log,
+                    live_preview_interval=live_preview_interval,
+                    live_preview_window=live_preview_window,
+                    live_preview_console=live_preview_console,
                 ),
             )
     except ImportError as exc:

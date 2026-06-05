@@ -4,22 +4,78 @@ import SwiftUI
 
 enum VoiceLevelOverlayLayout {
     static let pillSize = CGSize(width: 147, height: 38)
+    static let textWidth = CGFloat(420)
+    static let textHeight = CGFloat(86)
     static let shadowRadius = CGFloat(13)
     static let shadowYOffset = CGFloat(6)
     static let horizontalPadding = shadowRadius
     static let verticalPadding = shadowRadius + abs(shadowYOffset)
-    static let panelSize = NSSize(
+    static let contentSpacing = CGFloat(8)
+    static let compactPanelSize = NSSize(
         width: pillSize.width + (horizontalPadding * 2),
         height: pillSize.height + (verticalPadding * 2)
     )
+    static let previewPanelSize = NSSize(
+        width: textWidth + (horizontalPadding * 2),
+        height: pillSize.height + textHeight + contentSpacing + (verticalPadding * 2)
+    )
     static let bottomOffset = CGFloat(38)
+
+    static func panelSize(showsPreviewSpace: Bool) -> NSSize {
+        showsPreviewSpace ? previewPanelSize : compactPanelSize
+    }
 }
 
 struct VoiceLevelOverlayView: View {
     @Environment(\.colorScheme) private var colorScheme
     @ObservedObject var meter: VoiceLevelMeter
+    @ObservedObject var preview: LiveTranscriptionPreview
+    let showsPreviewSpace: Bool
 
     var body: some View {
+        ZStack(alignment: .bottom) {
+            VStack(spacing: VoiceLevelOverlayLayout.contentSpacing) {
+                if showsPreviewSpace && !preview.text.isEmpty {
+                    Text(preview.text)
+                        .font(.system(size: 14, weight: .medium))
+                        .lineLimit(3)
+                        .multilineTextAlignment(.center)
+                        .foregroundStyle(textColor)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 10)
+                        .frame(
+                            width: VoiceLevelOverlayLayout.textWidth,
+                            height: VoiceLevelOverlayLayout.textHeight
+                        )
+                        .background(
+                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                .fill(textBackgroundColor)
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                .stroke(borderColor, lineWidth: 1)
+                        )
+                        .shadow(
+                            color: shadowColor,
+                            radius: VoiceLevelOverlayLayout.shadowRadius,
+                            y: VoiceLevelOverlayLayout.shadowYOffset
+                        )
+                }
+
+                levelMeter
+            }
+            .padding(.horizontal, VoiceLevelOverlayLayout.horizontalPadding)
+            .padding(.bottom, VoiceLevelOverlayLayout.verticalPadding)
+        }
+        .frame(
+            width: VoiceLevelOverlayLayout.panelSize(showsPreviewSpace: showsPreviewSpace).width,
+            height: VoiceLevelOverlayLayout.panelSize(showsPreviewSpace: showsPreviewSpace).height,
+            alignment: .bottom
+        )
+        .accessibilityLabel(Text("Voice level"))
+    }
+
+    private var levelMeter: some View {
         HStack(alignment: .center, spacing: 3.5) {
             ForEach(Array(meter.amplitudes.enumerated()), id: \.offset) { _, amplitude in
                 Capsule()
@@ -51,9 +107,6 @@ struct VoiceLevelOverlayView: View {
             radius: VoiceLevelOverlayLayout.shadowRadius,
             y: VoiceLevelOverlayLayout.shadowYOffset
         )
-        .padding(.horizontal, VoiceLevelOverlayLayout.horizontalPadding)
-        .padding(.vertical, VoiceLevelOverlayLayout.verticalPadding)
-        .accessibilityLabel(Text("Voice level"))
     }
 
     private var isLightMode: Bool {
@@ -62,6 +115,14 @@ struct VoiceLevelOverlayView: View {
 
     private var backgroundColor: Color {
         isLightMode ? Color.white.opacity(0.88) : Color.black.opacity(0.42)
+    }
+
+    private var textBackgroundColor: Color {
+        isLightMode ? Color.white.opacity(0.94) : Color.black.opacity(0.58)
+    }
+
+    private var textColor: Color {
+        isLightMode ? Color.black.opacity(0.86) : Color.white.opacity(0.92)
     }
 
     private var borderColor: Color {
@@ -84,14 +145,19 @@ struct VoiceLevelOverlayView: View {
 final class VoiceLevelOverlayController {
     static let shared = VoiceLevelOverlayController()
 
-    private let panelSize = VoiceLevelOverlayLayout.panelSize
     private var panel: NSPanel?
+    private var showsPreviewSpace = false
 
     private init() {}
 
-    func show() {
+    func show(showsPreviewSpace: Bool = false) {
         let panel = panel ?? makePanel()
         self.panel = panel
+        if self.showsPreviewSpace != showsPreviewSpace {
+            self.showsPreviewSpace = showsPreviewSpace
+            updatePanelContent(panel)
+        }
+        panel.setContentSize(VoiceLevelOverlayLayout.panelSize(showsPreviewSpace: showsPreviewSpace))
         position(panel)
         VoiceLevelMeter.shared.start()
         panel.orderFrontRegardless()
@@ -104,7 +170,10 @@ final class VoiceLevelOverlayController {
 
     private func makePanel() -> NSPanel {
         let panel = NSPanel(
-            contentRect: NSRect(origin: .zero, size: panelSize),
+            contentRect: NSRect(
+                origin: .zero,
+                size: VoiceLevelOverlayLayout.panelSize(showsPreviewSpace: showsPreviewSpace)
+            ),
             styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered,
             defer: false
@@ -116,8 +185,16 @@ final class VoiceLevelOverlayController {
         panel.hasShadow = false
         panel.ignoresMouseEvents = true
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .ignoresCycle]
-        panel.contentView = NSHostingView(rootView: VoiceLevelOverlayView(meter: VoiceLevelMeter.shared))
+        updatePanelContent(panel)
         return panel
+    }
+
+    private func updatePanelContent(_ panel: NSPanel) {
+        panel.contentView = NSHostingView(rootView: VoiceLevelOverlayView(
+            meter: VoiceLevelMeter.shared,
+            preview: LiveTranscriptionPreview.shared,
+            showsPreviewSpace: showsPreviewSpace
+        ))
     }
 
     private func position(_ panel: NSPanel) {
@@ -128,7 +205,7 @@ final class VoiceLevelOverlayController {
             - VoiceLevelOverlayLayout.verticalPadding
         panel.setFrameOrigin(
             NSPoint(
-                x: frame.midX - panelSize.width / 2,
+                x: frame.midX - panel.frame.width / 2,
                 y: y
             )
         )

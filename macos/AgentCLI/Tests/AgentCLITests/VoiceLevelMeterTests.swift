@@ -61,7 +61,7 @@ final class VoiceLevelMeterTests: XCTestCase {
     }
 
     func testOverlayPanelLeavesRoomForShadowBlur() {
-        let panelSize = VoiceLevelOverlayLayout.panelSize
+        let panelSize = VoiceLevelOverlayLayout.panelSize(showsPreviewSpace: false)
         let pillSize = VoiceLevelOverlayLayout.pillSize
         let shadowRadius = VoiceLevelOverlayLayout.shadowRadius
 
@@ -75,6 +75,18 @@ final class VoiceLevelMeterTests: XCTestCase {
             shadowRadius + abs(VoiceLevelOverlayLayout.shadowYOffset),
             "The transparent panel needs enough vertical margin to avoid clipping the offset capsule shadow."
         )
+    }
+
+    func testOverlayPanelOnlyExpandsForPreviewSpace() {
+        let compactSize = VoiceLevelOverlayLayout.panelSize(showsPreviewSpace: false)
+        let previewSize = VoiceLevelOverlayLayout.panelSize(showsPreviewSpace: true)
+
+        XCTAssertEqual(
+            compactSize.width,
+            VoiceLevelOverlayLayout.pillSize.width + (VoiceLevelOverlayLayout.horizontalPadding * 2)
+        )
+        XCTAssertGreaterThan(previewSize.width, compactSize.width)
+        XCTAssertGreaterThan(previewSize.height, compactSize.height)
     }
 
     private static let iso8601: ISO8601DateFormatter = {

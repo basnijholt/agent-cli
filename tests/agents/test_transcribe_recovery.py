@@ -748,9 +748,11 @@ def test_transcribe_command_last_recording_disabled(
     )
 
     with (
-        patch("agent_cli.agents.transcribe.asyncio.run") as mock_run,
+        patch("agent_cli.agents.transcribe._async_main", new_callable=AsyncMock) as mock_async_main,
         patch("agent_cli.core.process.pid_file_context") as mock_pid_context,
     ):
+        mock_async_main.return_value = {}
+
         # Call transcribe with --last-recording disabled (0)
         transcribe.transcribe(
             last_recording=0,  # Disabled
@@ -787,6 +789,10 @@ def test_transcribe_command_last_recording_disabled(
             config_file=None,
             print_args=False,
             transcription_log=None,
+            live_preview_log=tmp_path / "preview.jsonl",
+            live_preview_interval=1.0,
+            live_preview_window=10.0,
+            live_preview_console=True,
             diarize=False,
             diarize_format="inline",
             hf_token=None,
@@ -797,12 +803,14 @@ def test_transcribe_command_last_recording_disabled(
         )
 
         # Verify _async_main was called for normal recording (not from file)
-        mock_run.assert_called_once()
+        mock_async_main.assert_awaited_once()
         mock_pid_context.assert_called_once_with("transcribe")
-        call_args = mock_run.call_args[0][0]
-        # Should be normal recording mode, not file mode
-        assert call_args.__name__ == "_async_main"
-        call_args.close()  # Avoid "coroutine never awaited" warning
+        async_main_kwargs = mock_async_main.call_args.kwargs
+        assert async_main_kwargs.get("audio_file_path") is None
+        assert async_main_kwargs["live_preview_log"] == tmp_path / "preview.jsonl"
+        assert async_main_kwargs["live_preview_interval"] == 1.0
+        assert async_main_kwargs["live_preview_window"] == 10.0
+        assert async_main_kwargs["live_preview_console"] is True
 
 
 def test_transcribe_command_conflicting_options() -> None:

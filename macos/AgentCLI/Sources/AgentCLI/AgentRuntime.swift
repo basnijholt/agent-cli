@@ -156,6 +156,17 @@ struct AgentRuntime {
     }
 
     func runSelfTestIfRequested() {
+        if CommandLine.arguments.contains("--agentcli-live-preview-self-test") {
+            do {
+                try runLivePreviewSelfTest()
+                print("AgentCLI live preview self-test ok")
+                exit(0)
+            } catch {
+                print("AgentCLI live preview self-test failed: \(error.localizedDescription)")
+                exit(1)
+            }
+        }
+
         if CommandLine.arguments.contains("--agentcli-self-test") {
             do {
                 try prepareDirectories()
@@ -258,6 +269,73 @@ struct AgentRuntime {
         var errorDescription: String? {
             message
         }
+    }
+
+    private func runLivePreviewSelfTest() throws {
+        let defaultArguments = AgentCommand.toggleTranscription.arguments
+        guard !defaultArguments.contains("--live-preview-log"),
+              !defaultArguments.contains("--live-preview-interval"),
+              !defaultArguments.contains("--live-preview-window") else {
+            throw Self.selfTestError("toggle transcription command enables live preview by default")
+        }
+        let previewArguments = AgentCommand.toggleTranscription.resolvedArguments(
+            extraInstructions: nil,
+            livePreviewOverlayEnabled: true
+        )
+        guard Self.argumentsContainOption(
+            previewArguments,
+            "--live-preview-log",
+            value: LiveTranscriptionPreview.defaultLogPath
+        ),
+        Self.argumentsContainOption(previewArguments, "--live-preview-interval", value: "1"),
+        Self.argumentsContainOption(previewArguments, "--live-preview-window", value: "10") else {
+            throw Self.selfTestError("toggle transcription command does not enable live preview when requested")
+        }
+
+        let preview = LiveTranscriptionPreview.shared
+        let logURL = fileManager.temporaryDirectory
+            .appendingPathComponent("agent-cli-live-preview-\(UUID().uuidString).jsonl")
+        defer {
+            preview.stop()
+            try? fileManager.removeItem(at: logURL)
+        }
+
+        preview.start(logURL: logURL)
+        try [
+            #"{"type":"partial","text":"first guess","revision":1}"#,
+            #"{"type":"partial","text":" live preview works ","revision":2}"#,
+        ].joined(separator: "\n").write(to: logURL, atomically: true, encoding: .utf8)
+        preview.poll()
+        guard preview.text == "live preview works" else {
+            throw Self.selfTestError("partial preview text was '\(preview.text)'")
+        }
+
+        try #"{"type":"final","text":"final preview works","revision":3}"#
+            .write(to: logURL, atomically: true, encoding: .utf8)
+        preview.poll()
+        guard preview.text == "final preview works" else {
+            throw Self.selfTestError("final preview text was '\(preview.text)'")
+        }
+    }
+
+    private static func argumentsContainOption(
+        _ arguments: [String],
+        _ option: String,
+        value: String
+    ) -> Bool {
+        guard let index = arguments.firstIndex(of: option) else {
+            return false
+        }
+        let valueIndex = arguments.index(after: index)
+        return arguments.indices.contains(valueIndex) && arguments[valueIndex] == value
+    }
+
+    private static func selfTestError(_ message: String) -> NSError {
+        NSError(
+            domain: "AgentCLI.SelfTest",
+            code: 1,
+            userInfo: [NSLocalizedDescriptionKey: message]
+        )
     }
 
     func ensureInstalled(

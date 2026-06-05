@@ -19,6 +19,7 @@ struct AgentCommand {
     let forceBootstrap: Bool
     let bootstrapRequirement: AgentBootstrapRequirement
     let showsRecordingIndicator: Bool
+    let supportsLivePreviewOverlay: Bool
     let startNotificationTitle: String?
     let startNotificationBody: String?
     let finishNotificationTitle: String?
@@ -32,6 +33,7 @@ struct AgentCommand {
         forceBootstrap: Bool = false,
         bootstrapRequirement: AgentBootstrapRequirement = .cliRuntime,
         showsRecordingIndicator: Bool = false,
+        supportsLivePreviewOverlay: Bool = false,
         startNotificationTitle: String? = nil,
         startNotificationBody: String? = nil,
         finishNotificationTitle: String? = nil
@@ -44,6 +46,7 @@ struct AgentCommand {
         self.forceBootstrap = forceBootstrap
         self.bootstrapRequirement = bootstrapRequirement
         self.showsRecordingIndicator = showsRecordingIndicator
+        self.supportsLivePreviewOverlay = supportsLivePreviewOverlay
         self.startNotificationTitle = startNotificationTitle
         self.startNotificationBody = startNotificationBody
         self.finishNotificationTitle = finishNotificationTitle
@@ -51,18 +54,32 @@ struct AgentCommand {
 
     func resolvedArguments(
         extraInstructions: String?,
+        livePreviewOverlayEnabled: Bool = TranscriptionSettings.isLivePreviewOverlayEnabled(),
         transcriptionDaemonArguments: [String]? = nil
     ) -> [String] {
         if appliesTranscriptionDaemonSettings {
             return transcriptionDaemonArguments ?? arguments
         }
 
-        guard appliesTranscriptionExtraInstructions else { return arguments }
+        var resolved = arguments
+
+        if supportsLivePreviewOverlay && livePreviewOverlayEnabled {
+            resolved += [
+                "--live-preview-log",
+                LiveTranscriptionPreview.defaultLogPath,
+                "--live-preview-interval",
+                "1",
+                "--live-preview-window",
+                "10",
+            ]
+        }
+
+        guard appliesTranscriptionExtraInstructions else { return resolved }
 
         let trimmedInstructions = extraInstructions?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        guard !trimmedInstructions.isVisiblyBlank else { return arguments }
+        guard !trimmedInstructions.isVisiblyBlank else { return resolved }
 
-        return arguments + ["--extra-instructions", trimmedInstructions]
+        return resolved + ["--extra-instructions", trimmedInstructions]
     }
 
     var menuActivityTitle: String {
@@ -84,6 +101,7 @@ struct AgentCommand {
         appliesTranscriptionExtraInstructions: true,
         bootstrapRequirement: .transcription,
         showsRecordingIndicator: true,
+        supportsLivePreviewOverlay: true,
         startNotificationTitle: "Transcription Started",
         startNotificationBody: "Recording audio. Toggle transcription again to stop and transcribe.",
         finishNotificationTitle: "Transcription Finished"

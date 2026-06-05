@@ -29,7 +29,12 @@ final class RecordingIndicatorController {
         if !wasRecording {
             play(.startedRecording)
         }
-        VoiceLevelOverlayController.shared.show()
+        let showsLivePreview = command.supportsLivePreviewOverlay
+            && TranscriptionSettings.isLivePreviewOverlayEnabled(defaults: defaults)
+        if showsLivePreview {
+            LiveTranscriptionPreview.shared.start()
+        }
+        VoiceLevelOverlayController.shared.show(showsPreviewSpace: showsLivePreview)
     }
 
     func end(for command: AgentCommand) {
@@ -44,6 +49,9 @@ final class RecordingIndicatorController {
         if wasRecording && !isRecording {
             play(.finishedRecording)
             VoiceLevelOverlayController.shared.hide()
+        }
+        if command.supportsLivePreviewOverlay {
+            LiveTranscriptionPreview.shared.stop()
         }
     }
 

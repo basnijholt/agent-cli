@@ -436,6 +436,31 @@ VOICE_LEVEL_LOG: Path | None = typer.Option(
     hidden=True,
     rich_help_panel="General Options",
 )
+LIVE_PREVIEW_LOG: Path | None = typer.Option(
+    None,
+    "--live-preview-log",
+    help="Write rolling live transcription preview events to JSONL while recording.",
+    rich_help_panel="Live Preview",
+)
+LIVE_PREVIEW_INTERVAL: float = typer.Option(
+    2.0,
+    "--live-preview-interval",
+    help="Seconds between live preview retranscriptions.",
+    rich_help_panel="Live Preview",
+)
+LIVE_PREVIEW_WINDOW: float = typer.Option(
+    15.0,
+    "--live-preview-window",
+    help="Seconds of recent audio to include in each live preview retranscription.",
+    rich_help_panel="Live Preview",
+)
+LIVE_PREVIEW_CONSOLE: bool = typer.Option(
+    False,  # noqa: FBT003
+    "--live-preview-console",
+    "--live-preview-stdout",
+    help="Print rolling live transcription preview updates to the terminal while recording.",
+    rich_help_panel="Live Preview",
+)
 
 # --- Server Options ---
 SERVER_HOST: str = typer.Option(
