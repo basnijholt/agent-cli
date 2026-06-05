@@ -157,6 +157,35 @@ async def test_live_preview_streamer_ignores_partial_after_stop(tmp_path: Path) 
 
 
 @pytest.mark.asyncio
+async def test_live_preview_request_stop_blocks_partial_before_final(
+    tmp_path: Path,
+) -> None:
+    """Stop signal must block partials even before the final transcript is written."""
+    log_file = tmp_path / "preview.jsonl"
+    preview = asr.LivePreviewStreamer(
+        asr.LivePreviewConfig(log_file=log_file),
+        wyoming_asr_cfg=config.WyomingASR(asr_wyoming_ip="localhost", asr_wyoming_port=10300),
+        logger=MagicMock(),
+    )
+    preview.reset_log()
+    await preview.add_chunk(b"\x00\x00" * 16_000)
+    preview.request_stop()
+
+    with patch(
+        "agent_cli.services.asr._transcribe_recorded_audio_wyoming",
+        new_callable=AsyncMock,
+        return_value="stale partial",
+    ):
+        await preview.emit_partial()
+
+    await preview.stop("final words")
+
+    entries = [json.loads(line) for line in log_file.read_text().splitlines()]
+    assert [entry["type"] for entry in entries] == ["final"]
+    assert entries[0]["text"] == "final words"
+
+
+@pytest.mark.asyncio
 async def test_live_preview_run_cancel_drops_resolved_partial_before_final(
     tmp_path: Path,
 ) -> None:
@@ -184,6 +213,7 @@ async def test_live_preview_run_cancel_drops_resolved_partial_before_final(
         task = asyncio.create_task(preview.run())
         await asyncio.wait_for(entered_transcription.wait(), timeout=1)
         transcription_result.set_result("stale partial")
+        preview.request_stop()
         task.cancel()
         with suppress(asyncio.CancelledError):
             await task

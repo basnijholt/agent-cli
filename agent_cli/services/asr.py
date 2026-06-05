@@ -178,9 +178,13 @@ class LivePreviewStreamer:
         self._last_text = text
         self._publish_event(event_type="partial", revision=self._revision, text=text)
 
+    def request_stop(self) -> None:
+        """Stop partial preview emission without writing the final transcript."""
+        self._stop_event.set()
+
     async def stop(self, final_text: str | None = None) -> None:
         """Stop previewing and optionally append the final transcript."""
-        self._stop_event.set()
+        self.request_stop()
         final_text = (final_text or "").strip()
         if final_text:
             self._revision += 1
@@ -717,6 +721,8 @@ async def _transcribe_live_audio_wyoming(
         logger.warning("Failed to connect to Wyoming ASR server")
         return None
     finally:
+        if live_preview is not None:
+            live_preview.request_stop()
         if live_preview_task is not None:
             live_preview_task.cancel()
             with suppress(asyncio.CancelledError):
