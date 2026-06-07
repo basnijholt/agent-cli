@@ -43,6 +43,6 @@ jobs:
         run: uv run --extra audio --extra diarization --extra llm --extra rag --extra memory --extra vad --extra faster-whisper --extra piper --extra kokoro --extra server --extra speed --extra test pytest -vvv
       - name: Upload coverage reports to Codecov
         if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.13'
-        uses: codecov/codecov-action@v6.0.2
+        uses: codecov/codecov-action@v7.0.0
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
