@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 from types import SimpleNamespace
 from typing import TYPE_CHECKING, Any, cast
@@ -168,6 +169,7 @@ def test_serve_closes_daemon_when_unix_sockets_are_unsupported(
         msg = "Unix sockets are unavailable"
         raise NotImplementedError(msg)
 
+    monkeypatch.setattr(asyncio, "start_unix_server", object(), raising=False)
     monkeypatch.setattr(transcribe_recorder, "TranscribeDaemon", FakeDaemon)
     monkeypatch.setattr(transcribe_recorder, "_serve", fake_serve)
 
