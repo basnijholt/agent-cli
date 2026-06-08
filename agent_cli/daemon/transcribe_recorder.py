@@ -27,6 +27,7 @@ from agent_cli.core.utils import print_error_message, setup_logging
 LOGGER = logging.getLogger(__name__)
 
 DEFAULT_PREROLL_SECONDS = 0.5
+DEFAULT_CLIENT_TIMEOUT_SECONDS = 300.0
 
 app = typer.Typer(
     name="transcribe-recorder",
@@ -336,8 +337,8 @@ class TranscribeDaemon:
 
         daemon_config = self.recorder.daemon_config
         recording_path = _recording_path(keep=daemon_config.save_recording)
-        _write_wav(recording_path, audio_data)
         try:
+            _write_wav(recording_path, audio_data)
             result = await transcribe_agent._async_main(
                 audio_file_path=recording_path,
                 extra_instructions=daemon_config.extra_instructions,
@@ -429,13 +430,27 @@ async def _serve(socket_path: Path, daemon: TranscribeDaemon) -> None:
             await asyncio.to_thread(socket_path.unlink)
 
 
-async def _request(socket_path: Path, action: str) -> dict[str, Any]:
-    reader, writer = await asyncio.open_unix_connection(socket_path)
-    writer.write(json.dumps({"action": action}).encode() + b"\n")
-    await writer.drain()
-    raw = await reader.readline()
-    writer.close()
-    await writer.wait_closed()
+async def _request(
+    socket_path: Path,
+    action: str,
+    *,
+    request_timeout: float = DEFAULT_CLIENT_TIMEOUT_SECONDS,
+) -> dict[str, Any]:
+    writer: asyncio.StreamWriter | None = None
+    try:
+        reader, writer = await asyncio.wait_for(
+            asyncio.open_unix_connection(socket_path),
+            timeout=request_timeout,
+        )
+        assert writer is not None
+        writer.write(json.dumps({"action": action}).encode() + b"\n")
+        await asyncio.wait_for(writer.drain(), timeout=request_timeout)
+        raw = await asyncio.wait_for(reader.readline(), timeout=request_timeout)
+    finally:
+        if writer is not None:
+            writer.close()
+            with suppress(OSError, RuntimeError, TimeoutError):
+                await asyncio.wait_for(writer.wait_closed(), timeout=1.0)
     return json.loads(raw.decode() or "{}")
 
 
@@ -469,19 +484,47 @@ def serve_cmd(
     ] = DEFAULT_PREROLL_SECONDS,
 ) -> None:
     """Run the warm recorder daemon in the foreground."""
+    if not hasattr(asyncio, "start_unix_server"):
+        print_error_message(
+            "Transcribe recorder daemon is not supported",
+            "Unix sockets are not available on this platform.",
+        )
+        raise typer.Exit(1)
     resolved_socket_path = _socket_path(socket_path)
     daemon = TranscribeDaemon(
         config_file=config_file,
         preroll_seconds=preroll_seconds,
         socket_path=resolved_socket_path,
     )
-    asyncio.run(_serve(resolved_socket_path, daemon))
+    try:
+        asyncio.run(_serve(resolved_socket_path, daemon))
+    except (AttributeError, NotImplementedError):
+        daemon.close()
+        print_error_message(
+            "Transcribe recorder daemon is not supported",
+            "Unix sockets are not available on this platform.",
+        )
+        raise typer.Exit(1) from None
 
 
 def _client_cmd(action: str, socket_path: Path | None, *, json_output: bool) -> None:
     path = _socket_path(socket_path)
     try:
         response = asyncio.run(_request(path, action))
+    except TimeoutError:
+        if json_output:
+            print(
+                json.dumps(
+                    {
+                        "ok": False,
+                        "error": "Transcribe daemon request timed out",
+                        "socket_path": str(path),
+                    },
+                ),
+            )
+            raise typer.Exit(1) from None
+        print_error_message("Transcribe daemon request timed out", f"Socket: {path}")
+        raise typer.Exit(1) from None
     except (
         FileNotFoundError,
         ConnectionRefusedError,

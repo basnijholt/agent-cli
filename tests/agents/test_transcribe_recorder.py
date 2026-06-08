@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import json
-from typing import TYPE_CHECKING
+from types import SimpleNamespace
+from typing import TYPE_CHECKING, Any, cast
 
+import pytest
 from typer.testing import CliRunner
 
 from agent_cli.cli import app
@@ -13,8 +15,6 @@ from agent_cli.daemon.transcribe_recorder import WarmAudioBuffer
 
 if TYPE_CHECKING:
     from pathlib import Path
-
-    import pytest
 
 runner = CliRunner(env={"NO_COLOR": "1", "TERM": "dumb"})
 
@@ -86,3 +86,95 @@ def test_json_client_error_handles_unsupported_unix_sockets(
         "error": "Transcribe daemon is not running",
         "socket_path": str(missing_socket),
     }
+
+
+def test_json_client_timeout_is_machine_readable(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Test client timeouts produce a bounded JSON error."""
+    socket_path = tmp_path / "daemon.sock"
+
+    async def fake_request(_socket_path: Path, _action: str) -> dict[str, object]:
+        msg = "request timed out"
+        raise TimeoutError(msg)
+
+    monkeypatch.setattr(transcribe_recorder, "_request", fake_request)
+
+    result = runner.invoke(
+        app,
+        ["daemon", "transcribe-recorder", "status", "--socket", str(socket_path), "--json"],
+    )
+
+    assert result.exit_code == 1
+    assert json.loads(result.stdout) == {
+        "ok": False,
+        "error": "Transcribe daemon request timed out",
+        "socket_path": str(socket_path),
+    }
+
+
+@pytest.mark.asyncio
+async def test_stop_removes_temp_recording_when_write_wav_fails(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Test temp recordings are removed when WAV writing fails."""
+    recording_path = tmp_path / "recording.wav"
+    recording_path.write_bytes(b"partial")
+    buffer = WarmAudioBuffer(max_preroll_chunks=1)
+    assert buffer.start() == "started"
+    buffer.add_chunk(b"audio")
+
+    daemon = cast("Any", object.__new__(transcribe_recorder.TranscribeDaemon))
+    daemon.recorder = SimpleNamespace(
+        buffer=buffer,
+        daemon_config=SimpleNamespace(save_recording=False),
+    )
+
+    def fail_write(_path: Path, _audio_data: bytes) -> None:
+        msg = "disk full"
+        raise OSError(msg)
+
+    def fake_recording_path(**_kwargs: object) -> Path:
+        return recording_path
+
+    monkeypatch.setattr(transcribe_recorder, "_recording_path", fake_recording_path)
+    monkeypatch.setattr(transcribe_recorder, "_write_wav", fail_write)
+
+    with pytest.raises(OSError, match="disk full"):
+        await daemon.stop()
+
+    assert not recording_path.exists()
+
+
+def test_serve_closes_daemon_when_unix_sockets_are_unsupported(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Test serve reports unsupported Unix sockets without leaking the recorder."""
+    socket_path = tmp_path / "daemon.sock"
+    closed = False
+
+    class FakeDaemon:
+        def __init__(self, **_kwargs: object) -> None:
+            pass
+
+        def close(self) -> None:
+            nonlocal closed
+            closed = True
+
+    async def fake_serve(_socket_path: Path, _daemon: object) -> None:
+        msg = "Unix sockets are unavailable"
+        raise NotImplementedError(msg)
+
+    monkeypatch.setattr(transcribe_recorder, "TranscribeDaemon", FakeDaemon)
+    monkeypatch.setattr(transcribe_recorder, "_serve", fake_serve)
+
+    result = runner.invoke(
+        app,
+        ["daemon", "transcribe-recorder", "serve", "--socket", str(socket_path)],
+    )
+
+    assert result.exit_code == 1
+    assert closed
