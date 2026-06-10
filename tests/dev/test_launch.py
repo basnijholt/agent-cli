@@ -14,6 +14,7 @@ from agent_cli.dev.launch import (
 from agent_cli.dev.terminals import TerminalHandle
 from agent_cli.dev.terminals.cmux import Cmux
 from agent_cli.dev.terminals.tmux import Tmux
+from agent_cli.dev.terminals.zellij import Zellij
 
 
 class TestLaunchAgent:
@@ -107,7 +108,7 @@ class TestLaunchAgent:
             patch("agent_cli.dev.launch.worktree.get_current_branch", return_value="feature"),
         ):
             result = launch_agent(
-                tmp_path, agent, multiplexer_name="tmux", tmux_session="shared-session"
+                tmp_path, agent, multiplexer_name="tmux", multiplexer_session="shared-session"
             )
 
         assert result == handle
@@ -138,7 +139,9 @@ class TestLaunchAgent:
             patch("agent_cli.dev.launch.worktree.get_main_repo_root", return_value=Path("/repo")),
             patch("agent_cli.dev.launch.worktree.get_current_branch", return_value="feature"),
         ):
-            result = launch_agent(tmp_path, agent, tmux_session="shared-session")
+            result = launch_agent(
+                tmp_path, agent, multiplexer_name="tmux", multiplexer_session="shared-session"
+            )
 
         assert result == handle
         mock_session_name.assert_not_called()
@@ -148,6 +151,129 @@ class TestLaunchAgent:
             tab_name="feature",
             session_name="shared-session",
         )
+
+    def test_uses_requested_zellij_outside_zellij(self, tmp_path: Path) -> None:
+        """Explicit zellij launch uses a detached repo session when not already in zellij."""
+        agent = MagicMock()
+        agent.name = "codex"
+        agent.launch_command.return_value = ["codex"]
+
+        zellij_terminal = Zellij()
+        handle = TerminalHandle("zellij", "3", "agent-cli-repo-1234")
+
+        with (
+            patch("agent_cli.dev.launch.terminals.get_terminal", return_value=zellij_terminal),
+            patch("agent_cli.dev.launch.terminals.detect_current_terminal", return_value=None),
+            patch.object(zellij_terminal, "is_available", return_value=True),
+            patch.object(zellij_terminal, "detect", return_value=False),
+            patch.object(
+                zellij_terminal,
+                "session_name_for_repo",
+                return_value="agent-cli-repo-1234",
+            ) as mock_session_name,
+            patch.object(zellij_terminal, "open_in_session", return_value=handle) as mock_open,
+            patch("agent_cli.dev.launch.worktree.get_main_repo_root", return_value=Path("/repo")),
+            patch("agent_cli.dev.launch.worktree.get_current_branch", return_value="feature"),
+        ):
+            result = launch_agent(tmp_path, agent, multiplexer_name="zellij")
+
+        assert result == handle
+        mock_session_name.assert_called_once_with(Path("/repo"))
+        mock_open.assert_called_once_with(
+            tmp_path,
+            "codex",
+            tab_name="feature",
+            session_name="agent-cli-repo-1234",
+        )
+
+    def test_explicit_zellij_session_takes_precedence(self, tmp_path: Path) -> None:
+        """An explicit zellij session overrides the repo-derived detached session."""
+        agent = MagicMock()
+        agent.name = "codex"
+        agent.launch_command.return_value = ["codex"]
+
+        zellij_terminal = Zellij()
+        handle = TerminalHandle("zellij", "3", "shared-session")
+
+        with (
+            patch("agent_cli.dev.launch.terminals.get_terminal", return_value=zellij_terminal),
+            patch("agent_cli.dev.launch.terminals.detect_current_terminal", return_value=None),
+            patch.object(zellij_terminal, "is_available", return_value=True),
+            patch.object(zellij_terminal, "detect", return_value=False),
+            patch.object(zellij_terminal, "session_name_for_repo") as mock_session_name,
+            patch.object(zellij_terminal, "open_in_session", return_value=handle) as mock_open,
+            patch("agent_cli.dev.launch.worktree.get_main_repo_root", return_value=Path("/repo")),
+            patch("agent_cli.dev.launch.worktree.get_current_branch", return_value="feature"),
+        ):
+            result = launch_agent(
+                tmp_path, agent, multiplexer_name="zellij", multiplexer_session="shared-session"
+            )
+
+        assert result == handle
+        mock_session_name.assert_not_called()
+        mock_open.assert_called_once_with(
+            tmp_path,
+            "codex",
+            tab_name="feature",
+            session_name="shared-session",
+        )
+
+    def test_detected_zellij_uses_current_session(self, tmp_path: Path) -> None:
+        """Inside zellij without --multiplexer, the current session is used."""
+        agent = MagicMock()
+        agent.name = "codex"
+        agent.launch_command.return_value = ["codex"]
+
+        zellij_terminal = Zellij()
+        handle = TerminalHandle("zellij", "3", "current-session")
+
+        with (
+            patch(
+                "agent_cli.dev.launch.terminals.detect_current_terminal",
+                return_value=zellij_terminal,
+            ),
+            patch.object(zellij_terminal, "is_available", return_value=True),
+            patch.object(zellij_terminal, "detect", return_value=True),
+            patch.object(zellij_terminal, "session_name_for_repo") as mock_session_name,
+            patch.object(zellij_terminal, "open_in_session", return_value=handle) as mock_open,
+            patch("agent_cli.dev.launch.worktree.get_main_repo_root", return_value=Path("/repo")),
+            patch("agent_cli.dev.launch.worktree.get_current_branch", return_value="feature"),
+        ):
+            result = launch_agent(tmp_path, agent)
+
+        assert result == handle
+        mock_session_name.assert_not_called()
+        mock_open.assert_called_once_with(
+            tmp_path,
+            "codex",
+            tab_name="feature",
+            session_name=None,
+        )
+
+    def test_detected_zellij_falls_back_to_plain_tab_when_unsupported(self, tmp_path: Path) -> None:
+        """Auto-detected zellij falls back to open_new_tab when CLI control is unavailable."""
+        agent = MagicMock()
+        agent.name = "codex"
+        agent.launch_command.return_value = ["codex"]
+
+        zellij_terminal = Zellij()
+
+        with (
+            patch(
+                "agent_cli.dev.launch.terminals.detect_current_terminal",
+                return_value=zellij_terminal,
+            ),
+            patch.object(zellij_terminal, "is_available", return_value=True),
+            patch.object(zellij_terminal, "detect", return_value=True),
+            patch.object(zellij_terminal, "open_in_session", return_value=None),
+            patch.object(zellij_terminal, "open_new_tab", return_value=True) as mock_open_tab,
+            patch("agent_cli.dev.launch.worktree.get_main_repo_root", return_value=Path("/repo")),
+            patch("agent_cli.dev.launch.worktree.get_current_branch", return_value="feature"),
+        ):
+            result = launch_agent(tmp_path, agent)
+
+        assert result is None
+        mock_open_tab.assert_called_once()
 
     def test_uses_wrapper_script_for_requested_tmux(self, tmp_path: Path) -> None:
         """Prompt launches still use the wrapper script for explicit tmux sessions."""
