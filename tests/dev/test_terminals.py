@@ -15,6 +15,7 @@ from agent_cli.dev.terminals import (
     get_available_terminals,
     get_terminal,
 )
+from agent_cli.dev.terminals.cmux import Cmux
 from agent_cli.dev.terminals.kitty import Kitty
 from agent_cli.dev.terminals.tmux import Tmux, TmuxInventory, TmuxWindow
 from agent_cli.dev.terminals.zellij import Zellij
@@ -402,6 +403,194 @@ class TestKitty:
             assert terminal.is_available() is True
 
 
+class TestCmux:
+    """Tests for the cmux terminal.
+
+    Evidence: `cmux --help` (cmux 0.64.14) and live verification on 2026-06-10.
+    cmux is controlled via a Unix socket through its bundled CLI, so all
+    operations are `cmux <command>` subprocess calls that work from any
+    terminal, not just inside cmux.
+    """
+
+    def test_detect_cmux(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Detect cmux via CMUX_WORKSPACE_ID environment variable.
+
+        Evidence: `cmux --help` Environment section: "CMUX_WORKSPACE_ID
+        Auto-set in cmux terminals." (same for CMUX_SURFACE_ID).
+        """
+        monkeypatch.delenv("CMUX_SURFACE_ID", raising=False)
+        monkeypatch.setenv("CMUX_WORKSPACE_ID", "AB56033C-F3AB-46DC-83D2-2891F13F47C5")
+        terminal = Cmux()
+        assert terminal.detect() is True
+
+    def test_detect_cmux_not_set(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Not in cmux when its environment variables are not set."""
+        monkeypatch.delenv("CMUX_WORKSPACE_ID", raising=False)
+        monkeypatch.delenv("CMUX_SURFACE_ID", raising=False)
+        terminal = Cmux()
+        assert terminal.detect() is False
+
+    def test_is_available(self) -> None:
+        """Cmux is available if the CLI is in PATH.
+
+        Evidence: the Homebrew cask installs the CLI binary at
+        /Applications/cmux.app/Contents/Resources/bin/cmux and cmux adds it
+        to PATH.
+        """
+        terminal = Cmux()
+        with patch(
+            "shutil.which", return_value="/Applications/cmux.app/Contents/Resources/bin/cmux"
+        ):
+            assert terminal.is_available() is True
+
+    def test_open_in_workspace_opens_tab_in_existing_workspace(self) -> None:
+        r"""An existing workspace (matched by title) gets a new named tab.
+
+        Evidence (verified live against cmux 0.64.14):
+        - `cmux workspace list --json` returns {"workspaces": [{"ref":
+          "workspace:N", "title": ...}]}.
+        - `cmux new-surface --workspace <ref>` creates a tab and prints
+          "OK surface:N pane:N workspace:N".
+        - `cmux rename-tab --workspace <ref> --surface <ref> --title <t>`
+          renames the tab.
+        - `cmux send` has no auto-Enter; per `cmux send --help` the literal
+          escape sequence \\n sends Enter. New surfaces don't accept a
+          cwd/command flag, so the launch command is typed into the shell;
+          the terminal buffers the input until the shell is ready (verified
+          live by sending immediately after surface creation).
+        """
+        terminal = Cmux()
+        workspaces_json = (
+            '{"window_ref": "window:1", "workspaces": ['
+            '{"ref": "workspace:2", "title": "other"},'
+            '{"ref": "workspace:11", "title": "agent-cli"}]}'
+        )
+        with (
+            patch("shutil.which", return_value="/usr/local/bin/cmux"),
+            patch(
+                "subprocess.run",
+                side_effect=[
+                    MagicMock(stdout=workspaces_json),
+                    MagicMock(stdout="OK surface:32 pane:25 workspace:11\n"),
+                    MagicMock(stdout="OK action=rename tab=tab:32 workspace=workspace:11\n"),
+                    MagicMock(stdout="OK surface:32 workspace:11\n"),
+                ],
+            ) as mock_run,
+        ):
+            handle = terminal.open_in_workspace(
+                Path("/some/work tree"),
+                "echo hello",
+                tab_name="feature",
+                workspace_name="agent-cli",
+            )
+
+        assert handle is not None
+        assert handle.terminal_name == "cmux"
+        assert handle.handle == "surface:32"
+        assert handle.session_name == "agent-cli"
+        argvs = [call.args[0] for call in mock_run.call_args_list]
+        assert argvs == [
+            ["cmux", "workspace", "list", "--json"],
+            ["cmux", "new-surface", "--workspace", "workspace:11"],
+            [
+                "cmux",
+                "rename-tab",
+                "--workspace",
+                "workspace:11",
+                "--surface",
+                "surface:32",
+                "--title",
+                "feature",
+            ],
+            [
+                "cmux",
+                "send",
+                "--workspace",
+                "workspace:11",
+                "--surface",
+                "surface:32",
+                "--",
+                "cd '/some/work tree' && echo hello\\n",
+            ],
+        ]
+
+    def test_open_in_workspace_creates_missing_workspace(self) -> None:
+        """A missing workspace is created with cwd and command for its first tab.
+
+        Evidence (verified live against cmux 0.64.14): `cmux workspace create
+        --name <t> --cwd <path> --command <cmd>` prints "OK workspace:N",
+        starts the initial tab's shell in --cwd, and sends the command with
+        Enter after creation. `cmux rename-tab --workspace <ref> --title <t>`
+        targets that workspace's focused tab, which is the just-created
+        single tab.
+        """
+        terminal = Cmux()
+        workspaces_json = '{"window_ref": "window:1", "workspaces": []}'
+        with (
+            patch("shutil.which", return_value="/usr/local/bin/cmux"),
+            patch(
+                "subprocess.run",
+                side_effect=[
+                    MagicMock(stdout=workspaces_json),
+                    MagicMock(stdout="OK workspace:13\n"),
+                    MagicMock(stdout="OK action=rename tab=tab:33 workspace=workspace:13\n"),
+                ],
+            ) as mock_run,
+        ):
+            handle = terminal.open_in_workspace(
+                Path("/some/path"),
+                "echo hello",
+                tab_name="feature",
+                workspace_name="my-repo",
+            )
+
+        assert handle is not None
+        assert handle.handle == "workspace:13"
+        assert handle.session_name == "my-repo"
+        argvs = [call.args[0] for call in mock_run.call_args_list]
+        assert argvs == [
+            ["cmux", "workspace", "list", "--json"],
+            [
+                "cmux",
+                "workspace",
+                "create",
+                "--name",
+                "my-repo",
+                "--cwd",
+                "/some/path",
+                "--command",
+                "echo hello",
+            ],
+            ["cmux", "rename-tab", "--workspace", "workspace:13", "--title", "feature"],
+        ]
+
+    def test_run_sets_cmux_quiet(self) -> None:
+        """CLI calls silence cmux deprecation notices via CMUX_QUIET.
+
+        Evidence: legacy command forms print "set CMUX_QUIET=1 to silence
+        this notice", which would corrupt parsed output.
+        """
+        terminal = Cmux()
+        with patch("subprocess.run", return_value=MagicMock(stdout="PONG\n")) as mock_run:
+            assert terminal._run(["ping"]) == "PONG\n"
+        assert mock_run.call_args.kwargs["env"]["CMUX_QUIET"] == "1"
+
+    def test_open_in_workspace_returns_none_on_cli_failure(self) -> None:
+        """A failing cmux CLI (e.g. app not running) yields None, not an exception."""
+        terminal = Cmux()
+        error = subprocess.CalledProcessError(1, ["cmux", "workspace", "list", "--json"])
+        with (
+            patch("shutil.which", return_value="/usr/local/bin/cmux"),
+            patch("subprocess.run", side_effect=[error, error]),
+        ):
+            handle = terminal.open_in_workspace(
+                Path("/some/path"),
+                "echo hello",
+                workspace_name="my-repo",
+            )
+        assert handle is None
+
+
 class TestRegistry:
     """Tests for terminal registry functions."""
 
@@ -442,6 +631,23 @@ class TestRegistry:
         terminal = detect_current_terminal()
         assert terminal is not None
         assert terminal.name == "zellij"
+
+    def test_detect_current_terminal_cmux(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Detect current terminal as cmux when no multiplexer is running."""
+        monkeypatch.delenv("TMUX", raising=False)
+        monkeypatch.delenv("ZELLIJ", raising=False)
+        monkeypatch.setenv("CMUX_WORKSPACE_ID", "AB56033C-F3AB-46DC-83D2-2891F13F47C5")
+        terminal = detect_current_terminal()
+        assert terminal is not None
+        assert terminal.name == "cmux"
+
+    def test_detect_tmux_wins_inside_cmux(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Tmux running inside a cmux tab is detected as tmux (innermost wins)."""
+        monkeypatch.setenv("TMUX", "/run/user/1000/tmux")
+        monkeypatch.setenv("CMUX_WORKSPACE_ID", "AB56033C-F3AB-46DC-83D2-2891F13F47C5")
+        terminal = detect_current_terminal()
+        assert terminal is not None
+        assert terminal.name == "tmux"
 
     def test_get_available_terminals(self) -> None:
         """Get available terminals returns list."""

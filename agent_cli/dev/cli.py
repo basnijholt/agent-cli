@@ -166,8 +166,8 @@ def _resolve_prompt_text(
 
 def _normalize_tmux_session(
     tmux_session: str | None,
-    multiplexer: Literal["tmux"] | None,
-) -> tuple[str | None, Literal["tmux"] | None]:
+    multiplexer: Literal["tmux", "cmux"] | None,
+) -> tuple[str | None, Literal["tmux", "cmux"] | None]:
     """Normalize `--tmux-session` and make it imply tmux launches."""
     if tmux_session is None:
         return None, multiplexer
@@ -457,12 +457,12 @@ def new(
         ),
     ] = None,
     multiplexer: Annotated[
-        Literal["tmux"] | None,
+        Literal["tmux", "cmux"] | None,
         typer.Option(
             "--multiplexer",
             "-m",
             case_sensitive=False,
-            help="Launch the agent in a specific multiplexer. Currently supported: tmux. When started outside tmux, creates or reuses a detached session and reports the pane handle",
+            help="Launch the agent in a specific multiplexer. Currently supported: tmux, cmux. When started outside tmux, creates or reuses a detached session and reports the pane handle. cmux opens a tab in a workspace named after the repo",
         ),
     ] = None,
     tmux_session: Annotated[
@@ -618,11 +618,13 @@ def new(
         summary_lines.append(
             f"[bold]Agent Handle:[/bold] {agent_handle.handle} ({agent_handle.terminal_name})",
         )
-        if agent_handle.session_name:
+        if agent_handle.session_name and agent_handle.terminal_name == "tmux":
             summary_lines.append(f"[bold]tmux Session:[/bold] {agent_handle.session_name}")
             summary_lines.append(
                 f"[bold]Attach:[/bold] tmux attach -t {shlex.quote(agent_handle.session_name)}",
             )
+        elif agent_handle.session_name and agent_handle.terminal_name == "cmux":
+            summary_lines.append(f"[bold]cmux Workspace:[/bold] {agent_handle.session_name}")
 
     console.print()
     console.print(
@@ -1049,12 +1051,12 @@ def start_agent(
         ),
     ] = None,
     multiplexer: Annotated[
-        Literal["tmux"] | None,
+        Literal["tmux", "cmux"] | None,
         typer.Option(
             "--multiplexer",
             "-m",
             case_sensitive=False,
-            help="Launch the agent in a specific multiplexer instead of the current terminal. Currently supported: tmux",
+            help="Launch the agent in a specific multiplexer instead of the current terminal. Currently supported: tmux, cmux",
         ),
     ] = None,
     tmux_session: Annotated[
@@ -1146,7 +1148,7 @@ def start_agent(
                 f"{handle.terminal_name} handle: {handle.handle}"
                 + (
                     f" (attach with: tmux attach -t {shlex.quote(handle.session_name)})"
-                    if handle.session_name
+                    if handle.session_name and handle.terminal_name == "tmux"
                     else ""
                 ),
             )
@@ -1280,7 +1282,7 @@ def list_terminals_cmd(
 ) -> None:
     """List available terminal multiplexers and their status.
 
-    Shows supported terminals: tmux, zellij, kitty, iTerm2, Terminal.app,
+    Shows supported terminals: tmux, zellij, cmux, kitty, iTerm2, Terminal.app,
     Warp, GNOME Terminal.
 
     These are used to open new tabs when launching AI agents with `dev new --start-agent`.

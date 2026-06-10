@@ -12,6 +12,7 @@ from agent_cli.dev.launch import (
     write_prompt_to_worktree,
 )
 from agent_cli.dev.terminals import TerminalHandle
+from agent_cli.dev.terminals.cmux import Cmux
 from agent_cli.dev.terminals.tmux import Tmux
 
 
@@ -192,6 +193,33 @@ class TestLaunchAgent:
             f"bash {shlex.quote(str(wrapper_script))}",
             tab_name="feature",
             session_name="agent-cli-repo-1234",
+        )
+
+    def test_cmux_uses_workspace_named_after_repo(self, tmp_path: Path) -> None:
+        """Cmux launches open a tab in a workspace named after the repo."""
+        agent = MagicMock()
+        agent.name = "codex"
+        agent.launch_command.return_value = ["codex"]
+
+        cmux_terminal = Cmux()
+        handle = TerminalHandle("cmux", "surface:5", "repo")
+
+        with (
+            patch("agent_cli.dev.launch.terminals.get_terminal", return_value=cmux_terminal),
+            patch("agent_cli.dev.launch.terminals.detect_current_terminal", return_value=None),
+            patch.object(cmux_terminal, "is_available", return_value=True),
+            patch.object(cmux_terminal, "open_in_workspace", return_value=handle) as mock_open,
+            patch("agent_cli.dev.launch.worktree.get_main_repo_root", return_value=Path("/repo")),
+            patch("agent_cli.dev.launch.worktree.get_current_branch", return_value="feature"),
+        ):
+            result = launch_agent(tmp_path, agent, multiplexer_name="cmux")
+
+        assert result == handle
+        mock_open.assert_called_once_with(
+            tmp_path,
+            "codex",
+            tab_name="feature",
+            workspace_name="repo",
         )
 
     def test_non_tmux_success_does_not_fall_back_to_manual_instructions(

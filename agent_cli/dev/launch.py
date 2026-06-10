@@ -321,6 +321,36 @@ def _launch_in_tmux(
     return handle
 
 
+def _launch_in_cmux(
+    path: Path,
+    agent: CodingAgent,
+    terminal: terminals.Terminal,
+    full_cmd: str,
+    tab_name: str,
+    repo_root: Path | None,
+) -> TerminalHandle | None:
+    """Launch an agent in a cmux tab inside a workspace named after the repo."""
+    from .terminals.cmux import Cmux  # noqa: PLC0415
+
+    if not isinstance(terminal, Cmux):
+        warn("Could not open new tab in cmux")
+        return None
+
+    workspace_name = (repo_root or path).name
+    handle = terminal.open_in_workspace(
+        path,
+        full_cmd,
+        tab_name=tab_name,
+        workspace_name=workspace_name,
+    )
+    if handle is None:
+        warn("Could not open new tab in cmux")
+        return None
+
+    success(f"Started {agent.name} in cmux workspace {workspace_name!r}")
+    return handle
+
+
 def _launch_in_terminal(
     path: Path,
     agent: CodingAgent,
@@ -332,6 +362,10 @@ def _launch_in_terminal(
     tmux_session: str | None,
 ) -> tuple[bool, TerminalHandle | None]:
     """Launch an agent in the resolved terminal."""
+    if terminal.name == "cmux":
+        handle = _launch_in_cmux(path, agent, terminal, full_cmd, tab_name, repo_root)
+        return handle is not None, handle
+
     if terminal.name == "tmux":
         handle = _launch_in_tmux(
             path,
