@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import shlex
 import subprocess
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -461,6 +462,7 @@ class TestCmux:
           live by sending immediately after surface creation).
         """
         terminal = Cmux()
+        path = Path("/some/work tree")
         workspaces_json = (
             '{"window_ref": "window:1", "workspaces": ['
             '{"ref": "workspace:2", "title": "other"},'
@@ -479,7 +481,7 @@ class TestCmux:
             ) as mock_run,
         ):
             handle = terminal.open_in_workspace(
-                Path("/some/work tree"),
+                path,
                 "echo hello",
                 tab_name="feature",
                 workspace_name="agent-cli",
@@ -511,7 +513,7 @@ class TestCmux:
                 "--surface",
                 "surface:32",
                 "--",
-                "cd '/some/work tree' && echo hello\\n",
+                f"cd {shlex.quote(str(path))} && echo hello\\n",
             ],
         ]
 
@@ -527,6 +529,7 @@ class TestCmux:
         workspace's focused tab, which is the just-created single tab.
         """
         terminal = Cmux()
+        path = Path("/some/path")
         workspaces_json = '{"window_ref": "window:1", "workspaces": []}'
         with (
             patch("shutil.which", return_value="/usr/local/bin/cmux"),
@@ -541,7 +544,7 @@ class TestCmux:
             ) as mock_run,
         ):
             handle = terminal.open_in_workspace(
-                Path("/some/path"),
+                path,
                 "echo hello",
                 tab_name="feature",
                 workspace_name="my-repo",
@@ -560,7 +563,7 @@ class TestCmux:
                 "--name",
                 "my-repo",
                 "--cwd",
-                "/some/path",
+                str(path),
                 "--command",
                 "echo hello",
             ],
