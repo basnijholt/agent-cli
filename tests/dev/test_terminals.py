@@ -399,6 +399,7 @@ class TestZellij:
     def test_open_in_session_creates_detached_session_when_missing(self) -> None:
         """Outside zellij, a named session is created in detached mode if absent."""
         terminal = Zellij()
+        path = Path("/some/path")
         with (
             patch.object(terminal, "is_available", return_value=True),
             patch.object(terminal, "_supports_cli_control", return_value=True),
@@ -411,7 +412,7 @@ class TestZellij:
             ) as mock_run,
         ):
             handle = terminal.open_in_session(
-                Path("/some/path"),
+                path,
                 "echo hello",
                 tab_name="feature",
                 session_name="repo-session",
@@ -433,7 +434,7 @@ class TestZellij:
             "action",
             "new-tab",
             "--cwd",
-            "/some/path",
+            str(path),
             "--name",
             "feature",
             "--",
@@ -508,13 +509,14 @@ class TestZellij:
         """Zellij < 0.44 opens tabs via the legacy write-chars path."""
         monkeypatch.setenv("ZELLIJ", "0")
         terminal = Zellij()
+        path = Path("/some/path")
         with (
             patch.object(terminal, "is_available", return_value=True),
             patch.object(Zellij, "_cli_version", return_value=(0, 41, 2)),
             patch("subprocess.run", return_value=MagicMock(returncode=0)) as mock_run,
             patch("time.sleep"),
         ):
-            result = terminal.open_new_tab(Path("/some/path"), "echo hello", tab_name="feature")
+            result = terminal.open_new_tab(path, "echo hello", tab_name="feature")
 
         assert result is True
         commands = [call.args[0] for call in mock_run.call_args_list]
@@ -526,7 +528,7 @@ class TestZellij:
                 "--layout",
                 "default",
                 "--cwd",
-                "/some/path",
+                str(path),
                 "--name",
                 "feature",
             ],
@@ -542,12 +544,13 @@ class TestZellij:
         monkeypatch.setenv("ZELLIJ", "0")
         monkeypatch.setenv("ZELLIJ_SESSION_NAME", "current-session")
         terminal = Zellij()
+        path = Path("/some/path")
         with (
             patch.object(terminal, "is_available", return_value=True),
             patch.object(Zellij, "_cli_version", return_value=(0, 44, 0)),
             patch("subprocess.run", return_value=MagicMock(returncode=0, stdout="2\n")) as mock_run,
         ):
-            result = terminal.open_new_tab(Path("/some/path"), "echo hello", tab_name="feature")
+            result = terminal.open_new_tab(path, "echo hello", tab_name="feature")
 
         assert result is True
         assert mock_run.call_args.args[0] == [
@@ -555,7 +558,7 @@ class TestZellij:
             "action",
             "new-tab",
             "--cwd",
-            "/some/path",
+            str(path),
             "--name",
             "feature",
             "--",
