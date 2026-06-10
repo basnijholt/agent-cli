@@ -5,6 +5,25 @@
         <link>https://github.com/basnijholt/agent-cli</link>
         <description>Signed Agent CLI macOS app updates.</description>
         <item>
+            <title>0.100.0</title>
+            <pubDate>Wed, 10 Jun 2026 17:59:16 +0000</pubDate>
+            <link>https://github.com/basnijholt/agent-cli</link>
+            <sparkle:version>195</sparkle:version>
+            <sparkle:shortVersionString>0.100.0</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[## What’s Changed
+
+* Add cmux support to agent-cli dev (#589) @basnijholt
+* ⬆️ Update sparkle-project/Sparkle to v2.9.3 (#587) @[renovate[bot]](https://github.com/apps/renovate)
+* [pre-commit.ci] pre-commit autoupdate (#588) @[pre-commit-ci[bot]](https://github.com/apps/pre-commit-ci)
+* ⬆️ Update codecov/codecov-action action to v7 (#586) @[renovate[bot]](https://github.com/apps/renovate)
+* ⬆️ Update codecov/codecov-action action to v6.0.2 (#585) @[renovate[bot]](https://github.com/apps/renovate)
+
+]]></description>
+            <enclosure url="https://github.com/basnijholt/agent-cli/releases/download/v0.100.0/AgentCLI.zip" length="22908645" type="application/octet-stream" sparkle:edSignature="2xn/3yQOqyqwCQ5871EAgFra/D/z6UrDl1B+ZxUh7PnOxJpL4Oe44UzQgjFB+LJXzqrY6Kmqvu9GBmk+3aZ1Ag=="/>
+        </item>
+        <item>
             <title>0.99.0</title>
             <pubDate>Fri, 05 Jun 2026 22:57:28 +0000</pubDate>
             <link>https://github.com/basnijholt/agent-cli</link>
@@ -143,22 +162,6 @@
 **Full Changelog**: https://github.com/basnijholt/agent-cli/compare/v0.97.0...v0.97.1
 ]]></description>
             <enclosure url="https://github.com/basnijholt/agent-cli/releases/download/v0.97.1/AgentCLI.zip" length="22876193" type="application/octet-stream" sparkle:edSignature="zHJ1pEwR+In37XkGhdEX9sgTdAg0oiu6xbTpCoMF+4WsJEfDInwYlJkw10vb8dN3rnqSdNzv/UjB3tBnFlvRBA=="/>
-        </item>
-        <item>
-            <title>0.97.0</title>
-            <pubDate>Thu, 04 Jun 2026 06:29:00 +0000</pubDate>
-            <link>https://github.com/basnijholt/agent-cli</link>
-            <sparkle:version>185</sparkle:version>
-            <sparkle:shortVersionString>0.97.0</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[## What’s Changed
-
-* Add NeMo backend for Parakeet support in server whisper (#436) @basnijholt
-* Allow custom args for daemon installs (#572) @basnijholt
-
-]]></description>
-            <enclosure url="https://github.com/basnijholt/agent-cli/releases/download/v0.97.0/AgentCLI.zip" length="22875944" type="application/octet-stream" sparkle:edSignature="HdEW62220s/A/0bHgt7ZoEN/qKRDJr0ozOZ9jUYHT/OhybqVmv6reM/cWQFyWSPEKwH7ER8/76NGOOlmIAIcCA=="/>
         </item>
     </channel>
 </rss>
