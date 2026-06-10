@@ -10,6 +10,7 @@ import pytest  # noqa: TC002
 
 from agent_cli.dev.terminals import (
     Terminal,
+    TerminalHandle,
     detect_current_terminal,
     get_all_terminals,
     get_available_terminals,
@@ -515,14 +516,15 @@ class TestCmux:
         ]
 
     def test_open_in_workspace_creates_missing_workspace(self) -> None:
-        """A missing workspace is created with cwd and command for its first tab.
+        """A missing workspace is created with cwd, command, and a stable color.
 
         Evidence (verified live against cmux 0.64.14): `cmux workspace create
         --name <t> --cwd <path> --command <cmd>` prints "OK workspace:N",
         starts the initial tab's shell in --cwd, and sends the command with
-        Enter after creation. `cmux rename-tab --workspace <ref> --title <t>`
-        targets that workspace's focused tab, which is the just-created
-        single tab.
+        Enter after creation. `cmux workspace-action --action set-color
+        --color <name>` accepts the named colors listed in its --help.
+        `cmux rename-tab --workspace <ref> --title <t>` targets that
+        workspace's focused tab, which is the just-created single tab.
         """
         terminal = Cmux()
         workspaces_json = '{"window_ref": "window:1", "workspaces": []}'
@@ -532,6 +534,7 @@ class TestCmux:
                 "subprocess.run",
                 side_effect=[
                     MagicMock(stdout=workspaces_json),
+                    MagicMock(stdout="OK workspace:13\n"),
                     MagicMock(stdout="OK workspace:13\n"),
                     MagicMock(stdout="OK action=rename tab=tab:33 workspace=workspace:13\n"),
                 ],
@@ -561,8 +564,85 @@ class TestCmux:
                 "--command",
                 "echo hello",
             ],
+            [
+                "cmux",
+                "workspace-action",
+                "--action",
+                "set-color",
+                "--workspace",
+                "workspace:13",
+                "--color",
+                "Magenta",
+            ],
             ["cmux", "rename-tab", "--workspace", "workspace:13", "--title", "feature"],
         ]
+
+    def test_workspace_color_is_deterministic(self) -> None:
+        """The same workspace name always maps to the same cmux named color."""
+        assert Cmux._workspace_color("my-repo") == "Magenta"
+        assert Cmux._workspace_color("my-repo") == Cmux._workspace_color("my-repo")
+
+    def test_open_tab_closes_surface_when_send_fails(self) -> None:
+        """A failed `send` closes the idle tab and reports failure.
+
+        Without this, the caller would print a success message while the
+        agent never started in the new tab.
+        """
+        terminal = Cmux()
+        send_error = subprocess.CalledProcessError(1, ["cmux", "send"])
+        workspaces_json = (
+            '{"window_ref": "window:1", "workspaces": [{"ref": "workspace:11", "title": "repo"}]}'
+        )
+        with (
+            patch("shutil.which", return_value="/usr/local/bin/cmux"),
+            patch(
+                "subprocess.run",
+                side_effect=[
+                    MagicMock(stdout=workspaces_json),
+                    MagicMock(stdout="OK surface:32 pane:25 workspace:11\n"),
+                    send_error,
+                    MagicMock(stdout="OK surface:32\n"),
+                ],
+            ) as mock_run,
+        ):
+            handle = terminal.open_in_workspace(
+                Path("/some/path"),
+                "echo hello",
+                workspace_name="repo",
+            )
+
+        assert handle is None
+        assert mock_run.call_args_list[-1].args[0] == [
+            "cmux",
+            "close-surface",
+            "--workspace",
+            "workspace:11",
+            "--surface",
+            "surface:32",
+        ]
+
+    def test_open_new_tab_uses_repo_root_name(self, tmp_path: Path) -> None:
+        """The generic open_new_tab keeps the one-workspace-per-repo invariant.
+
+        Worktree paths resolve to the main repo root, so tabs land in the
+        repo's workspace rather than one named after the worktree directory.
+        """
+        terminal = Cmux()
+        handle = TerminalHandle("cmux", "surface:5", "repo")
+        with (
+            patch(
+                "agent_cli.dev.terminals.cmux.get_main_repo_root",
+                return_value=Path("/repo"),
+            ),
+            patch.object(terminal, "open_in_workspace", return_value=handle) as mock_open,
+        ):
+            assert terminal.open_new_tab(tmp_path / "worktree", "echo hi", tab_name="t") is True
+        mock_open.assert_called_once_with(
+            tmp_path / "worktree",
+            "echo hi",
+            "t",
+            workspace_name="repo",
+        )
 
     def test_run_sets_cmux_quiet(self) -> None:
         """CLI calls silence cmux deprecation notices via CMUX_QUIET.
@@ -576,12 +656,17 @@ class TestCmux:
         assert mock_run.call_args.kwargs["env"]["CMUX_QUIET"] == "1"
 
     def test_open_in_workspace_returns_none_on_cli_failure(self) -> None:
-        """A failing cmux CLI (e.g. app not running) yields None, not an exception."""
+        """A failing workspace listing aborts immediately, without a create attempt.
+
+        Listing failure (e.g. app not running) is distinct from "workspace
+        not found": creating anyway would fail too, or duplicate a workspace
+        the listing could not see.
+        """
         terminal = Cmux()
         error = subprocess.CalledProcessError(1, ["cmux", "workspace", "list", "--json"])
         with (
             patch("shutil.which", return_value="/usr/local/bin/cmux"),
-            patch("subprocess.run", side_effect=[error, error]),
+            patch("subprocess.run", side_effect=[error]) as mock_run,
         ):
             handle = terminal.open_in_workspace(
                 Path("/some/path"),
@@ -589,6 +674,7 @@ class TestCmux:
                 workspace_name="my-repo",
             )
         assert handle is None
+        assert mock_run.call_count == 1
 
 
 class TestRegistry:

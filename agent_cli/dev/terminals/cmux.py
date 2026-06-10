@@ -10,6 +10,7 @@ it, and each worktree launch opens a new tab inside that workspace.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import shlex
@@ -17,10 +18,32 @@ import shutil
 import subprocess
 from typing import TYPE_CHECKING
 
+from agent_cli.dev.worktree import get_main_repo_root
+
 from .base import Terminal, TerminalHandle
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+# Named colors accepted by `cmux workspace-action --action set-color`.
+_WORKSPACE_COLORS = (
+    "Red",
+    "Crimson",
+    "Orange",
+    "Amber",
+    "Olive",
+    "Green",
+    "Teal",
+    "Aqua",
+    "Blue",
+    "Navy",
+    "Indigo",
+    "Purple",
+    "Magenta",
+    "Rose",
+    "Brown",
+    "Charcoal",
+)
 
 
 class Cmux(Terminal):
@@ -44,8 +67,10 @@ class Cmux(Terminal):
         command: str | None = None,
         tab_name: str | None = None,
     ) -> bool:
-        """Open a new tab in a workspace named after the directory."""
-        handle = self.open_in_workspace(path, command, tab_name, workspace_name=path.name)
+        """Open a new tab in a workspace named after the repo containing ``path``."""
+        repo_root = get_main_repo_root(path)
+        workspace_name = (repo_root or path).name
+        handle = self.open_in_workspace(path, command, tab_name, workspace_name=workspace_name)
         return handle is not None
 
     def open_in_workspace(
@@ -63,7 +88,15 @@ class Cmux(Terminal):
         """
         if not self.is_available():
             return None
-        workspace_ref = self._find_workspace(workspace_name)
+        workspaces = self._list_workspaces()
+        if workspaces is None:
+            # The cmux CLI itself failed (e.g. app not running); creating a
+            # workspace would fail too, or duplicate one we could not see.
+            return None
+        workspace_ref = next(
+            (w.get("ref") for w in workspaces if w.get("title") == workspace_name),
+            None,
+        )
         if workspace_ref is None:
             return self._create_workspace(path, command, tab_name, workspace_name=workspace_name)
         return self._open_tab(
@@ -74,8 +107,8 @@ class Cmux(Terminal):
             workspace_name=workspace_name,
         )
 
-    def _find_workspace(self, workspace_name: str) -> str | None:
-        """Find the ref of the first workspace titled ``workspace_name``."""
+    def _list_workspaces(self) -> list[dict] | None:
+        """List workspace dicts via the cmux CLI, or None when the CLI call fails."""
         stdout = self._run(["workspace", "list", "--json"])
         if stdout is None:
             return None
@@ -83,10 +116,8 @@ class Cmux(Terminal):
             data = json.loads(stdout)
         except json.JSONDecodeError:
             return None
-        for workspace in data.get("workspaces", []):
-            if workspace.get("title") == workspace_name:
-                return workspace.get("ref")
-        return None
+        workspaces = data.get("workspaces", [])
+        return workspaces if isinstance(workspaces, list) else None
 
     def _create_workspace(
         self,
@@ -103,6 +134,17 @@ class Cmux(Terminal):
         workspace_ref = self._parse_ok_ref(self._run(cmd), "workspace:")
         if workspace_ref is None:
             return None
+        self._run(
+            [
+                "workspace-action",
+                "--action",
+                "set-color",
+                "--workspace",
+                workspace_ref,
+                "--color",
+                self._workspace_color(workspace_name),
+            ],
+        )
         if tab_name:
             # The freshly created workspace has a single tab, which is its
             # focused tab, so rename-tab needs no explicit surface target.
@@ -147,7 +189,7 @@ class Cmux(Terminal):
         shell_cmd = f"cd {shlex.quote(str(path))}"
         if command:
             shell_cmd += f" && {command}"
-        self._run(
+        sent = self._run(
             [
                 "send",
                 "--workspace",
@@ -158,11 +200,22 @@ class Cmux(Terminal):
                 shell_cmd + "\\n",
             ],
         )
+        if sent is None:
+            # The command never reached the tab, so the agent is not running;
+            # remove the idle tab and report failure instead of a dead handle.
+            self._run(["close-surface", "--workspace", workspace_ref, "--surface", surface_ref])
+            return None
         return TerminalHandle(
             terminal_name=self.name,
             handle=surface_ref,
             session_name=workspace_name,
         )
+
+    @staticmethod
+    def _workspace_color(workspace_name: str) -> str:
+        """Pick a deterministic cmux named color for a workspace."""
+        digest = hashlib.sha256(workspace_name.encode()).hexdigest()
+        return _WORKSPACE_COLORS[int(digest[:8], 16) % len(_WORKSPACE_COLORS)]
 
     @staticmethod
     def _run(args: list[str]) -> str | None:
