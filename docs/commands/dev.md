@@ -578,6 +578,7 @@ agent-cli dev terminals [OPTIONS]
 |----------|-----------|-----------------|
 | tmux | `TMUX` env var | `tmux new-window -c <path>` |
 | Zellij | `ZELLIJ` env var | `zellij action new-tab --cwd <path>` |
+| cmux | `CMUX_WORKSPACE_ID` env var | `cmux new-surface` in a workspace named after the repo (created on demand) |
 | Kitty | `KITTY_WINDOW_ID` | `kitten @ launch --type=tab` |
 | iTerm2 | `ITERM_SESSION_ID` | AppleScript |
 | Terminal.app | `TERM_PROGRAM=Apple_Terminal` | AppleScript + System Events * |

@@ -618,11 +618,13 @@ def new(
         summary_lines.append(
             f"[bold]Agent Handle:[/bold] {agent_handle.handle} ({agent_handle.terminal_name})",
         )
-        if agent_handle.session_name:
+        if agent_handle.session_name and agent_handle.terminal_name == "tmux":
             summary_lines.append(f"[bold]tmux Session:[/bold] {agent_handle.session_name}")
             summary_lines.append(
                 f"[bold]Attach:[/bold] tmux attach -t {shlex.quote(agent_handle.session_name)}",
             )
+        elif agent_handle.session_name and agent_handle.terminal_name == "cmux":
+            summary_lines.append(f"[bold]cmux Workspace:[/bold] {agent_handle.session_name}")
 
     console.print()
     console.print(
@@ -1146,7 +1148,7 @@ def start_agent(
                 f"{handle.terminal_name} handle: {handle.handle}"
                 + (
                     f" (attach with: tmux attach -t {shlex.quote(handle.session_name)})"
-                    if handle.session_name
+                    if handle.session_name and handle.terminal_name == "tmux"
                     else ""
                 ),
             )
@@ -1280,7 +1282,7 @@ def list_terminals_cmd(
 ) -> None:
     """List available terminal multiplexers and their status.
 
-    Shows supported terminals: tmux, zellij, kitty, iTerm2, Terminal.app,
+    Shows supported terminals: tmux, zellij, cmux, kitty, iTerm2, Terminal.app,
     Warp, GNOME Terminal.
 
     These are used to open new tabs when launching AI agents with `dev new --start-agent`.
