@@ -89,6 +89,28 @@ def _unidep_cmd(subcommand: str) -> str | None:
     return None
 
 
+def _python_install_commands(install_args: str) -> list[str] | None:
+    """Build install commands using the best available Python installer.
+
+    Prefers uv (``uv venv`` creates ./.venv, which ``uv pip install`` then
+    targets from the working directory), then pip, then pip3. Returns None
+    when no installer is available.
+
+    Evidence: https://docs.astral.sh/uv/pip/environments/ - ``uv venv``
+    creates a virtual environment at .venv and ``uv pip install`` installs
+    into the .venv in the working directory. Note ``uv pip`` prefers an
+    activated environment (VIRTUAL_ENV) over ./.venv, which run_setup()
+    handles by clearing VIRTUAL_ENV from the subprocess environment.
+    """
+    if shutil.which("uv"):
+        return ["uv venv", f"uv pip install {install_args}"]
+    if shutil.which("pip"):
+        return [f"pip install {install_args}"]
+    if shutil.which("pip3"):
+        return [f"pip3 install {install_args}"]
+    return None
+
+
 def _detect_unidep_project(path: Path) -> ProjectType | None:
     """Detect unidep project and determine the appropriate install command.
 
@@ -143,6 +165,29 @@ def _detect_unidep_project(path: Path) -> ProjectType | None:
     return None
 
 
+def _detect_pip_install_project(path: Path) -> ProjectType | None:
+    """Detect pip-installable Python projects, skipped when no installer is available."""
+    if (path / "requirements.txt").exists():
+        commands = _python_install_commands("-r requirements.txt")
+        if commands is not None:
+            return ProjectType(
+                name="python-pip",
+                setup_commands=commands,
+                description="Python project with pip",
+            )
+
+    if (path / "pyproject.toml").exists():
+        commands = _python_install_commands("-e .")
+        if commands is not None:
+            return ProjectType(
+                name="python",
+                setup_commands=commands,
+                description="Python project",
+            )
+
+    return None
+
+
 def detect_project_type(path: Path) -> ProjectType | None:  # noqa: PLR0911
     """Detect the project type based on files present.
 
@@ -181,21 +226,10 @@ def detect_project_type(path: Path) -> ProjectType | None:  # noqa: PLR0911
             description="Python project with Poetry",
         )
 
-    # Python with pip/requirements.txt
-    if (path / "requirements.txt").exists():
-        return ProjectType(
-            name="python-pip",
-            setup_commands=["pip install -r requirements.txt"],
-            description="Python project with pip",
-        )
-
-    # Python with pyproject.toml (generic)
-    if (path / "pyproject.toml").exists():
-        return ProjectType(
-            name="python",
-            setup_commands=["pip install -e ."],
-            description="Python project",
-        )
+    # Python with pip/requirements.txt or generic pyproject.toml
+    pip_project = _detect_pip_install_project(path)
+    if pip_project is not None:
+        return pip_project
 
     # Node.js with pnpm
     if (path / "pnpm-lock.yaml").exists():
