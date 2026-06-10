@@ -169,13 +169,23 @@ class Zellij(Multiplexer):
         inventory = self.list_tabs_for_worktree(worktree_path)
         errors: list[str] = [inventory.error] if inventory.error else []
 
-        current_tab = self._current_tab() if inventory.tabs else None
+        current_session = self.current_session_name()
+        in_zellij = current_session is not None and os.environ.get("ZELLIJ_PANE_ID") is not None
+        current_tab = self._current_tab() if inventory.tabs and in_zellij else None
         closed_tabs: list[ZellijTab] = []
         for tab in inventory.tabs:
             if current_tab == (tab.session_name, tab.tab_id):
                 errors.append(
                     f"Skipped zellij tab {tab.tab_id} in session {tab.session_name} "
                     "because it is the current tab",
+                )
+                continue
+            # Fail safe: if we are inside zellij but could not resolve our own tab,
+            # never close tabs in the session we are running in.
+            if in_zellij and current_tab is None and tab.session_name == current_session:
+                errors.append(
+                    f"Skipped zellij tab {tab.tab_id} in session {tab.session_name} "
+                    "because the current tab could not be determined",
                 )
                 continue
             try:
@@ -244,10 +254,14 @@ class Zellij(Multiplexer):
         except subprocess.CalledProcessError:
             return False
 
+    _supports_control: bool | None = None
+
     def _supports_cli_control(self) -> bool:
         """Whether the installed zellij supports tab IDs and detached-session control."""
-        version = self._cli_version()
-        return version is not None and version >= MIN_CONTROL_VERSION
+        if self._supports_control is None:
+            version = self._cli_version()
+            self._supports_control = version is not None and version >= MIN_CONTROL_VERSION
+        return self._supports_control
 
     @staticmethod
     def _cli_version() -> tuple[int, int, int] | None:
@@ -296,10 +310,13 @@ class Zellij(Multiplexer):
             return []
         names: list[str] = []
         for raw_line in result.stdout.splitlines():
+            # Lines look like "<name> [Created ...]" with an optional
+            # "(EXITED - attach to resurrect)" suffix; names may contain spaces.
             line = raw_line.strip()
-            if not line or "(EXITED" in line or line.lower().startswith("no active"):
+            match = re.match(r"(.+?) \[Created ", line)
+            if match is None or "(EXITED" in line[match.end() :]:
                 continue
-            names.append(line.split()[0])
+            names.append(match.group(1))
         return names
 
     @staticmethod

@@ -608,8 +608,14 @@ class TestZellij:
             "--json",
         ]
 
-    def test_close_tabs_for_worktree_closes_by_id(self, tmp_path: Path) -> None:
+    def test_close_tabs_for_worktree_closes_by_id(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
         """Worktree tabs are closed via close-tab-by-id."""
+        monkeypatch.delenv("ZELLIJ_SESSION_NAME", raising=False)
+        monkeypatch.delenv("ZELLIJ_PANE_ID", raising=False)
         terminal = Zellij()
         inventory = ZellijInventory(
             tabs=(ZellijTab(tab_id=2, session_name="work", tab_name="feature"),),
@@ -632,8 +638,14 @@ class TestZellij:
             "2",
         ]
 
-    def test_close_tabs_for_worktree_skips_current_tab(self, tmp_path: Path) -> None:
+    def test_close_tabs_for_worktree_skips_current_tab(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
         """The tab running this process is never closed."""
+        monkeypatch.setenv("ZELLIJ_SESSION_NAME", "work")
+        monkeypatch.setenv("ZELLIJ_PANE_ID", "7")
         terminal = Zellij()
         inventory = ZellijInventory(
             tabs=(
@@ -651,6 +663,33 @@ class TestZellij:
         assert result.closed_tabs == (inventory.tabs[1],)
         assert len(result.errors) == 1
         assert "current tab" in result.errors[0]
+        assert len(mock_run.call_args_list) == 1
+
+    def test_close_tabs_for_worktree_fails_safe_when_current_tab_unknown(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Inside zellij, tabs in the current session are kept if own tab lookup fails."""
+        monkeypatch.setenv("ZELLIJ_SESSION_NAME", "work")
+        monkeypatch.setenv("ZELLIJ_PANE_ID", "7")
+        terminal = Zellij()
+        inventory = ZellijInventory(
+            tabs=(
+                ZellijTab(tab_id=2, session_name="work", tab_name="feature"),
+                ZellijTab(tab_id=3, session_name="elsewhere", tab_name="feature"),
+            ),
+        )
+        with (
+            patch.object(terminal, "list_tabs_for_worktree", return_value=inventory),
+            patch.object(terminal, "_current_tab", return_value=None),
+            patch("subprocess.run", return_value=MagicMock(returncode=0)) as mock_run,
+        ):
+            result = terminal.close_tabs_for_worktree(tmp_path)
+
+        assert result.closed_tabs == (inventory.tabs[1],)
+        assert len(result.errors) == 1
+        assert "could not be determined" in result.errors[0]
         assert len(mock_run.call_args_list) == 1
 
     def test_current_tab_resolves_own_pane(self, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -672,6 +711,25 @@ class TestZellij:
         error = subprocess.CalledProcessError(1, "zellij")
         with patch("subprocess.run", side_effect=error):
             assert Zellij._live_session_names() == []
+
+    def test_live_session_names_preserves_spaces_and_skips_dead(self) -> None:
+        """Session names with spaces parse correctly; EXITED and notice lines are skipped."""
+        output = (
+            "my session [Created 5s ago] \n"
+            "plain [Created 2m 3s ago] \n"
+            "old one [Created 1day 2h ago] (EXITED - attach to resurrect)\n"
+            "No active zellij sessions found.\n"
+        )
+        with patch("subprocess.run", return_value=MagicMock(returncode=0, stdout=output)):
+            assert Zellij._live_session_names() == ["my session", "plain"]
+
+    def test_supports_cli_control_caches_version_lookup(self) -> None:
+        """The zellij version is only queried once per instance."""
+        terminal = Zellij()
+        with patch.object(Zellij, "_cli_version", return_value=(0, 44, 3)) as mock_version:
+            assert terminal._supports_cli_control() is True
+            assert terminal._supports_cli_control() is True
+        mock_version.assert_called_once()
 
 
 class TestKitty:
