@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 import os
-import shlex
 import shutil
 import subprocess
 from pathlib import Path
@@ -164,21 +163,44 @@ def _resolve_prompt_text(
     return prompt
 
 
-def _normalize_tmux_session(
+def _normalize_multiplexer_session(
     tmux_session: str | None,
-    multiplexer: Literal["tmux"] | None,
-) -> tuple[str | None, Literal["tmux"] | None]:
-    """Normalize `--tmux-session` and make it imply tmux launches."""
-    if tmux_session is None:
-        return None, multiplexer
+    zellij_session: str | None,
+    multiplexer: Literal["tmux", "zellij"] | None,
+) -> tuple[str | None, Literal["tmux", "zellij"] | None]:
+    """Normalize `--tmux-session`/`--zellij-session` and make them imply a multiplexer."""
+    if tmux_session is not None and zellij_session is not None:
+        error("Cannot use --tmux-session and --zellij-session together")
 
-    normalized_session = tmux_session.strip()
-    if not normalized_session:
-        error("--tmux-session cannot be empty")
-    if "." in normalized_session or ":" in normalized_session:
-        error("tmux session names cannot contain '.' or ':'")
+    if tmux_session is not None:
+        if multiplexer == "zellij":
+            error("--tmux-session cannot be combined with --multiplexer zellij")
+        normalized_session = tmux_session.strip()
+        if not normalized_session:
+            error("--tmux-session cannot be empty")
+        if "." in normalized_session or ":" in normalized_session:
+            error("tmux session names cannot contain '.' or ':'")
+        return normalized_session, "tmux"
 
-    return normalized_session, "tmux"
+    if zellij_session is not None:
+        if multiplexer == "tmux":
+            error("--zellij-session cannot be combined with --multiplexer tmux")
+        normalized_session = zellij_session.strip()
+        if not normalized_session:
+            error("--zellij-session cannot be empty")
+        return normalized_session, "zellij"
+
+    return None, multiplexer
+
+
+def _attach_hint(handle: terminals.TerminalHandle) -> str | None:
+    """Shell command to attach to the session holding a launched agent, if any."""
+    if handle.session_name is None:
+        return None
+    terminal = terminals.get_terminal(handle.terminal_name)
+    if isinstance(terminal, terminals.Multiplexer):
+        return terminal.attach_command(handle.session_name)
+    return None
 
 
 def _resolve_dev_new_agent_request(
@@ -457,12 +479,12 @@ def new(
         ),
     ] = None,
     multiplexer: Annotated[
-        Literal["tmux"] | None,
+        Literal["tmux", "zellij"] | None,
         typer.Option(
             "--multiplexer",
             "-m",
             case_sensitive=False,
-            help="Launch the agent in a specific multiplexer. Currently supported: tmux. When started outside tmux, creates or reuses a detached session and reports the pane handle",
+            help="Launch the agent in a specific multiplexer. Currently supported: tmux, zellij (zellij requires >= 0.44.0). When started outside the multiplexer, creates or reuses a detached session and reports the tab/pane handle",
         ),
     ] = None,
     tmux_session: Annotated[
@@ -470,6 +492,13 @@ def new(
         typer.Option(
             "--tmux-session",
             help="Reuse or create a specific tmux session for the agent. Implies --multiplexer tmux",
+        ),
+    ] = None,
+    zellij_session: Annotated[
+        str | None,
+        typer.Option(
+            "--zellij-session",
+            help="Reuse or create a specific zellij session for the agent. Implies --multiplexer zellij",
         ),
     ] = None,
     hooks: Annotated[
@@ -521,7 +550,11 @@ def new(
         agent_name_deprecated=agent_name_deprecated,
         prompt=prompt,
     )
-    tmux_session, multiplexer = _normalize_tmux_session(tmux_session, multiplexer)
+    multiplexer_session, multiplexer = _normalize_multiplexer_session(
+        tmux_session,
+        zellij_session,
+        multiplexer,
+    )
 
     repo_root = _ensure_git_repo()
     runtime_config = _runtime_config_from_ctx(ctx)
@@ -606,7 +639,7 @@ def new(
             task_file,
             agent_env,
             multiplexer_name=multiplexer,
-            tmux_session=tmux_session,
+            multiplexer_session=multiplexer_session,
         )
 
     # Print summary
@@ -618,13 +651,15 @@ def new(
         summary_lines.append(
             f"[bold]Agent Handle:[/bold] {agent_handle.handle} ({agent_handle.terminal_name})",
         )
-        if agent_handle.session_name and agent_handle.terminal_name == "tmux":
-            summary_lines.append(f"[bold]tmux Session:[/bold] {agent_handle.session_name}")
-            summary_lines.append(
-                f"[bold]Attach:[/bold] tmux attach -t {shlex.quote(agent_handle.session_name)}",
-            )
-        elif agent_handle.session_name and agent_handle.terminal_name == "cmux":
+        if agent_handle.session_name and agent_handle.terminal_name == "cmux":
             summary_lines.append(f"[bold]cmux Workspace:[/bold] {agent_handle.session_name}")
+        elif agent_handle.session_name:
+            summary_lines.append(
+                f"[bold]{agent_handle.terminal_name} Session:[/bold] {agent_handle.session_name}",
+            )
+            attach = _attach_hint(agent_handle)
+            if attach:
+                summary_lines.append(f"[bold]Attach:[/bold] {attach}")
 
     console.print()
     console.print(
@@ -1051,12 +1086,12 @@ def start_agent(
         ),
     ] = None,
     multiplexer: Annotated[
-        Literal["tmux"] | None,
+        Literal["tmux", "zellij"] | None,
         typer.Option(
             "--multiplexer",
             "-m",
             case_sensitive=False,
-            help="Launch the agent in a specific multiplexer instead of the current terminal. Currently supported: tmux",
+            help="Launch the agent in a specific multiplexer instead of the current terminal. Currently supported: tmux, zellij (zellij requires >= 0.44.0)",
         ),
     ] = None,
     tmux_session: Annotated[
@@ -1064,6 +1099,13 @@ def start_agent(
         typer.Option(
             "--tmux-session",
             help="Reuse or create a specific tmux session for the agent. Implies --multiplexer tmux",
+        ),
+    ] = None,
+    zellij_session: Annotated[
+        str | None,
+        typer.Option(
+            "--zellij-session",
+            help="Reuse or create a specific zellij session for the agent. Implies --multiplexer zellij",
         ),
     ] = None,
     hooks: Annotated[
@@ -1091,7 +1133,11 @@ def start_agent(
         agent_name = agent_name or agent_name_deprecated
 
     prompt = _resolve_prompt_text(prompt, prompt_file=prompt_file)
-    tmux_session, multiplexer = _normalize_tmux_session(tmux_session, multiplexer)
+    multiplexer_session, multiplexer = _normalize_multiplexer_session(
+        tmux_session,
+        zellij_session,
+        multiplexer,
+    )
 
     repo_root = _ensure_git_repo()
     runtime_config = _runtime_config_from_ctx(ctx)
@@ -1141,16 +1187,13 @@ def start_agent(
             task_file,
             agent_env,
             multiplexer_name=multiplexer,
-            tmux_session=tmux_session,
+            multiplexer_session=multiplexer_session,
         )
         if handle:
+            attach = _attach_hint(handle)
             info(
                 f"{handle.terminal_name} handle: {handle.handle}"
-                + (
-                    f" (attach with: tmux attach -t {shlex.quote(handle.session_name)})"
-                    if handle.session_name and handle.terminal_name == "tmux"
-                    else ""
-                ),
+                + (f" (attach with: {attach})" if attach else ""),
             )
         return
 

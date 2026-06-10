@@ -38,7 +38,7 @@ from agent_cli.dev.terminals.iterm2 import ITerm2
 from agent_cli.dev.terminals.kitty import Kitty
 from agent_cli.dev.terminals.tmux import Tmux
 from agent_cli.dev.terminals.warp import Warp
-from agent_cli.dev.terminals.zellij import Zellij
+from agent_cli.dev.terminals.zellij import MIN_CONTROL_VERSION, Zellij
 
 
 class TestTerminalDetection:
@@ -210,24 +210,112 @@ class TestTerminalCommands:
         assert "test-tab" in call_args
 
     def test_zellij_new_tab_command_syntax(self) -> None:
-        """Zellij uses `zellij action new-tab --cwd <path> --name <name>`.
+        """Zellij >= 0.44 runs commands via `new-tab --cwd <path> --name <name> -- <cmd>`.
 
         Evidence:
-            Source: zellij action new-tab --help
+            Source: zellij action new-tab --help (zellij 0.44.3)
             Output:
                 -c, --cwd <CWD>    Change the working directory of the new tab
                 -n, --name <NAME>  Name of the new tab
-            Verified: 2026-01-11 via `zellij action new-tab --help`
+                [-- <INITIAL_COMMAND>...]  Optional initial command to run in the new tab
+                "Returns: The created tab's ID as a single number on stdout"
+            Initial command support and returned tab IDs were added in 0.44.0:
+                CHANGELOG 0.44.0: "feat: command sequences, conditionally blocking
+                CLI commands" (zellij-org/zellij#4546) and "return pane/tab IDs from
+                plugin and CLI methods creating them" (zellij-org/zellij#4690)
+            `--cwd` without `--layout` works since 0.43.0 (zellij-org/zellij#4273),
+            which is why the modern path drops the `--layout default` workaround.
+            Verified: 2026-06-10 live on zellij 0.44.3 — `zellij --session X action
+            new-tab --name t --cwd /private/tmp -- bash -c 'pwd > /tmp/out'` printed
+            the tab ID and the pane's cwd was /private/tmp
         """
-        # Syntax verified via --help, implementation tested elsewhere
+        assert MIN_CONTROL_VERSION == (0, 44, 0)
+
+    def test_zellij_session_targeting_from_outside(self) -> None:
+        """Zellij actions target other sessions via the global `--session` flag.
+
+        Evidence:
+            Source: Zellij CLI documentation
+            URL: https://zellij.dev/documentation/controlling-zellij-through-cli
+            Quote: "Commands can also be issued to a different Zellij session:
+                   `$ zellij --session pretentious-cat action new-pane`"
+            Verified: 2026-06-10 live on zellij 0.44.3 against a fully detached
+            session (no attached clients)
+        """
+        # Implementation verified in test_terminals.py via open_in_session/list/close tests
+
+    def test_zellij_create_background_session(self) -> None:
+        """`zellij attach --create-background <name>` creates a detached session.
+
+        Evidence:
+            Source: zellij attach --help (zellij 0.44.3)
+            Quote: "-b, --create-background  Create a detached session in the
+                   background if one does not exist"
+            Added in 0.40.0: CHANGELOG "feat(cli): allow starting a session in the
+            background (detached)" (zellij-org/zellij#3257, #3265)
+            Verified: 2026-06-10 live on zellij 0.44.3 — first call exits 0 and the
+            session appears in `zellij list-sessions`; a second non-interactive call
+            exits 1 with "Session already exists" (it does NOT block), which is why
+            _ensure_session treats that message as success
+        """
+        # Implementation verified in test_terminals.py: test_open_in_session_reuses_existing_session
+
+    def test_zellij_list_panes_json_fields(self) -> None:
+        """`zellij action list-panes --json` exposes pane_cwd, tab_id, and tab_name.
+
+        Evidence:
+            Source: zellij action list-panes --help and live output (zellij 0.44.3)
+            `list-panes` was added in 0.44.0: CHANGELOG "feat: allow querying tab
+            info ... as well as general info about all tabs" (zellij-org/zellij#4695)
+            Verified: 2026-06-10 live on zellij 0.44.3 — JSON pane objects contain
+            keys: id, is_plugin, tab_id, tab_name, pane_cwd (among others), and the
+            command works against detached sessions via `--session`.
+            Panes inside zellij also receive ZELLIJ_PANE_ID (verified live by
+            dumping `env` in a spawned tab), which _current_tab uses to find the
+            tab owning this process.
+        """
+        # Implementation verified in test_terminals.py: test_list_tabs_for_worktree_matches_pane_cwd
+        # and test_current_tab_resolves_own_pane
+
+    def test_zellij_close_tab_by_id(self) -> None:
+        """Specific tabs are closed from outside via `zellij action close-tab-by-id <id>`.
+
+        Evidence:
+            Source: zellij action close-tab-by-id --help (zellij 0.44.3)
+            Added in 0.44.0: CHANGELOG "feat: add --pane-id and --tab-id to all
+            relevant CLI actions" (zellij-org/zellij#4846)
+            Note: `go-to-tab-name` + `close-tab` does NOT work on detached sessions
+            (no focused tab without an attached client), so stable tab IDs are the
+            only reliable way to close tabs from outside.
+            Verified: 2026-06-10 live on zellij 0.44.3 — closed a tab in a detached
+            session by ID; `query-tab-names` confirmed removal
+        """
+        # Implementation verified in test_terminals.py: test_close_tabs_for_worktree_closes_by_id
+
+    def test_zellij_list_sessions_format(self) -> None:
+        """`zellij list-sessions --no-formatting` marks dead sessions with (EXITED.
+
+        Evidence:
+            Source: zellij list-sessions --help (zellij 0.44.3)
+            Quote: "-n, --no-formatting  Do not add colors and formatting to the
+                   list (useful for parsing)"
+            Format: "<name> [Created ...]" for live sessions and
+                    "<name> [Created ...] (EXITED - attach to resurrect)" for dead
+                    ones; exits non-zero when no sessions exist.
+            Note: `--short` prints bare names but does not distinguish dead
+            sessions, so liveness parsing must use --no-formatting.
+            Verified: 2026-06-10 live on zellij 0.44.3
+        """
+        # Implementation verified in test_terminals.py: test_live_session_names_handles_no_sessions
 
     def test_zellij_write_enter_byte(self) -> None:
-        """Zellij sends Enter key via `zellij action write 10` (byte 10 = newline).
+        """Zellij < 0.44 sends Enter via `zellij action write 10` (byte 10 = newline).
 
         Evidence:
             Source: zellij action write --help
             Quote: "Write bytes to the terminal"
-            Note: Byte 10 is ASCII newline (Enter key)
+            Note: Byte 10 is ASCII newline (Enter key); only used on the legacy
+            (zellij < 0.44) tab-opening path, where new-tab cannot run a command
             Verified: 2026-01-11 via `zellij action write --help`
         """
         # Byte 10 = newline verified via ASCII table

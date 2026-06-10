@@ -280,45 +280,27 @@ def _tab_name_for_path(path: Path) -> tuple[Path | None, str]:
     return repo_root, tab_name
 
 
-def _launch_in_tmux(
+def _launch_in_multiplexer(
     path: Path,
-    agent: CodingAgent,
-    terminal: terminals.Terminal,
+    terminal: terminals.Multiplexer,
     full_cmd: str,
     tab_name: str,
     repo_root: Path | None,
-    multiplexer_name: str | None,
-    tmux_session: str | None,
+    *,
+    requested: bool,
+    session_override: str | None,
 ) -> TerminalHandle | None:
-    """Launch an agent via tmux and return its pane handle."""
-    from .terminals.tmux import Tmux  # noqa: PLC0415
-
-    if not isinstance(terminal, Tmux):
-        warn("Could not open new tab in tmux")
-        return None
-
-    requested_tmux = multiplexer_name == "tmux"
-    session_name = tmux_session
-    if session_name is None and requested_tmux and not terminal.detect():
+    """Launch an agent in a multiplexer and return its tab/pane handle."""
+    session_name = session_override
+    if session_name is None and requested and not terminal.detect():
         session_name = terminal.session_name_for_repo(repo_root or path)
 
-    handle = terminal.open_in_session(
+    return terminal.open_in_session(
         path,
         full_cmd,
         tab_name=tab_name,
         session_name=session_name,
     )
-    if handle is None:
-        warn("Could not open new tab in tmux")
-        return None
-
-    session_label = (
-        f" in tmux session {handle.session_name}"
-        if (requested_tmux or tmux_session is not None) and handle.session_name
-        else " in new tmux tab"
-    )
-    success(f"Started {agent.name}{session_label}")
-    return handle
 
 
 def _launch_in_cmux(
@@ -359,25 +341,36 @@ def _launch_in_terminal(
     tab_name: str,
     repo_root: Path | None,
     multiplexer_name: str | None,
-    tmux_session: str | None,
+    multiplexer_session: str | None,
 ) -> tuple[bool, TerminalHandle | None]:
     """Launch an agent in the resolved terminal."""
     if terminal.name == "cmux":
         handle = _launch_in_cmux(path, agent, terminal, full_cmd, tab_name, repo_root)
         return handle is not None, handle
 
-    if terminal.name == "tmux":
-        handle = _launch_in_tmux(
+    if isinstance(terminal, terminals.Multiplexer):
+        requested = multiplexer_name == terminal.name or multiplexer_session is not None
+        handle = _launch_in_multiplexer(
             path,
-            agent,
             terminal,
             full_cmd,
             tab_name,
             repo_root,
-            multiplexer_name,
-            tmux_session,
+            requested=requested,
+            session_override=multiplexer_session,
         )
-        return handle is not None, handle
+        if handle is not None:
+            session_label = (
+                f" in {terminal.name} session {handle.session_name}"
+                if requested and handle.session_name
+                else f" in new {terminal.name} tab"
+            )
+            success(f"Started {agent.name}{session_label}")
+            return True, handle
+        if requested:
+            warn(f"Could not open new tab in {terminal.name}")
+            return False, None
+        # Fall through to plain tab opening (e.g. zellij < 0.44 inside a session)
 
     if terminal.open_new_tab(path, full_cmd, tab_name=tab_name):
         success(f"Started {agent.name} in new {terminal.name} tab")
@@ -395,15 +388,14 @@ def launch_agent(
     task_file: Path | None = None,
     env: dict[str, str] | None = None,
     multiplexer_name: str | None = None,
-    tmux_session: str | None = None,
+    multiplexer_session: str | None = None,
 ) -> TerminalHandle | None:
     """Launch agent in a new terminal tab.
 
     Agents are interactive TUIs that need a proper terminal.
     Priority: tmux/zellij tab > terminal tab > print instructions.
     """
-    effective_multiplexer_name = "tmux" if tmux_session is not None else multiplexer_name
-    terminal = _resolve_launch_terminal(effective_multiplexer_name)
+    terminal = _resolve_launch_terminal(multiplexer_name)
     full_cmd = _build_agent_launch_command(
         path, agent, extra_args, prompt, task_file, env, terminal
     )
@@ -417,8 +409,8 @@ def launch_agent(
             full_cmd,
             tab_name,
             repo_root,
-            effective_multiplexer_name,
-            tmux_session,
+            multiplexer_name,
+            multiplexer_session,
         )
         if launched:
             return handle
