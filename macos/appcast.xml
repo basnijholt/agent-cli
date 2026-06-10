@@ -5,6 +5,21 @@
         <link>https://github.com/basnijholt/agent-cli</link>
         <description>Signed Agent CLI macOS app updates.</description>
         <item>
+            <title>0.101.0</title>
+            <pubDate>Wed, 10 Jun 2026 18:21:45 +0000</pubDate>
+            <link>https://github.com/basnijholt/agent-cli</link>
+            <sparkle:version>196</sparkle:version>
+            <sparkle:shortVersionString>0.101.0</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[## What’s Changed
+
+* Add zellij multiplexer support to agent-cli dev (#590) @basnijholt
+
+]]></description>
+            <enclosure url="https://github.com/basnijholt/agent-cli/releases/download/v0.101.0/AgentCLI.zip" length="22912290" type="application/octet-stream" sparkle:edSignature="9re7kqubAoQgSpsmDvAT/LCWy8/tI1RzR2uGkb+BCwGJbtfvuzDU2ETm/JD+lpQt3Ayik6ULAOv+/5S6JSmdBA=="/>
+        </item>
+        <item>
             <title>0.100.0</title>
             <pubDate>Wed, 10 Jun 2026 17:59:16 +0000</pubDate>
             <link>https://github.com/basnijholt/agent-cli</link>
@@ -146,22 +161,6 @@
 - Normalize NeMo models with cfg.validation_ds=None before transcribe; fixes parakeet-unified-en-0.6b crash in NeMo RNNT transcribe.
 ]]></description>
             <enclosure url="https://github.com/basnijholt/agent-cli/releases/download/v0.97.2/AgentCLI.zip" length="22876496" type="application/octet-stream" sparkle:edSignature="72nAmUfSh/gUt4O4phVrYV+RvfsrhxzQzMlx67Q8dAwD3LXzRNwUyeop6KKaUqasT2QXVHnh8k1grjGDoOTyAA=="/>
-        </item>
-        <item>
-            <title>0.97.1</title>
-            <pubDate>Thu, 04 Jun 2026 07:09:14 +0000</pubDate>
-            <link>https://github.com/basnijholt/agent-cli</link>
-            <sparkle:version>186</sparkle:version>
-            <sparkle:shortVersionString>0.97.1</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[## What's Changed
-* Fix NeMo daemon runtime installs by @basnijholt in https://github.com/basnijholt/agent-cli/pull/575
-
-
-**Full Changelog**: https://github.com/basnijholt/agent-cli/compare/v0.97.0...v0.97.1
-]]></description>
-            <enclosure url="https://github.com/basnijholt/agent-cli/releases/download/v0.97.1/AgentCLI.zip" length="22876193" type="application/octet-stream" sparkle:edSignature="zHJ1pEwR+In37XkGhdEX9sgTdAg0oiu6xbTpCoMF+4WsJEfDInwYlJkw10vb8dN3rnqSdNzv/UjB3tBnFlvRBA=="/>
         </item>
     </channel>
 </rss>
