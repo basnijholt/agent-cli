@@ -196,7 +196,7 @@ class TestLaunchAgent:
         )
 
     def test_cmux_uses_workspace_named_after_repo(self, tmp_path: Path) -> None:
-        """Cmux launches open a tab in a workspace named after the repo."""
+        """Detected cmux opens a tab in a workspace named after the repo."""
         agent = MagicMock()
         agent.name = "codex"
         agent.launch_command.return_value = ["codex"]
@@ -205,14 +205,16 @@ class TestLaunchAgent:
         handle = TerminalHandle("cmux", "surface:5", "repo")
 
         with (
-            patch("agent_cli.dev.launch.terminals.get_terminal", return_value=cmux_terminal),
-            patch("agent_cli.dev.launch.terminals.detect_current_terminal", return_value=None),
+            patch(
+                "agent_cli.dev.launch.terminals.detect_current_terminal",
+                return_value=cmux_terminal,
+            ),
             patch.object(cmux_terminal, "is_available", return_value=True),
             patch.object(cmux_terminal, "open_in_workspace", return_value=handle) as mock_open,
             patch("agent_cli.dev.launch.worktree.get_main_repo_root", return_value=Path("/repo")),
             patch("agent_cli.dev.launch.worktree.get_current_branch", return_value="feature"),
         ):
-            result = launch_agent(tmp_path, agent, multiplexer_name="cmux")
+            result = launch_agent(tmp_path, agent)
 
         assert result == handle
         mock_open.assert_called_once_with(

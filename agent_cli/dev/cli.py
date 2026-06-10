@@ -166,8 +166,8 @@ def _resolve_prompt_text(
 
 def _normalize_tmux_session(
     tmux_session: str | None,
-    multiplexer: Literal["tmux", "cmux"] | None,
-) -> tuple[str | None, Literal["tmux", "cmux"] | None]:
+    multiplexer: Literal["tmux"] | None,
+) -> tuple[str | None, Literal["tmux"] | None]:
     """Normalize `--tmux-session` and make it imply tmux launches."""
     if tmux_session is None:
         return None, multiplexer
@@ -457,12 +457,12 @@ def new(
         ),
     ] = None,
     multiplexer: Annotated[
-        Literal["tmux", "cmux"] | None,
+        Literal["tmux"] | None,
         typer.Option(
             "--multiplexer",
             "-m",
             case_sensitive=False,
-            help="Launch the agent in a specific multiplexer. Currently supported: tmux, cmux. When started outside tmux, creates or reuses a detached session and reports the pane handle. cmux opens a tab in a workspace named after the repo",
+            help="Launch the agent in a specific multiplexer. Currently supported: tmux. When started outside tmux, creates or reuses a detached session and reports the pane handle",
         ),
     ] = None,
     tmux_session: Annotated[
@@ -1051,12 +1051,12 @@ def start_agent(
         ),
     ] = None,
     multiplexer: Annotated[
-        Literal["tmux", "cmux"] | None,
+        Literal["tmux"] | None,
         typer.Option(
             "--multiplexer",
             "-m",
             case_sensitive=False,
-            help="Launch the agent in a specific multiplexer instead of the current terminal. Currently supported: tmux, cmux",
+            help="Launch the agent in a specific multiplexer instead of the current terminal. Currently supported: tmux",
         ),
     ] = None,
     tmux_session: Annotated[
