@@ -42,19 +42,120 @@ class TestDetectProjectType:
         assert project.name == "python-poetry"
         assert "poetry install" in project.setup_commands
 
-    def test_python_pip(self, tmp_path: Path) -> None:
-        """Detect Python project with requirements.txt."""
+    def test_python_pip(self, tmp_path: Path, mocker: pytest.MockerFixture) -> None:
+        """Detect Python project with requirements.txt.
+
+        Mocks shutil.which because detection requires an installer on PATH.
+        """
+        mocker.patch(
+            "agent_cli.dev.project.shutil.which",
+            side_effect=lambda name: f"/usr/bin/{name}",
+        )
         (tmp_path / "requirements.txt").write_text("requests>=2.0")
         project = detect_project_type(tmp_path)
         assert project is not None
         assert project.name == "python-pip"
 
-    def test_python_generic(self, tmp_path: Path) -> None:
-        """Detect generic Python project with pyproject.toml."""
+    def test_python_generic(self, tmp_path: Path, mocker: pytest.MockerFixture) -> None:
+        """Detect generic Python project with pyproject.toml.
+
+        Mocks shutil.which because detection requires an installer on PATH.
+        """
+        mocker.patch(
+            "agent_cli.dev.project.shutil.which",
+            side_effect=lambda name: f"/usr/bin/{name}",
+        )
         (tmp_path / "pyproject.toml").write_text('[project]\nname = "test"')
         project = detect_project_type(tmp_path)
         assert project is not None
         assert project.name == "python"
+
+    def test_python_generic_prefers_uv(
+        self,
+        tmp_path: Path,
+        mocker: pytest.MockerFixture,
+    ) -> None:
+        """Generic Python projects install via uv when available.
+
+        Evidence: https://docs.astral.sh/uv/pip/environments/ - `uv venv`
+        creates a virtual environment at .venv in the working directory, and
+        `uv pip install` installs into the .venv in the working directory
+        (verified live with uv 0.9: `uv venv && uv pip install six` in an
+        empty directory creates ./.venv and installs into it). `uv pip`
+        prefers an activated VIRTUAL_ENV over ./.venv, which run_setup()
+        already neutralizes by removing VIRTUAL_ENV from the subprocess env.
+        """
+        mocker.patch(
+            "agent_cli.dev.project.shutil.which",
+            side_effect=lambda name: "/usr/bin/uv" if name == "uv" else None,
+        )
+        (tmp_path / "pyproject.toml").write_text('[project]\nname = "test"')
+        project = detect_project_type(tmp_path)
+        assert project is not None
+        assert project.name == "python"
+        assert project.setup_commands == ["uv venv", "uv pip install -e ."]
+
+    def test_python_pip_prefers_uv(
+        self,
+        tmp_path: Path,
+        mocker: pytest.MockerFixture,
+    ) -> None:
+        """requirements.txt projects install via uv when available."""
+        mocker.patch(
+            "agent_cli.dev.project.shutil.which",
+            side_effect=lambda name: "/usr/bin/uv" if name == "uv" else None,
+        )
+        (tmp_path / "requirements.txt").write_text("requests>=2.0")
+        project = detect_project_type(tmp_path)
+        assert project is not None
+        assert project.name == "python-pip"
+        assert project.setup_commands == ["uv venv", "uv pip install -r requirements.txt"]
+
+    def test_python_generic_falls_back_to_pip(
+        self,
+        tmp_path: Path,
+        mocker: pytest.MockerFixture,
+    ) -> None:
+        """Without uv, generic Python projects fall back to pip."""
+        mocker.patch(
+            "agent_cli.dev.project.shutil.which",
+            side_effect=lambda name: "/usr/bin/pip" if name == "pip" else None,
+        )
+        (tmp_path / "pyproject.toml").write_text('[project]\nname = "test"')
+        project = detect_project_type(tmp_path)
+        assert project is not None
+        assert project.setup_commands == ["pip install -e ."]
+
+    def test_python_generic_falls_back_to_pip3(
+        self,
+        tmp_path: Path,
+        mocker: pytest.MockerFixture,
+    ) -> None:
+        """Without uv and pip, fall back to pip3.
+
+        Evidence: macOS (e.g. Homebrew/Xcode Python) ships `pip3` without a
+        bare `pip` on PATH, so `pip install -e .` fails with
+        '/bin/sh: pip: command not found'.
+        """
+        mocker.patch(
+            "agent_cli.dev.project.shutil.which",
+            side_effect=lambda name: "/usr/bin/pip3" if name == "pip3" else None,
+        )
+        (tmp_path / "pyproject.toml").write_text('[project]\nname = "test"')
+        project = detect_project_type(tmp_path)
+        assert project is not None
+        assert project.setup_commands == ["pip3 install -e ."]
+
+    def test_python_generic_no_installer_available(
+        self,
+        tmp_path: Path,
+        mocker: pytest.MockerFixture,
+    ) -> None:
+        """Without any Python installer, detection skips setup instead of failing."""
+        mocker.patch("agent_cli.dev.project.shutil.which", return_value=None)
+        (tmp_path / "pyproject.toml").write_text('[project]\nname = "test"')
+        project = detect_project_type(tmp_path)
+        assert project is None
 
     def test_node_pnpm(self, tmp_path: Path) -> None:
         """Detect Node.js project with pnpm."""
@@ -253,12 +354,20 @@ class TestDetectProjectType:
         cmd = project.setup_commands[0]
         assert "unidep install-all -e -n {env_name}" in cmd
 
-    def test_python_unidep_excludes_test_example_dirs(self, tmp_path: Path) -> None:
+    def test_python_unidep_excludes_test_example_dirs(
+        self,
+        tmp_path: Path,
+        mocker: pytest.MockerFixture,
+    ) -> None:
         """Exclude test/example directories from monorepo detection.
 
         Evidence: Directories like tests/, example/, docs/ often contain
         requirements.yaml files as test fixtures, not actual dependencies.
         """
+        mocker.patch(
+            "agent_cli.dev.project.shutil.which",
+            side_effect=lambda name: f"/usr/bin/{name}",
+        )
         # Only requirements.yaml in excluded directories - should NOT be monorepo
         (tmp_path / "pyproject.toml").write_text('[project]\nname = "myproject"')
         for excluded in ["tests", "example", "docs"]:
