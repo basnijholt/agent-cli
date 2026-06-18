@@ -186,6 +186,65 @@ async def test_transcribe_main(
 
 @pytest.mark.asyncio
 @patch("agent_cli.agents.transcribe.signal_handling_context")
+@patch("agent_cli.agents.transcribe.asr.create_transcriber")
+async def test_async_main_returns_error_for_silent_capture(
+    mock_create_transcriber: MagicMock,
+    mock_signal_handling_context: MagicMock,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Silent microphone capture should be returned as a structured error."""
+
+    async def fail_transcriber(**_kwargs: object) -> str:
+        raise transcribe.asr.SilentAudioCaptureError
+
+    mock_create_transcriber.return_value = fail_transcriber
+    mock_signal_handling_context.return_value.__enter__.return_value = asyncio.Event()
+    expected_error = transcribe.asr.SilentAudioCaptureError.DEFAULT_MESSAGE
+
+    provider_cfg = config.ProviderSelection(
+        asr_provider="wyoming",
+        llm_provider="ollama",
+        tts_provider="wyoming",
+    )
+    general_cfg = config.General(
+        log_level="INFO",
+        log_file=None,
+        quiet=True,
+        list_devices=False,
+        clipboard=False,
+    )
+
+    with caplog.at_level(logging.WARNING):
+        result = await transcribe._async_main(
+            extra_instructions=None,
+            provider_cfg=provider_cfg,
+            general_cfg=general_cfg,
+            audio_in_cfg=config.AudioInput(),
+            wyoming_asr_cfg=config.WyomingASR(asr_wyoming_ip="localhost", asr_wyoming_port=12345),
+            openai_asr_cfg=config.OpenAIASR(asr_openai_model="whisper-1"),
+            gemini_asr_cfg=config.GeminiASR(asr_gemini_model="gemini-2.0-flash"),
+            ollama_cfg=config.Ollama(llm_ollama_model="test", llm_ollama_host="localhost"),
+            openai_llm_cfg=config.OpenAILLM(llm_openai_model="gpt-4", openai_base_url=None),
+            gemini_llm_cfg=config.GeminiLLM(
+                llm_gemini_model="gemini-1.5-flash",
+                gemini_api_key="test-key",
+            ),
+            llm_enabled=False,
+            transcription_log=None,
+            save_recording=False,
+        )
+
+    assert result == {
+        "raw_transcript": None,
+        "transcript": None,
+        "llm_enabled": False,
+        "error": expected_error,
+    }
+    assert expected_error in caplog.text
+
+
+@pytest.mark.asyncio
+@patch("agent_cli.agents.transcribe.signal_handling_context")
 @patch("agent_cli.agents.transcribe.maybe_live")
 @patch("agent_cli.agents.transcribe.asr.create_transcriber")
 async def test_live_preview_console_disables_rich_live_status(
