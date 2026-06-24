@@ -5,13 +5,14 @@ from __future__ import annotations
 import asyncio
 import io
 import json
+import struct
 import wave
 from contextlib import suppress
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from functools import partial
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, NoReturn
 
 from agent_cli import constants
 from agent_cli.core.audio import (
@@ -69,6 +70,51 @@ class LivePreviewConfig:
             * constants.AUDIO_CHANNELS
             * constants.AUDIO_FORMAT_WIDTH,
         )
+
+
+@dataclass
+class AudioCaptureStats:
+    """Basic signal stats for captured little-endian int16 PCM audio."""
+
+    byte_count: int = 0
+    peak_sample: int = 0
+
+    @property
+    def is_all_silence(self) -> bool:
+        """Return true when capture produced bytes but every sample was zero."""
+        return self.byte_count > 0 and self.peak_sample == 0
+
+    def observe(self, chunk: bytes) -> None:
+        """Update stats from one PCM chunk."""
+        self.byte_count += len(chunk)
+        self.peak_sample = max(self.peak_sample, _peak_int16_sample(chunk))
+
+
+class SilentAudioCaptureError(RuntimeError):
+    """Raised when microphone capture returns only digital silence."""
+
+    DEFAULT_MESSAGE = (
+        "Microphone capture returned only digital silence. "
+        "On macOS, allow Microphone permission for Agent CLI, "
+        "then restart Agent CLI."
+    )
+
+    def __init__(self, message: str | None = None) -> None:
+        """Create an error with the default silent-capture guidance."""
+        super().__init__(message or self.DEFAULT_MESSAGE)
+
+
+def _raise_silent_audio_capture_error() -> NoReturn:
+    raise SilentAudioCaptureError
+
+
+def _peak_int16_sample(chunk: bytes) -> int:
+    sample_count = len(chunk) // constants.AUDIO_FORMAT_WIDTH
+    if sample_count <= 0:
+        return 0
+    pcm = chunk[: sample_count * constants.AUDIO_FORMAT_WIDTH]
+    samples = struct.unpack(f"<{sample_count}h", pcm)
+    return max((abs(sample) for sample in samples), default=0)
 
 
 def _write_live_preview_event(
@@ -421,8 +467,8 @@ async def _send_audio(
     recording_path_callback: Callable[[Path], None] | None = None,
     audio_level_callback: Callable[[bytes], None] | None = None,
     live_preview_callback: Callable[[bytes], Awaitable[None]] | None = None,
-) -> None:
-    """Read from mic and send to Wyoming server."""
+) -> AudioCaptureStats:
+    """Read from mic, send to Wyoming server, and return capture stats."""
     from wyoming.asr import Transcribe  # noqa: PLC0415
     from wyoming.audio import AudioChunk, AudioStart, AudioStop  # noqa: PLC0415
 
@@ -434,9 +480,11 @@ async def _send_audio(
     # Buffer to save audio if requested
     audio_buffer = io.BytesIO() if save_recording else None
     pending_audio_level_tasks: set[asyncio.Task[None]] = set()
+    capture_stats = AudioCaptureStats()
 
     async def send_chunk(chunk: bytes) -> None:
         """Send audio chunk to ASR server and optionally buffer it."""
+        capture_stats.observe(chunk)
         if audio_buffer is not None:
             audio_buffer.write(chunk)
         if audio_level_callback:
@@ -475,6 +523,7 @@ async def _send_audio(
                         recording_path_callback(saved_path)
         finally:
             await _finish_audio_level_callbacks(pending_audio_level_tasks)
+    return capture_stats
 
 
 async def record_audio_to_buffer(queue: asyncio.Queue, logger: logging.Logger) -> bytes:
@@ -692,7 +741,7 @@ async def _transcribe_live_audio_wyoming(
                 if live_preview is not None:
                     live_preview.reset_log()
                     live_preview_task = asyncio.create_task(live_preview.run())
-                _, recv_task = await manage_send_receive_tasks(
+                send_task, recv_task = await manage_send_receive_tasks(
                     _send_audio(
                         client,
                         stream,
@@ -715,8 +764,17 @@ async def _transcribe_live_audio_wyoming(
                     return_when=asyncio.ALL_COMPLETED,
                 )
                 result = recv_task.result()
+                capture_stats = send_task.result() if send_task is not None else None
+                if (
+                    capture_stats is not None
+                    and capture_stats.is_all_silence
+                    and not result.strip()
+                ):
+                    _raise_silent_audio_capture_error()
                 final_transcript = result
                 return result
+    except SilentAudioCaptureError:
+        raise
     except (ConnectionRefusedError, Exception):
         logger.warning("Failed to connect to Wyoming ASR server")
         return None
