@@ -38,6 +38,10 @@ _KOKORO_LANGUAGE_TAGS = {
 def _tts_voice(name: str, backend_type: str) -> TtsVoice:
     """Build Wyoming voice metadata for a registered TTS model."""
     if backend_type == "kokoro":
+        from agent_cli.server.tts.backends.kokoro import DEFAULT_VOICE  # noqa: PLC0415
+
+        if name == "kokoro" or Path(name).suffix.lower() == ".pth":
+            name = DEFAULT_VOICE
         language = _KOKORO_LANGUAGE_TAGS.get(Path(name).stem[:1].lower(), "en")
         return TtsVoice(
             name=name,
@@ -240,7 +244,7 @@ class WyomingTTSHandler(AsyncEventHandler):
         voices = [
             _tts_voice(
                 status.name,
-                self._registry.get_manager(status.name).config.backend_type,
+                self._registry.get_manager(status.name).backend_type,
             )
             for status in self._registry.list_status()
         ]

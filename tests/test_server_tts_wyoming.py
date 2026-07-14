@@ -33,6 +33,16 @@ def test_kokoro_voice_language_tags(name: str, language: str) -> None:
     assert _tts_voice(name, "kokoro").languages == [language]
 
 
+@pytest.mark.parametrize("model_name", ["kokoro", "/models/kokoro-v1_0.pth"])
+def test_kokoro_model_name_advertises_default_voice(model_name: str) -> None:
+    """Kokoro model identifiers should not be advertised as voice names."""
+    voice = _tts_voice(model_name, "kokoro")
+
+    assert voice.name == "af_heart"
+    assert voice.description == "Kokoro TTS af_heart"
+    assert voice.languages == ["en-US"]
+
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize("supports_streaming", [True, False])
 async def test_synthesize_passes_voice_name(supports_streaming: bool) -> None:
@@ -68,9 +78,9 @@ async def test_describe_uses_backend_voice_metadata() -> None:
         SimpleNamespace(name="en_US-lessac-medium"),
     ]
     registry.get_manager.side_effect = [
-        SimpleNamespace(config=SimpleNamespace(backend_type="kokoro")),
-        SimpleNamespace(config=SimpleNamespace(backend_type="kokoro")),
-        SimpleNamespace(config=SimpleNamespace(backend_type="piper")),
+        SimpleNamespace(backend_type="kokoro"),
+        SimpleNamespace(backend_type="kokoro"),
+        SimpleNamespace(backend_type="piper"),
     ]
     handler = _handler(registry)
     write_event = AsyncMock()
