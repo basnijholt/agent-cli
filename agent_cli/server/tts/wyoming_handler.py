@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import logging
 from functools import partial
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 from wyoming.audio import AudioChunk, AudioStart, AudioStop
@@ -38,11 +37,18 @@ _KOKORO_LANGUAGE_TAGS = {
 def _tts_voice(name: str, backend_type: str) -> TtsVoice:
     """Build Wyoming voice metadata for a registered TTS model."""
     if backend_type == "kokoro":
-        from agent_cli.server.tts.backends.kokoro import DEFAULT_VOICE  # noqa: PLC0415
+        prefix, separator, voice_name = name.partition("_")
+        is_voice = (
+            separator == "_"
+            and prefix[:1] in _KOKORO_LANGUAGE_TAGS
+            and prefix[1:] in {"f", "m"}
+            and bool(voice_name)
+        )
+        if not is_voice:
+            from agent_cli.server.tts.backends.kokoro import DEFAULT_VOICE  # noqa: PLC0415
 
-        if name == "kokoro" or Path(name).suffix.lower() == ".pth":
             name = DEFAULT_VOICE
-        language = _KOKORO_LANGUAGE_TAGS.get(Path(name).stem[:1].lower(), "en")
+        language = _KOKORO_LANGUAGE_TAGS[name[0]]
         return TtsVoice(
             name=name,
             description=f"Kokoro TTS {name}",

@@ -33,7 +33,10 @@ def test_kokoro_voice_language_tags(name: str, language: str) -> None:
     assert _tts_voice(name, "kokoro").languages == [language]
 
 
-@pytest.mark.parametrize("model_name", ["kokoro", "/models/kokoro-v1_0.pth"])
+@pytest.mark.parametrize(
+    "model_name",
+    ["kokoro", "/models/kokoro-v1_0.pth", "kokoro-v1_0", "custom-model"],
+)
 def test_kokoro_model_name_advertises_default_voice(model_name: str) -> None:
     """Kokoro model identifiers should not be advertised as voice names."""
     voice = _tts_voice(model_name, "kokoro")
