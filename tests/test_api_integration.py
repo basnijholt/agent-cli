@@ -235,6 +235,33 @@ def test_server_tts_command_in_cli() -> None:
 
 
 @patch("uvicorn.run")
+def test_server_tts_kokoro_defaults_to_default_voice(mock_uvicorn_run: MagicMock) -> None:
+    """Kokoro server should register its default voice, not its model sentinel."""
+    runner = CliRunner()
+    registry = MagicMock(default_model="af_heart")
+
+    with (
+        patch("agent_cli.core.deps._check_and_install_extras", return_value=[]),
+        patch("agent_cli.server.cli._check_tts_deps"),
+        patch(
+            "agent_cli.server.tts.model_registry.create_tts_registry",
+            return_value=registry,
+        ) as mock_create_registry,
+    ):
+        result = runner.invoke(
+            cli_app,
+            ["server", "tts", "--backend", "kokoro", "--no-wyoming"],
+        )
+
+    assert result.exit_code == 0
+    mock_create_registry.assert_called_once_with(default_model="af_heart")
+    registered_config = registry.register.call_args.args[0]
+    assert registered_config.model_name == "af_heart"
+    assert registered_config.backend_type == "kokoro"
+    mock_uvicorn_run.assert_called_once()
+
+
+@patch("uvicorn.run")
 def test_server_tts_accepts_tts_wyoming_port_alias(mock_uvicorn_run: MagicMock) -> None:
     """TTS server should accept the client-style TTS Wyoming port alias."""
     runner = CliRunner()

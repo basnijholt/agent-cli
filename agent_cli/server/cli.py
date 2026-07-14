@@ -178,6 +178,15 @@ def _download_tts_models(
     console.print("[bold green]Download complete![/bold green]")
 
 
+def _default_tts_model(backend: str) -> str:
+    """Get the default model or voice for a resolved TTS backend."""
+    if backend == "kokoro":
+        from agent_cli.server.tts.backends.kokoro import DEFAULT_VOICE  # noqa: PLC0415
+
+        return DEFAULT_VOICE
+    return "en_US-lessac-medium"
+
+
 def _check_whisper_deps(backend: str, *, download_only: bool = False) -> None:
     """Check that Whisper dependencies are available."""
     _check_server_deps()
@@ -911,7 +920,7 @@ def tts_cmd(  # noqa: PLR0915
 
     # Default model based on backend (Kokoro auto-downloads from HuggingFace)
     if model is None:
-        model = ["kokoro"] if resolved_backend == "kokoro" else ["en_US-lessac-medium"]
+        model = [_default_tts_model(resolved_backend)]
 
     # Validate default model against model list
     if default_model is not None and default_model not in model:

@@ -17,9 +17,10 @@ from agent_cli.server.tts.backends.base import (
 logger = logging.getLogger(__name__)
 
 BackendType = Literal["piper", "kokoro", "auto"]
+ResolvedBackendType = Literal["piper", "kokoro"]
 
 
-def detect_backend() -> Literal["piper", "kokoro"]:
+def detect_backend() -> ResolvedBackendType:
     """Detect the best backend for the current platform.
 
     Returns:
@@ -76,6 +77,7 @@ def create_backend(
 __all__ = [
     "BackendConfig",
     "BackendType",
+    "ResolvedBackendType",
     "SynthesisResult",
     "create_backend",
     "detect_backend",
