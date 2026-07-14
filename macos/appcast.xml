@@ -5,6 +5,39 @@
         <link>https://github.com/basnijholt/agent-cli</link>
         <description>Signed Agent CLI macOS app updates.</description>
         <item>
+            <title>0.102.0</title>
+            <pubDate>Tue, 14 Jul 2026 05:57:01 +0000</pubDate>
+            <link>https://github.com/basnijholt/agent-cli</link>
+            <sparkle:version>197</sparkle:version>
+            <sparkle:shortVersionString>0.102.0</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[## What’s Changed
+
+* Fix Wyoming TTS voice selection and metadata (#613) @basnijholt
+* ⬆️ Update actions/checkout action to v7 (#598) @[renovate[bot]](https://github.com/apps/renovate)
+* ⬆️ Update sparkle-project/Sparkle to v2.9.4 (#607) @[renovate[bot]](https://github.com/apps/renovate)
+* [pre-commit.ci] pre-commit autoupdate (#612) @[pre-commit-ci[bot]](https://github.com/apps/pre-commit-ci)
+* ⬆️ Update astral-sh/setup-uv action to v8.3.2 (#611) @[renovate[bot]](https://github.com/apps/renovate)
+* ⬆️ Update astral-sh/setup-uv action to v8.3.1 (#610) @[renovate[bot]](https://github.com/apps/renovate)
+* ⬆️ Update astral-sh/setup-uv action to v8.3.0 (#609) @[renovate[bot]](https://github.com/apps/renovate)
+* ⬆️ Update docker/login-action action to v4.4.0 (#608) @[renovate[bot]](https://github.com/apps/renovate)
+* ⬆️ Update docker/setup-buildx-action action to v4.2.0 (#606) @[renovate[bot]](https://github.com/apps/renovate)
+* ⬆️ Update docker/metadata-action action to v6.2.0 (#605) @[renovate[bot]](https://github.com/apps/renovate)
+* ⬆️ Update docker/login-action action to v4.3.0 (#604) @[renovate[bot]](https://github.com/apps/renovate)
+* ⬆️ Update docker/build-push-action action to v7.3.0 (#603) @[renovate[bot]](https://github.com/apps/renovate)
+* [pre-commit.ci] pre-commit autoupdate (#602) @[pre-commit-ci[bot]](https://github.com/apps/pre-commit-ci)
+* ⬆️ Update release-drafter/release-drafter action to v7.5.1 (#601) @[renovate[bot]](https://github.com/apps/renovate)
+* ⬆️ Update actions/setup-python action to v6.3.0 (#600) @[renovate[bot]](https://github.com/apps/renovate)
+* [pre-commit.ci] pre-commit autoupdate (#599) @[pre-commit-ci[bot]](https://github.com/apps/pre-commit-ci)
+* ⬆️ Update release-drafter/release-drafter action to v7.4.0 (#596) @[renovate[bot]](https://github.com/apps/renovate)
+* [pre-commit.ci] pre-commit autoupdate (#595) @[pre-commit-ci[bot]](https://github.com/apps/pre-commit-ci)
+* Pick best available installer for generic Python project setup (#591) @basnijholt
+
+]]></description>
+            <enclosure url="https://github.com/basnijholt/agent-cli/releases/download/v0.102.0/AgentCLI.zip" length="24388215" type="application/octet-stream" sparkle:edSignature="1b3tpgDf/VolJ9MLr0R5N9gPmOkYG7Uf6ZyXQTNLPTfiMeo2malwMj5kzTFcCp7xQr/jijUB7/nRNoSzZiBnCg=="/>
+        </item>
+        <item>
             <title>0.101.0</title>
             <pubDate>Wed, 10 Jun 2026 18:21:45 +0000</pubDate>
             <link>https://github.com/basnijholt/agent-cli</link>
@@ -146,21 +179,6 @@
 
 ]]></description>
             <enclosure url="https://github.com/basnijholt/agent-cli/releases/download/v0.98.0/AgentCLI.zip" length="22891739" type="application/octet-stream" sparkle:edSignature="tC7V5Z+r9fyFe5GvISxKB2ExZJoyx8G7Qt/Zqnb1ELJcU6lm+0KSN3tx7d/BBm1Dbl8eKRiCorOATkTKE2HSCw=="/>
-        </item>
-        <item>
-            <title>0.97.2</title>
-            <pubDate>Thu, 04 Jun 2026 07:34:52 +0000</pubDate>
-            <link>https://github.com/basnijholt/agent-cli</link>
-            <sparkle:version>187</sparkle:version>
-            <sparkle:shortVersionString>0.97.2</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[Patch release for NeMo daemon runtime support and parakeet-unified-en-0.6b live transcription.
-
-- Propagate daemon uv path to child agent-cli process so NeMo runtime re-exec can find uv under launchd/systemd.
-- Normalize NeMo models with cfg.validation_ds=None before transcribe; fixes parakeet-unified-en-0.6b crash in NeMo RNNT transcribe.
-]]></description>
-            <enclosure url="https://github.com/basnijholt/agent-cli/releases/download/v0.97.2/AgentCLI.zip" length="22876496" type="application/octet-stream" sparkle:edSignature="72nAmUfSh/gUt4O4phVrYV+RvfsrhxzQzMlx67Q8dAwD3LXzRNwUyeop6KKaUqasT2QXVHnh8k1grjGDoOTyAA=="/>
         </item>
     </channel>
 </rss>
