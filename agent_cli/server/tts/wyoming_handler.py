@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 from functools import partial
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from wyoming.audio import AudioChunk, AudioStart, AudioStop
@@ -20,6 +21,48 @@ if TYPE_CHECKING:
     from agent_cli.server.tts.model_registry import TTSModelRegistry
 
 logger = logging.getLogger(__name__)
+
+_KOKORO_LANGUAGE_TAGS = {
+    "a": "en-US",
+    "b": "en-GB",
+    "e": "es",
+    "f": "fr",
+    "h": "hi",
+    "i": "it",
+    "j": "ja",
+    "p": "pt-BR",
+    "z": "zh",
+}
+
+
+def _tts_voice(name: str, backend_type: str) -> TtsVoice:
+    """Build Wyoming voice metadata for a registered TTS model."""
+    if backend_type == "kokoro":
+        language = _KOKORO_LANGUAGE_TAGS.get(Path(name).stem[:1].lower(), "en")
+        return TtsVoice(
+            name=name,
+            description=f"Kokoro TTS {name}",
+            attribution=Attribution(
+                name="Kokoro",
+                url="https://huggingface.co/hexgrad/Kokoro-82M",
+            ),
+            installed=True,
+            languages=[language],
+            version="1.0",
+        )
+
+    return TtsVoice(
+        name=name,
+        description=f"Piper TTS {name}",
+        attribution=Attribution(
+            name="Piper",
+            url="https://github.com/rhasspy/piper",
+        ),
+        installed=True,
+        # Extract language from model name (e.g., "en_US-lessac-medium" -> "en")
+        languages=[name.split("_", maxsplit=1)[0] if "_" in name else "en"],
+        version="1.0",
+    )
 
 
 class WyomingTTSHandler(AsyncEventHandler):
@@ -88,11 +131,12 @@ class WyomingTTSHandler(AsyncEventHandler):
 
         try:
             manager = self._registry.get_manager()
+            voice = synthesize.voice.name if synthesize.voice else None
 
             if manager.supports_streaming:
-                await self._synthesize_streaming(manager, text, synthesize.voice)
+                await self._synthesize_streaming(manager, text, voice)
             else:
-                await self._synthesize_complete(manager, text, synthesize.voice)
+                await self._synthesize_complete(manager, text, voice)
 
         except Exception:
             logger.exception("Wyoming synthesis failed")
@@ -194,17 +238,9 @@ class WyomingTTSHandler(AsyncEventHandler):
 
         # Get list of available models as voices
         voices = [
-            TtsVoice(
-                name=status.name,
-                description=f"Piper TTS {status.name}",
-                attribution=Attribution(
-                    name="Piper",
-                    url="https://github.com/rhasspy/piper",
-                ),
-                installed=True,
-                # Extract language from model name (e.g., "en_US-lessac-medium" -> "en")
-                languages=[status.name.split("_")[0] if "_" in status.name else "en"],
-                version="1.0",
+            _tts_voice(
+                status.name,
+                self._registry.get_manager(status.name).config.backend_type,
             )
             for status in self._registry.list_status()
         ]
