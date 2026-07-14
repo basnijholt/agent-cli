@@ -32,7 +32,7 @@ Sets up hotkeys for common workflows:
 - Super+Shift+A: Autocorrect clipboard text
 - Super+Shift+V: Voice edit clipboard text
 
-On macOS, you may need to grant Accessibility permissions to skhd in System Settings → Privacy & Security → Accessibility.
+On macOS, you may need to grant Accessibility permissions to skhd in System Settings → Privacy & Security → Accessibility. The transcription hotkey may also prompt for Microphone access for skhd the first time it records.
 
 On a fresh install, `agent-cli install-hotkeys` may take longer than expected because it can download Python extras before setting up the platform-specific scripts.
 
