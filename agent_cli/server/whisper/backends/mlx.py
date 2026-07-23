@@ -135,11 +135,19 @@ def _transcribe_in_subprocess(
     kwargs: dict[str, Any],
 ) -> dict[str, Any]:
     """Run transcription in subprocess. Model stays loaded between calls."""
+    import mlx.core as mx  # noqa: PLC0415
     import mlx_whisper  # noqa: PLC0415
     import numpy as np  # noqa: PLC0415
 
     audio_array = np.frombuffer(audio_bytes, dtype=audio_dtype).reshape(audio_shape)
     result = mlx_whisper.transcribe(audio_array, path_or_hf_repo=model_name, **kwargs)
+
+    # Release MLX's reusable Metal buffer cache after each request. With --ttl 0
+    # the subprocess is never recycled, so without this the cache grows to the
+    # largest working set ever seen and gets pushed to swap, degrading latency.
+    # clear_cache() frees only the cache, NOT live arrays, so the loaded model
+    # weights stay resident and inference stays hot (no cold reload).
+    mx.clear_cache()
 
     return {
         "text": result.get("text", ""),

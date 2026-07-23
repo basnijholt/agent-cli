@@ -7,10 +7,14 @@ import wave
 from typing import Any
 from unittest.mock import MagicMock, patch
 
+import numpy as np
 import pytest
 
 from agent_cli.server.whisper.backends.base import BackendConfig
-from agent_cli.server.whisper.backends.mlx import MLXWhisperBackend
+from agent_cli.server.whisper.backends.mlx import (
+    MLXWhisperBackend,
+    _transcribe_in_subprocess,
+)
 
 
 def _make_wav_bytes(
@@ -78,3 +82,34 @@ async def test_mlx_transcribe_accepts_matching_wav() -> None:
 
     mock_convert.assert_not_called()
     assert result.text == "hello"
+
+
+def test_transcribe_in_subprocess_clears_metal_cache() -> None:
+    """_transcribe_in_subprocess must release MLX's Metal buffer cache.
+
+    Regression test for the --ttl 0 memory leak: without mx.clear_cache() the
+    long-lived subprocess never releases the Metal buffer cache, so it grows to
+    the largest working set ever seen and gets pushed to swap.
+    """
+    audio = np.zeros(160, dtype=np.float32)
+    fake_result = {"text": "hi", "language": "en", "segments": []}
+
+    fake_mx = MagicMock()
+    fake_mlx_whisper = MagicMock()
+    fake_mlx_whisper.transcribe.return_value = fake_result
+
+    with patch.dict(
+        "sys.modules",
+        {"mlx": MagicMock(core=fake_mx), "mlx.core": fake_mx, "mlx_whisper": fake_mlx_whisper},
+    ):
+        result = _transcribe_in_subprocess(
+            "mlx-community/whisper-large-v3-mlx",
+            audio.tobytes(),
+            audio.shape,
+            str(audio.dtype),
+            {"temperature": 0.0},
+        )
+
+    fake_mlx_whisper.transcribe.assert_called_once()
+    fake_mx.clear_cache.assert_called_once_with()
+    assert result["text"] == "hi"
