@@ -140,14 +140,17 @@ def _transcribe_in_subprocess(
     import numpy as np  # noqa: PLC0415
 
     audio_array = np.frombuffer(audio_bytes, dtype=audio_dtype).reshape(audio_shape)
-    result = mlx_whisper.transcribe(audio_array, path_or_hf_repo=model_name, **kwargs)
-
-    # Release MLX's reusable Metal buffer cache after each request. With --ttl 0
-    # the subprocess is never recycled, so without this the cache grows to the
-    # largest working set ever seen and gets pushed to swap, degrading latency.
-    # clear_cache() frees only the cache, NOT live arrays, so the loaded model
-    # weights stay resident and inference stays hot (no cold reload).
-    mx.clear_cache()
+    try:
+        result = mlx_whisper.transcribe(audio_array, path_or_hf_repo=model_name, **kwargs)
+    finally:
+        # Release MLX's reusable Metal buffer cache after each request. With --ttl 0
+        # the subprocess is never recycled, so without this the cache grows to the
+        # largest working set ever seen and gets pushed to swap, degrading latency.
+        # clear_cache() frees only the cache, NOT live arrays, so the loaded model
+        # weights stay resident and inference stays hot (no cold reload).
+        # In finally so a failed transcription also releases the buffers it
+        # allocated; otherwise the long-lived worker would retain them.
+        mx.clear_cache()
 
     return {
         "text": result.get("text", ""),

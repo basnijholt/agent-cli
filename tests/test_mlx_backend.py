@@ -113,3 +113,34 @@ def test_transcribe_in_subprocess_clears_metal_cache() -> None:
     fake_mlx_whisper.transcribe.assert_called_once()
     fake_mx.clear_cache.assert_called_once_with()
     assert result["text"] == "hi"
+
+
+def test_transcribe_in_subprocess_clears_cache_on_failure() -> None:
+    """A failed transcription must still release the Metal buffer cache.
+
+    The worker subprocess is long-lived under --ttl 0, so buffers allocated by a
+    transcription that raises would otherwise leak. clear_cache() runs in a
+    finally block, so it must fire even when mlx_whisper.transcribe raises.
+    """
+    audio = np.zeros(160, dtype=np.float32)
+
+    fake_mx = MagicMock()
+    fake_mlx_whisper = MagicMock()
+    fake_mlx_whisper.transcribe.side_effect = RuntimeError("boom")
+
+    with (
+        patch.dict(
+            "sys.modules",
+            {"mlx": MagicMock(core=fake_mx), "mlx.core": fake_mx, "mlx_whisper": fake_mlx_whisper},
+        ),
+        pytest.raises(RuntimeError, match="boom"),
+    ):
+        _transcribe_in_subprocess(
+            "mlx-community/whisper-large-v3-mlx",
+            audio.tobytes(),
+            audio.shape,
+            str(audio.dtype),
+            {"temperature": 0.0},
+        )
+
+    fake_mx.clear_cache.assert_called_once_with()

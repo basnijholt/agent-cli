@@ -142,6 +142,8 @@ def main() -> None:
         help="Call mx.set_cache_limit(BYTES) once at load as an alternative bound.",
     )
     args = parser.parse_args()
+    if args.requests < 1:
+        parser.error("--requests must be a positive integer")
 
     repo = _resolve_mlx_model_name(args.model)
     print(f"[repro] mlx {mx.__version__} | model {args.model} -> {repo}")
