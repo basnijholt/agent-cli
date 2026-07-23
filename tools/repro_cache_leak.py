@@ -147,7 +147,9 @@ def main() -> None:
     print(f"[repro] mlx {mx.__version__} | model {args.model} -> {repo}")
     print(
         f"[repro] mode: {'clear_cache' if args.clear_cache else 'baseline'}"
-        + (f" | set_cache_limit={args.set_cache_limit}" if args.set_cache_limit is not None else ""),
+        + (
+            f" | set_cache_limit={args.set_cache_limit}" if args.set_cache_limit is not None else ""
+        ),
     )
 
     # Warm-load the model (first transcribe pulls weights into the cache).
