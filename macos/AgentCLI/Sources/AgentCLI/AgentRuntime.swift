@@ -27,6 +27,28 @@ private final class UserInstalledCLICheckCache {
     }
 }
 
+/// Caches the login shell PATH lookup, which costs a full `zsh -lic` startup
+/// (~1s with a typical dotfiles setup) and would otherwise run on every command.
+private final class LoginShellPATHCache {
+    private let lock = NSLock()
+    private var resolved: String??
+
+    func value(compute: () -> String?) -> String? {
+        lock.lock()
+        defer { lock.unlock() }
+        if let resolved {
+            return resolved
+        }
+        let value = compute()
+        resolved = value
+        return value
+    }
+
+    func invalidate() {
+        lock.withLock { resolved = nil }
+    }
+}
+
 typealias AgentProcessRunner = (URL, [String], [String: String]) -> CommandResult
 typealias LocalhostConnector = (UInt16) -> Bool
 
@@ -58,6 +80,7 @@ struct AgentRuntime {
     private let processRunner: AgentProcessRunner
     private let localhostConnector: LocalhostConnector
     private let userInstalledCLICheckCache: UserInstalledCLICheckCache
+    private let loginShellPATHCache: LoginShellPATHCache
     private let whisperReadyTimeout: TimeInterval
     let appSupportURL: URL
     let bundledUVURL: URL
@@ -90,6 +113,7 @@ struct AgentRuntime {
         self.processRunner = processRunner
         self.localhostConnector = localhostConnector
         self.userInstalledCLICheckCache = UserInstalledCLICheckCache()
+        self.loginShellPATHCache = LoginShellPATHCache()
         self.whisperReadyTimeout = whisperReadyTimeout
 
         if let override = environment["AGENTCLI_APP_SUPPORT_DIR"], !override.isEmpty {
@@ -343,6 +367,9 @@ struct AgentRuntime {
         progress: AgentBootstrapProgress = { _ in }
     ) -> CommandResult {
         let mode = runtimeMode
+        if force {
+            loginShellPATHCache.invalidate()
+        }
         do {
             try prepareDirectories(for: mode)
         } catch {
@@ -647,7 +674,7 @@ struct AgentRuntime {
         let existingPATH = environment["PATH"] ?? "/usr/bin:/bin:/usr/sbin:/sbin"
         environment["PATH"] = userInstalledCLIPath(
             existingPATH: existingPATH,
-            loginShellPATH: Self.loginShellPATH(environment: baseEnvironment)
+            loginShellPATH: loginShellPATHCache.value { loginShellPATH() }
         )
         return environment
     }
@@ -708,14 +735,14 @@ struct AgentRuntime {
             .joined(separator: ":")
     }
 
-    private static func loginShellPATH(environment: [String: String]) -> String? {
-        let shellPath = environment["SHELL"].flatMap { $0.isEmpty ? nil : $0 } ?? "/bin/zsh"
-        guard FileManager.default.isExecutableFile(atPath: shellPath) else { return nil }
+    private func loginShellPATH() -> String? {
+        let shellPath = baseEnvironment["SHELL"].flatMap { $0.isEmpty ? nil : $0 } ?? "/bin/zsh"
+        guard fileManager.isExecutableFile(atPath: shellPath) else { return nil }
 
-        let result = runProcess(
-            executableURL: URL(fileURLWithPath: shellPath),
-            arguments: ["-lic", "printf '%s\\n' \"$PATH\""],
-            environment: environment
+        let result = processRunner(
+            URL(fileURLWithPath: shellPath),
+            ["-lic", "printf '%s\\n' \"$PATH\""],
+            baseEnvironment
         )
         guard result.exitCode == 0 else { return nil }
 
