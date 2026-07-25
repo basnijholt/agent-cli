@@ -242,14 +242,15 @@ final class AgentCommandTests: XCTestCase {
         XCTAssertEqual(components.filter { $0 == "/usr/bin" }.count, 1)
     }
 
-    /// `zsh -lic` costs roughly a second with a real dotfiles setup, so the login shell
-    /// PATH must be resolved once per runtime instead of once per spawned command.
-    func testUserInstalledRuntimeCachesLoginShellPATHLookup() {
-        let defaults = UserDefaults(suiteName: "AgentCLITests.user-runtime-shell-path-cache")!
-        defaults.removePersistentDomain(forName: "AgentCLITests.user-runtime-shell-path-cache")
+    /// Builds a user-installed runtime whose process runner counts `zsh -lic` PATH probes.
+    private func makeShellPATHProbingRuntime(
+        suiteName: String,
+        onShellProbe: @escaping () -> Void
+    ) -> AgentRuntime {
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defaults.removePersistentDomain(forName: suiteName)
         defaults.set(true, forKey: RuntimeSettings.useUserInstalledAgentCLIKey)
-        var shellInvocations = 0
-        let runtime = AgentRuntime(
+        return AgentRuntime(
             environment: [
                 "AGENTCLI_APP_SUPPORT_DIR": "/tmp/agentcli-test-support",
                 "PATH": "/custom/bin",
@@ -260,45 +261,39 @@ final class AgentCommandTests: XCTestCase {
                 guard arguments.first == "-lic" else {
                     return CommandResult(exitCode: 0, output: "")
                 }
-                shellInvocations += 1
+                onShellProbe()
                 return CommandResult(exitCode: 0, output: "/shell/bin\n")
             }
         )
+    }
+
+    /// `zsh -lic` costs roughly a second with a real dotfiles setup, so the login shell
+    /// PATH must be resolved once per runtime instead of once per spawned command.
+    func testUserInstalledRuntimeCachesLoginShellPATHLookup() {
+        var shellProbes = 0
+        let runtime = makeShellPATHProbingRuntime(
+            suiteName: "AgentCLITests.user-runtime-shell-path-cache"
+        ) { shellProbes += 1 }
 
         _ = runtime.commandEnvironment()
         let environment = runtime.commandEnvironment()
         _ = runtime.runAgentCLI(arguments: ["--version"])
 
-        XCTAssertEqual(shellInvocations, 1)
+        XCTAssertEqual(shellProbes, 1)
         XCTAssertEqual(environment["PATH"]?.split(separator: ":").first.map(String.init), "/shell/bin")
     }
 
     func testForcedInstallRefreshesLoginShellPATHLookup() {
-        let defaults = UserDefaults(suiteName: "AgentCLITests.user-runtime-shell-path-refresh")!
-        defaults.removePersistentDomain(forName: "AgentCLITests.user-runtime-shell-path-refresh")
-        defaults.set(true, forKey: RuntimeSettings.useUserInstalledAgentCLIKey)
-        var shellInvocations = 0
-        let runtime = AgentRuntime(
-            environment: [
-                "AGENTCLI_APP_SUPPORT_DIR": "/tmp/agentcli-test-support",
-                "PATH": "/custom/bin",
-                "SHELL": "/bin/zsh",
-            ],
-            userDefaults: defaults,
-            processRunner: { _, arguments, _ in
-                guard arguments.first == "-lic" else {
-                    return CommandResult(exitCode: 0, output: "")
-                }
-                shellInvocations += 1
-                return CommandResult(exitCode: 0, output: "/shell/bin\n")
-            }
-        )
+        var shellProbes = 0
+        let runtime = makeShellPATHProbingRuntime(
+            suiteName: "AgentCLITests.user-runtime-shell-path-refresh"
+        ) { shellProbes += 1 }
 
         _ = runtime.commandEnvironment()
         _ = runtime.ensureInstalled(force: true)
         _ = runtime.commandEnvironment()
 
-        XCTAssertEqual(shellInvocations, 2)
+        XCTAssertEqual(shellProbes, 2)
     }
 
     func testTranscriptionBootstrapRepairsStaleWhisperDaemonMarker() throws {

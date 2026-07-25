@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Annotated, Any
 
 import typer
+from rich.table import Table
 
 from .config import load_config, normalize_provider_defaults
 from .core.process import set_process_title
@@ -47,8 +48,6 @@ app = typer.Typer(
 
 def _version_callback(value: bool) -> None:
     if value:
-        from rich.table import Table  # noqa: PLC0415
-
         from . import __version__  # noqa: PLC0415
 
         path = Path(__file__).parent
