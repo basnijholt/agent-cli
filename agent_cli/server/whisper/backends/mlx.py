@@ -150,6 +150,8 @@ def _transcribe_in_subprocess(
         # weights stay resident and inference stays hot (no cold reload).
         # In finally so a failed transcription also releases the buffers it
         # allocated; otherwise the long-lived worker would retain them.
+        # Top-level clear_cache() needs mlx>=0.24 (pinned in the mlx-whisper
+        # extra); older releases only expose mx.metal.clear_cache().
         mx.clear_cache()
 
     return {

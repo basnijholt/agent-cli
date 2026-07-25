@@ -98,7 +98,9 @@ markupsafe==3.0.3
 mdurl==0.1.2
     # via markdown-it-py
 mlx==0.31.2 ; platform_machine == 'arm64' and sys_platform == 'darwin'
-    # via mlx-whisper
+    # via
+    #   agent-cli
+    #   mlx-whisper
 mlx-metal==0.31.2 ; platform_machine == 'arm64' and sys_platform == 'darwin'
     # via mlx
 mlx-whisper==0.4.3 ; platform_machine == 'arm64' and sys_platform == 'darwin'

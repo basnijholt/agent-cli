@@ -60,6 +60,10 @@ faster-whisper = ["agent-cli[server]", "faster-whisper>=1.0.0", "ctranslate2>=4.
 mlx-whisper = [
     "agent-cli[server]; sys_platform == 'darwin' and platform_machine == 'arm64'",
     "mlx-whisper>=0.4.0; sys_platform == 'darwin' and platform_machine == 'arm64'",
+    # mlx-whisper only requires mlx>=0.11, but the MLX backend calls the
+    # top-level mx.clear_cache(), which does not exist before mlx 0.24
+    # (0.23.2 and older only expose the deprecated mx.metal.clear_cache).
+    "mlx>=0.24; sys_platform == 'darwin' and platform_machine == 'arm64'",
 ]
 whisper-transformers = ["agent-cli[server]", "transformers>=4.30.0", "torch>=2.0.0"]
 nemo-whisper = [

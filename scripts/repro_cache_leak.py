@@ -23,18 +23,22 @@ Modes
 
 Usage
 -----
-    uv run python tools/repro_cache_leak.py --requests 100 --out baseline.csv
-    uv run python tools/repro_cache_leak.py --requests 100 --clear-cache --out fixed.csv
+    uv run python scripts/repro_cache_leak.py --requests 100 --out baseline.csv
+    uv run python scripts/repro_cache_leak.py --requests 100 --clear-cache --out fixed.csv
 
 This loads a SECOND copy of large-v3 in this process (~3 GB weights + working
 set). Watch ``memory_pressure`` and abort if the machine starts swapping.
+
+The default clip cycle includes 60s and 120s clips, which span multiple 30s
+Whisper windows -- that is the path that drives the largest working set, so a
+run that omits it will understate baseline growth. Those clips also dominate
+runtime; use ``--clip-seconds 0.5,2,5,10,20,30`` for a quick short-clip-only run.
 """
 
 from __future__ import annotations
 
 import argparse
 import csv
-import sys
 import time
 from pathlib import Path
 
@@ -44,13 +48,13 @@ import numpy as np
 
 # Reuse the backend's canonical-name -> HF-repo resolver so we hit the SAME
 # already-downloaded HF cache the service uses (no re-download).
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from agent_cli.server.whisper.backends.mlx import _resolve_mlx_model_name
 
 SAMPLE_RATE = 16000
-# Clip lengths (seconds) cycled across requests. The longer clips (>30s) span
-# multiple 30s Whisper windows and drive the largest working set / cache growth.
-CLIP_LENGTHS = (0.5, 2.0, 5.0, 10.0, 20.0, 30.0)
+# Clip lengths (seconds) cycled across requests. The 60s/120s clips span multiple
+# 30s Whisper windows and drive the largest working set / cache growth; a cycle
+# capped at 30s never exercises the multi-window path.
+CLIP_LENGTHS = (0.5, 2.0, 5.0, 10.0, 20.0, 30.0, 60.0, 120.0)
 
 
 def _synth_clip(seconds: float, seed: int) -> np.ndarray:
@@ -76,17 +80,18 @@ def _run_requests(
     repo: str,
     requests: int,
     *,
+    clip_lengths: tuple[float, ...],
     clear_cache: bool,
-) -> tuple[list[dict[str, float | int | str]], float, float]:
+) -> tuple[list[dict[str, float]], float, float]:
     """Transcribe ``requests`` clips, logging MLX memory counters per request.
 
     Returns (rows, total_infer_seconds, total_clear_seconds).
     """
-    rows: list[dict[str, float | int | str]] = []
+    rows: list[dict[str, float]] = []
     total_clear_s = 0.0
     total_infer_s = 0.0
     for i in range(requests):
-        seconds = CLIP_LENGTHS[i % len(CLIP_LENGTHS)]
+        seconds = clip_lengths[i % len(clip_lengths)]
         clip = _synth_clip(seconds, seed=i + 1)
 
         infer_start = time.perf_counter()
@@ -141,9 +146,21 @@ def main() -> None:
         metavar="BYTES",
         help="Call mx.set_cache_limit(BYTES) once at load as an alternative bound.",
     )
+    parser.add_argument(
+        "--clip-seconds",
+        default=",".join(str(s) for s in CLIP_LENGTHS),
+        metavar="CSV",
+        help="Comma-separated clip lengths to cycle through.",
+    )
     args = parser.parse_args()
     if args.requests < 1:
         parser.error("--requests must be a positive integer")
+    try:
+        clip_lengths = tuple(float(s) for s in args.clip_seconds.split(","))
+    except ValueError:
+        parser.error("--clip-seconds must be a comma-separated list of numbers")
+    if not all(s > 0 for s in clip_lengths):
+        parser.error("--clip-seconds values must be positive")
 
     repo = _resolve_mlx_model_name(args.model)
     print(f"[repro] mlx {mx.__version__} | model {args.model} -> {repo}")
@@ -165,6 +182,7 @@ def main() -> None:
     rows, total_infer_s, total_clear_s = _run_requests(
         repo,
         args.requests,
+        clip_lengths=clip_lengths,
         clear_cache=args.clear_cache,
     )
 
@@ -174,13 +192,21 @@ def main() -> None:
         writer.writerows(rows)
 
     cache_series = [r["cache_mb"] for r in rows]
+    active_series = [r["active_mb"] for r in rows]
     print("\n===== SUMMARY =====")
     print(f"model              : {args.model} -> {repo}")
     print(f"requests           : {args.requests}")
+    print(f"clip seconds       : {', '.join(str(s) for s in clip_lengths)}")
     print(f"mode               : {'clear_cache' if args.clear_cache else 'baseline'}")
     print(f"cache_mb  peak     : {max(cache_series):.1f} MB")
     print(f"cache_mb  final    : {cache_series[-1]:.1f} MB")
-    print(f"active_mb final    : {rows[-1]['active_mb']:.1f} MB")
+    # active_mb is live arrays (model weights + anything still referenced). Flat
+    # active with growing cache = buffer-cache retention, which clear_cache fixes.
+    # Growing active = something retains live arrays, and clear_cache will NOT fix it.
+    print(f"active_mb first    : {active_series[0]:.1f} MB")
+    print(f"active_mb final    : {active_series[-1]:.1f} MB")
+    print(f"active_mb peak     : {max(active_series):.1f} MB")
+    print(f"active_mb drift    : {active_series[-1] - active_series[0]:+.1f} MB")
     print(f"peak_mb   final    : {rows[-1]['peak_mb']:.1f} MB")
     print(f"infer/req  mean    : {total_infer_s / args.requests * 1000:.1f} ms")
     if args.clear_cache:
