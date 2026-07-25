@@ -5,6 +5,28 @@
         <link>https://github.com/basnijholt/agent-cli</link>
         <description>Signed Agent CLI macOS app updates.</description>
         <item>
+            <title>0.102.2</title>
+            <pubDate>Sat, 25 Jul 2026 20:18:46 +0000</pubDate>
+            <link>https://github.com/basnijholt/agent-cli</link>
+            <sparkle:version>199</sparkle:version>
+            <sparkle:shortVersionString>0.102.2</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[## Bug fixes
+
+- **MLX Whisper: stop unbounded memory growth under `--ttl 0`** (#620). The long-lived transcription subprocess never released MLX's reusable Metal buffer cache, so it ratcheted up to the largest working set ever seen and eventually got pushed to swap — one deployment reached a 17.1 GB physical footprint for a 2.9 GB model, with a 5.2s clip degrading from ~2.0s to ~5.2s. The backend now calls `mx.clear_cache()` after each request, including on failure. Only the reusable cache is freed, not live arrays, so model weights stay resident and inference stays hot; measured cost is ~7.6 ms per request (~0.3%).
+
+- **Require `mlx>=0.24` for the `mlx-whisper` extra** (#620). The top-level `mx.clear_cache()` does not exist before mlx 0.24 — 0.23.2 and older only expose the deprecated `mx.metal.clear_cache()` — and `mlx-whisper` itself only requires `mlx>=0.11`. Without the floor, an environment resolving an older mlx would raise `AttributeError` on every transcription.
+
+## Internal
+
+- Pin `uv` in the `uv-lock` and `sync-requirements` pre-commit hooks so the generated `agent_cli/_requirements/*.txt` files depend on the config rather than on how fresh each contributor's hook cache is (#620).
+- Render the shared consoles without colour during tests (#625).
+- Drop the broken Homebrew tap dispatch from the release workflow (#623).
+]]></description>
+            <enclosure url="https://github.com/basnijholt/agent-cli/releases/download/v0.102.2/AgentCLI.zip" length="24329779" type="application/octet-stream" sparkle:edSignature="CeWZFIPSDJSiO8iQbm46QDRet3IYvIvgL4qSyYdDmwlTlkhV66IaXp05Wt04+xLBKTJcAv9333tA9n8BZ9IvBQ=="/>
+        </item>
+        <item>
             <title>0.102.1</title>
             <pubDate>Sat, 25 Jul 2026 18:58:28 +0000</pubDate>
             <link>https://github.com/basnijholt/agent-cli</link>
@@ -174,21 +196,6 @@
 
 ]]></description>
             <enclosure url="https://github.com/basnijholt/agent-cli/releases/download/v0.98.2/AgentCLI.zip" length="22896370" type="application/octet-stream" sparkle:edSignature="2yWD4AB0k4GCxWKbXVysPQ5Hy0ehhW9XYlLHTipGwOCscaa+ZDVvlzM2WQtQ1EHDIsMR07loArT6PGKbXyyEBg=="/>
-        </item>
-        <item>
-            <title>0.98.1</title>
-            <pubDate>Thu, 04 Jun 2026 16:50:48 +0000</pubDate>
-            <link>https://github.com/basnijholt/agent-cli</link>
-            <sparkle:version>189</sparkle:version>
-            <sparkle:shortVersionString>0.98.1</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[## What’s Changed
-
-* Add macOS transcription TTL setting (#578) @basnijholt
-
-]]></description>
-            <enclosure url="https://github.com/basnijholt/agent-cli/releases/download/v0.98.1/AgentCLI.zip" length="22896191" type="application/octet-stream" sparkle:edSignature="4g9PD/is1i4Htq5eM2TfAUjxEaXSb7xJJDjnliSfX5TQfqeLLsItUcaCLbhpXaOKqzq0YByVg5SLSpqHK08vAw=="/>
         </item>
     </channel>
 </rss>
