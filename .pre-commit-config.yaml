@@ -48,14 +48,17 @@ repos:
         name: uv lock
         entry: uv lock
         language: python
-        additional_dependencies: ["uv"]
+        # Pinned: uv export's marker output differs between releases, so an
+        # unpinned uv makes agent_cli/_requirements/*.txt depend on whoever's
+        # hook cache is freshest.
+        additional_dependencies: ["uv==0.11.32"]
         pass_filenames: false
         files: pyproject\.toml
       - id: sync-requirements
         name: sync extra requirements
         entry: python .github/scripts/sync_requirements.py
         language: python
-        additional_dependencies: ["uv"]
+        additional_dependencies: ["uv==0.11.32"]
         pass_filenames: false
         files: (pyproject\.toml|uv\.lock)
       - id: check-extras-sync
