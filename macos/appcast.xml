@@ -5,6 +5,33 @@
         <link>https://github.com/basnijholt/agent-cli</link>
         <description>Signed Agent CLI macOS app updates.</description>
         <item>
+            <title>0.102.1</title>
+            <pubDate>Sat, 25 Jul 2026 18:58:28 +0000</pubDate>
+            <link>https://github.com/basnijholt/agent-cli</link>
+            <sparkle:version>198</sparkle:version>
+            <sparkle:shortVersionString>0.102.1</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[## Bug fixes
+
+* **Transcription now starts ~1.3s sooner after pressing the hotkey.** The macOS app spawned a login + interactive shell (`zsh -lic`) to discover `PATH` on *every* command it ran, costing 1.1–1.4s with a typical dotfiles setup. The recording pill appeared immediately but the microphone did not open until that shell finished, so speaking right away lost the first words. The login shell `PATH` is now resolved once per app launch, during the existing startup warm-up. Measured hotkey to first audio chunk: ~1.8s → ~0.4–0.6s. (#622)
+  * Only successful lookups are cached, so a login shell that fails once does not leave the app on a degraded `PATH` for the rest of the session.
+  * *Install or Update CLI* still re-probes, so a relocated `agent-cli` binary is picked up without restarting the app.
+
+## Performance
+
+* `agent-cli` no longer reads its own distribution metadata on startup. `__version__` resolves lazily, saving ~29ms on every command. (#622)
+
+## Maintenance
+
+* ⬆️ Update docker/login-action to v4.5.1 (#621, #619)
+* ⬆️ Update actions/checkout to v7.0.1 (#617)
+* ⬆️ Update release-drafter/release-drafter to v7.6.0 (#614)
+* [pre-commit.ci] pre-commit autoupdate (#616)
+]]></description>
+            <enclosure url="https://github.com/basnijholt/agent-cli/releases/download/v0.102.1/AgentCLI.zip" length="24329452" type="application/octet-stream" sparkle:edSignature="MQizz/9FfhxJGKQc6I/XXtIUBLVPh20yWi/kvfE7xBpoQGPF4yE4C0T1Ex1WpU3im/vRLrMIbZMv0+yHYTifBQ=="/>
+        </item>
+        <item>
             <title>0.102.0</title>
             <pubDate>Tue, 14 Jul 2026 05:57:01 +0000</pubDate>
             <link>https://github.com/basnijholt/agent-cli</link>
@@ -162,23 +189,6 @@
 
 ]]></description>
             <enclosure url="https://github.com/basnijholt/agent-cli/releases/download/v0.98.1/AgentCLI.zip" length="22896191" type="application/octet-stream" sparkle:edSignature="4g9PD/is1i4Htq5eM2TfAUjxEaXSb7xJJDjnliSfX5TQfqeLLsItUcaCLbhpXaOKqzq0YByVg5SLSpqHK08vAw=="/>
-        </item>
-        <item>
-            <title>0.98.0</title>
-            <pubDate>Thu, 04 Jun 2026 16:25:34 +0000</pubDate>
-            <link>https://github.com/basnijholt/agent-cli</link>
-            <sparkle:version>188</sparkle:version>
-            <sparkle:shortVersionString>0.98.0</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[## What’s Changed
-
-* Document NeMo Parakeet setup (#573) @basnijholt
-* Add macOS transcription backend picker (#574) @basnijholt
-* Reference upstream NeMo validation_ds fix (#577) @basnijholt
-
-]]></description>
-            <enclosure url="https://github.com/basnijholt/agent-cli/releases/download/v0.98.0/AgentCLI.zip" length="22891739" type="application/octet-stream" sparkle:edSignature="tC7V5Z+r9fyFe5GvISxKB2ExZJoyx8G7Qt/Zqnb1ELJcU6lm+0KSN3tx7d/BBm1Dbl8eKRiCorOATkTKE2HSCw=="/>
         </item>
     </channel>
 </rss>
