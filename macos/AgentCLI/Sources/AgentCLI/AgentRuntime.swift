@@ -29,9 +29,11 @@ private final class UserInstalledCLICheckCache {
 
 /// Caches the login shell PATH lookup, which costs a full `zsh -lic` startup
 /// (~1s with a typical dotfiles setup) and would otherwise run on every command.
+/// Only successful lookups are cached, so a shell that fails once does not
+/// degrade PATH for the rest of the session.
 private final class LoginShellPATHCache {
     private let lock = NSLock()
-    private var resolved: String??
+    private var resolved: String?
 
     func value(compute: () -> String?) -> String? {
         lock.lock()
@@ -39,9 +41,8 @@ private final class LoginShellPATHCache {
         if let resolved {
             return resolved
         }
-        let value = compute()
-        resolved = value
-        return value
+        resolved = compute()
+        return resolved
     }
 
     func invalidate() {

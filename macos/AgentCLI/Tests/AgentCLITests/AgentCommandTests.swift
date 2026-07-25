@@ -242,10 +242,10 @@ final class AgentCommandTests: XCTestCase {
         XCTAssertEqual(components.filter { $0 == "/usr/bin" }.count, 1)
     }
 
-    /// Builds a user-installed runtime whose process runner counts `zsh -lic` PATH probes.
+    /// Builds a user-installed runtime whose process runner intercepts `zsh -lic` PATH probes.
     private func makeShellPATHProbingRuntime(
         suiteName: String,
-        onShellProbe: @escaping () -> Void
+        onShellProbe: @escaping () -> CommandResult
     ) -> AgentRuntime {
         let defaults = UserDefaults(suiteName: suiteName)!
         defaults.removePersistentDomain(forName: suiteName)
@@ -261,11 +261,12 @@ final class AgentCommandTests: XCTestCase {
                 guard arguments.first == "-lic" else {
                     return CommandResult(exitCode: 0, output: "")
                 }
-                onShellProbe()
-                return CommandResult(exitCode: 0, output: "/shell/bin\n")
+                return onShellProbe()
             }
         )
     }
+
+    private static let shellPATHProbeSuccess = CommandResult(exitCode: 0, output: "/shell/bin\n")
 
     /// `zsh -lic` costs roughly a second with a real dotfiles setup, so the login shell
     /// PATH must be resolved once per runtime instead of once per spawned command.
@@ -273,7 +274,10 @@ final class AgentCommandTests: XCTestCase {
         var shellProbes = 0
         let runtime = makeShellPATHProbingRuntime(
             suiteName: "AgentCLITests.user-runtime-shell-path-cache"
-        ) { shellProbes += 1 }
+        ) {
+            shellProbes += 1
+            return Self.shellPATHProbeSuccess
+        }
 
         _ = runtime.commandEnvironment()
         let environment = runtime.commandEnvironment()
@@ -287,13 +291,37 @@ final class AgentCommandTests: XCTestCase {
         var shellProbes = 0
         let runtime = makeShellPATHProbingRuntime(
             suiteName: "AgentCLITests.user-runtime-shell-path-refresh"
-        ) { shellProbes += 1 }
+        ) {
+            shellProbes += 1
+            return Self.shellPATHProbeSuccess
+        }
 
         _ = runtime.commandEnvironment()
         _ = runtime.ensureInstalled(force: true)
         _ = runtime.commandEnvironment()
 
         XCTAssertEqual(shellProbes, 2)
+    }
+
+    /// A login shell that fails once must not degrade PATH for the rest of the session,
+    /// matching how the CLI availability check only caches successful results.
+    func testFailedLoginShellPATHLookupIsRetried() {
+        var shellProbes = 0
+        let runtime = makeShellPATHProbingRuntime(
+            suiteName: "AgentCLITests.user-runtime-shell-path-failure"
+        ) {
+            shellProbes += 1
+            return shellProbes == 1
+                ? CommandResult(exitCode: 1, output: "")
+                : Self.shellPATHProbeSuccess
+        }
+
+        let degraded = runtime.commandEnvironment()
+        let recovered = runtime.commandEnvironment()
+
+        XCTAssertEqual(shellProbes, 2)
+        XCTAssertNotEqual(degraded["PATH"]?.split(separator: ":").first.map(String.init), "/shell/bin")
+        XCTAssertEqual(recovered["PATH"]?.split(separator: ":").first.map(String.init), "/shell/bin")
     }
 
     func testTranscriptionBootstrapRepairsStaleWhisperDaemonMarker() throws {
