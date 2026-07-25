@@ -346,12 +346,11 @@ def test_release_workflow_publishes_macos_app_asset() -> None:
     assert "NOTARIZE=1" in workflow
     assert "gh release upload" in workflow
     assert "dist/macos/AgentCLI.dmg" in workflow
-    assert "name: Trigger Homebrew tap update" in workflow
-    assert "HOMEBREW_TAP_DISPATCH_TOKEN" in workflow
-    assert "repos/basnijholt/homebrew-tap/dispatches" in workflow
-    assert "event_type=agent-cli-release" in workflow
-    assert "client_payload[tag_name]" in workflow
-    assert "client_payload[asset_url]" in workflow
+    # The tap owns its own updates: basnijholt/homebrew-tap runs a daily cron that
+    # reads the latest release. Dispatching from here only duplicated that with an
+    # expiring cross-repo token, whose 401 turned every release run red.
+    assert "HOMEBREW_TAP_DISPATCH_TOKEN" not in workflow
+    assert "repos/basnijholt/homebrew-tap/dispatches" not in workflow
     assert "python3 .github/scripts/normalize_appcast.py macos/appcast.xml" in workflow
     assert workflow.index(
         "python3 .github/scripts/normalize_appcast.py macos/appcast.xml"
