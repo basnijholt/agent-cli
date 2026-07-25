@@ -208,3 +208,20 @@ async def test_signal_handling_context_uses_sync_handlers_on_windows(
     assert signal.getsignal(signal.SIGINT) is prev_sigint
     assert signal.getsignal(signal.SIGTERM) is prev_sigterm
     logger.debug.assert_called()
+
+
+def test_shared_consoles_render_without_ansi(capsys: pytest.CaptureFixture[str]) -> None:
+    """Rich honours FORCE_COLOR even into captured output, breaking substring asserts.
+
+    The autouse `reset_rich_console_state` fixture must keep both shared consoles
+    colourless so the suite passes regardless of the developer's shell.
+    """
+    assert utils.console.color_system is None
+    assert utils.err_console.color_system is None
+
+    utils.console.print("[bold red]stdout text[/bold red]")
+    utils.err_console.print("[dim]stderr text[/dim]")
+
+    captured = capsys.readouterr()
+    assert captured.out == "stdout text\n"
+    assert captured.err == "stderr text\n"
