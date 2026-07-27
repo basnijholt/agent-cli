@@ -5,6 +5,23 @@
         <link>https://github.com/basnijholt/agent-cli</link>
         <description>Signed Agent CLI macOS app updates.</description>
         <item>
+            <title>0.102.3</title>
+            <pubDate>Mon, 27 Jul 2026 16:39:21 +0000</pubDate>
+            <link>https://github.com/basnijholt/agent-cli</link>
+            <sparkle:version>200</sparkle:version>
+            <sparkle:shortVersionString>0.102.3</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[## What’s Changed
+
+* Copy local agent instructions into dev worktrees (#626) @basnijholt
+* ⬆️ Update actions/setup-python action to v7 (#615) [@renovate[bot]](https://github.com/apps/renovate)
+* ⬆️ Update astral-sh/setup-uv action to v9 (#618) [@renovate[bot]](https://github.com/apps/renovate)
+
+]]></description>
+            <enclosure url="https://github.com/basnijholt/agent-cli/releases/download/v0.102.3/AgentCLI.zip" length="24330021" type="application/octet-stream" sparkle:edSignature="H5CMNeeXWbrvg2BgAHnoYuoOX6dzLCUJpjock6YE6xPqsJvsIrkMABiEuxRbKAGWuf17P4KOGktodhyWj1IODw=="/>
+        </item>
+        <item>
             <title>0.102.2</title>
             <pubDate>Sat, 25 Jul 2026 20:18:46 +0000</pubDate>
             <link>https://github.com/basnijholt/agent-cli</link>
@@ -181,21 +198,6 @@
 
 ]]></description>
             <enclosure url="https://github.com/basnijholt/agent-cli/releases/download/v0.98.3/AgentCLI.zip" length="22897167" type="application/octet-stream" sparkle:edSignature="9ay65m/VwKuqQePrh/eSgIZNk5472WewHemR/2yl+DAl8cRrfcuazGe4Vzns+WHgRJHbvOlg/tJouHK3VOxBCg=="/>
-        </item>
-        <item>
-            <title>0.98.2</title>
-            <pubDate>Thu, 04 Jun 2026 18:18:29 +0000</pubDate>
-            <link>https://github.com/basnijholt/agent-cli</link>
-            <sparkle:version>190</sparkle:version>
-            <sparkle:shortVersionString>0.98.2</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[## What’s Changed
-
-* Use MPS for NeMo on Apple Silicon (#580) @basnijholt
-
-]]></description>
-            <enclosure url="https://github.com/basnijholt/agent-cli/releases/download/v0.98.2/AgentCLI.zip" length="22896370" type="application/octet-stream" sparkle:edSignature="2yWD4AB0k4GCxWKbXVysPQ5Hy0ehhW9XYlLHTipGwOCscaa+ZDVvlzM2WQtQ1EHDIsMR07loArT6PGKbXyyEBg=="/>
         </item>
     </channel>
 </rss>
