@@ -12,6 +12,8 @@ if TYPE_CHECKING:
     from collections.abc import Callable
     from pathlib import Path
 
+_LOCAL_AGENT_INSTRUCTION_FILES = ("AGENTS.local.md", "CLAUDE.local.md")
+
 
 @dataclass
 class ProjectType:
@@ -366,6 +368,7 @@ def copy_env_files(
             ".env.local",
             ".env.example",
             ".envrc",
+            *_LOCAL_AGENT_INSTRUCTION_FILES,
         ]
 
     copied: list[Path] = []
@@ -380,7 +383,12 @@ def copy_env_files(
 
         for src_file in source_files:
             if src_file.is_file():
-                dest_file = dest / src_file.relative_to(source)
+                relative_path = src_file.relative_to(source)
+                dest_file = dest / relative_path
+                if relative_path.as_posix() in _LOCAL_AGENT_INSTRUCTION_FILES and os.path.lexists(
+                    dest_file
+                ):
+                    continue
                 dest_file.parent.mkdir(parents=True, exist_ok=True)
                 dest_file.write_bytes(src_file.read_bytes())
                 copied.append(dest_file)
