@@ -713,6 +713,9 @@ The following files are automatically copied to new dev environments:
 - `AGENTS.local.md`
 - `CLAUDE.local.md`
 
+If the target branch already contains either local agent instruction file,
+its checked-out version is preserved.
+
 Use `--no-copy-env` to skip this.
 
 ### Direnv Integration
