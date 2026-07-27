@@ -534,6 +534,25 @@ class TestCopyEnvFiles:
         copied = copy_env_files(source, dest)
         assert len(copied) == 2
 
+    def test_copy_local_agent_instruction_files(self, tmp_path: Path) -> None:
+        """Copy local agent instruction files."""
+        source = tmp_path / "source"
+        dest = tmp_path / "dest"
+        source.mkdir()
+        dest.mkdir()
+        files = {
+            "AGENTS.local.md": "Use pytest.\n",
+            "CLAUDE.local.md": "Use ruff.\n",
+        }
+        for name, content in files.items():
+            (source / name).write_text(content)
+
+        copied = copy_env_files(source, dest)
+
+        assert {path.name for path in copied} == set(files)
+        for name, content in files.items():
+            assert (dest / name).read_text() == content
+
     def test_skip_missing_files(self, tmp_path: Path) -> None:
         """Skip files that don't exist."""
         source = tmp_path / "source"

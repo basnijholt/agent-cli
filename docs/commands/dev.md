@@ -78,7 +78,7 @@ agent-cli dev new [BRANCH] [OPTIONS]
 | `--agent` | - | Which AI agent to start: claude, codex, gemini, aider, copilot, cn (Continue), opencode, cursor-agent, or auto. Implies starting the agent |
 | `--with-editor` | - | Which editor to open: cursor, vscode, zed, nvim, vim, emacs, sublime, idea, pycharm, etc. |
 | `--setup/--no-setup` | `true` | Run project setup after creation: npm/pnpm/yarn install, poetry/uv sync, cargo build, etc. Auto-detects project type |
-| `--copy-env/--no-copy-env` | `true` | Copy .env, .env.local, .env.example from main repo to worktree |
+| `--copy-env/--no-copy-env` | `true` | Copy env and local agent instruction files from main repo to worktree |
 | `--fetch/--no-fetch` | `true` | Run 'git fetch' before creating the worktree to ensure refs are up-to-date |
 | `--branch-name-mode` | `random` | How to auto-name branches when BRANCH is omitted: random (default), auto (AI only when --prompt/--prompt-file is set), or ai (always try AI first) |
 | `--branch-name-agent` | - | Headless agent for AI branch naming: claude, codex, or gemini. If omitted, uses --agent when supported, otherwise tries available agents in that order |
@@ -606,7 +606,7 @@ direnv = true          # Always generate .envrc (--direnv)
 
 # Worktree creation behavior
 setup = true           # Run project setup (npm install, etc.)
-copy_env = true        # Copy .env files from main repo
+copy_env = true        # Copy env and local agent instruction files
 fetch = true           # Git fetch before creating
 
 # Branch naming behavior when BRANCH argument is omitted
@@ -702,7 +702,7 @@ git lfs pull
 
 This ensures large files tracked by LFS are available in the worktree.
 
-### Environment Files
+### Local Setup Files
 
 The following files are automatically copied to new dev environments:
 
@@ -710,6 +710,8 @@ The following files are automatically copied to new dev environments:
 - `.env.local`
 - `.env.example`
 - `.envrc`
+- `AGENTS.local.md`
+- `CLAUDE.local.md`
 
 Use `--no-copy-env` to skip this.
 

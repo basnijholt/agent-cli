@@ -366,6 +366,8 @@ def copy_env_files(
             ".env.local",
             ".env.example",
             ".envrc",
+            "AGENTS.local.md",
+            "CLAUDE.local.md",
         ]
 
     copied: list[Path] = []

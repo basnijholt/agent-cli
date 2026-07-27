@@ -290,12 +290,12 @@ def _setup_worktree_env(
     direnv: bool | None,
     verbose: bool,
 ) -> None:
-    """Copy env files, run project setup, and configure direnv."""
+    """Copy local setup files, run project setup, and configure direnv."""
     if copy_env:
         copied = copy_env_files(repo_root, worktree_path)
         if copied:
             names = ", ".join(f.name for f in copied)
-            success(f"Copied env file(s): {names}")
+            success(f"Copied local setup file(s): {names}")
 
     project = None
     if setup:
@@ -413,7 +413,7 @@ def new(
         bool,
         typer.Option(
             "--copy-env/--no-copy-env",
-            help="Copy .env, .env.local, .env.example from main repo to worktree",
+            help="Copy env and local agent instruction files from main repo to worktree",
         ),
     ] = True,
     fetch: Annotated[
@@ -525,7 +525,7 @@ def new(
     **What happens:**
 
     1. Creates git worktree at `../REPO-worktrees/BRANCH/`
-    2. Copies .env files from main repo (--copy-env)
+    2. Copies env and local agent instruction files from main repo (--copy-env)
     3. Runs project setup: npm install, uv sync, etc. (--setup)
     4. Sets up direnv if installed (--direnv)
     5. Opens editor if requested (-e/--editor)
