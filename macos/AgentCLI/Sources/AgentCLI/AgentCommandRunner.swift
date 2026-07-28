@@ -31,6 +31,7 @@ final class AgentCommandRunner: ObservableObject {
     private var recordingIndicator = RecordingIndicatorController()
     private let pasteController: TranscriptPasteController
     private let bootstrap: AgentBootstrap
+    private let microphonePermissionController: any MicrophonePermissionControlling
     private var activityTracker = MenuActivityTracker()
     private var pendingStopRecordingCommands: Set<String> = []
     private var holdTranscriptionState: HoldTranscriptionState = .idle
@@ -69,11 +70,13 @@ final class AgentCommandRunner: ObservableObject {
 
     init(
         pasteController: TranscriptPasteController = TranscriptPasteController(),
+        microphonePermissionController: any MicrophonePermissionControlling = MicrophonePermissionController.shared,
         bootstrap: @escaping AgentBootstrap = { requirement, force, progress in
             AgentRuntime.shared.ensureReady(for: requirement, force: force, progress: progress)
         }
     ) {
         self.pasteController = pasteController
+        self.microphonePermissionController = microphonePermissionController
         self.bootstrap = bootstrap
         hasLastError = FileManager.default.fileExists(atPath: AgentRuntime.shared.lastErrorURL.path)
     }
@@ -148,6 +151,7 @@ final class AgentCommandRunner: ObservableObject {
             statusMessage = "Transcription is already recording"
             return false
         }
+        guard ensureMicrophonePermissionForRecording() else { return false }
 
         holdTranscriptionState = .recording
         holdToTranscribePasteTarget = FocusedTextTarget.capture()
@@ -195,6 +199,9 @@ final class AgentCommandRunner: ObservableObject {
         if isStopRequest {
             markStopRequested(for: command)
             beginTranscribingActivity()
+        }
+        if shouldStartRecording {
+            guard ensureMicrophonePermissionForRecording() else { return }
         }
 
         activeCommandCount += 1
@@ -381,6 +388,25 @@ final class AgentCommandRunner: ObservableObject {
 
     private func beginTranscribingActivity() {
         activityTracker.beginTranscribing()
+    }
+
+    private func ensureMicrophonePermissionForRecording() -> Bool {
+        let presentation = MicrophonePermissionPresentation(
+            status: microphonePermissionController.currentStatus()
+        )
+        guard presentation.canRecord else {
+            microphonePermissionController.requestAccessIfNeeded { [weak self] granted in
+                guard granted else { return }
+                Task { @MainActor in
+                    self?.statusMessage = "Microphone permission enabled. Try recording again."
+                }
+            }
+            let message = presentation.statusMessage ?? "Microphone permission is required for recording."
+            statusMessage = message
+            notify(title: "Microphone Permission Required", body: message)
+            return false
+        }
+        return true
     }
 
     private func clearTranscribingActivityIfFinished() {
