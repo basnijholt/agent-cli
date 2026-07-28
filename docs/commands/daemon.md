@@ -180,10 +180,13 @@ agent-cli daemon uninstall whisper
 │ --help  -h        Show this message and exit.                                          │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Commands ─────────────────────────────────────────────────────────────────────────────╮
-│ status     Check status of installed daemons.                                          │
-│ ensure     Ensure one daemon is installed and running.                                 │
-│ install    Install server daemons as background processes.                             │
-│ uninstall  Uninstall server daemons.                                                   │
+│ status               Check status of installed daemons.                                │
+│ ensure               Ensure one daemon is installed and running.                       │
+│ install              Install server daemons as background processes.                   │
+│ uninstall            Uninstall server daemons.                                         │
+╰────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Daemon Commands ──────────────────────────────────────────────────────────────────────╮
+│ transcribe-recorder  Control a warm transcription recorder daemon.                     │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 
 ```
