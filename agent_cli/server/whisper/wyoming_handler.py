@@ -1,3 +1,5 @@
+# Copyright (c) 2025 Bas Nijholt
+
 """Wyoming protocol handler for Whisper ASR server."""
 
 from __future__ import annotations
@@ -48,7 +50,7 @@ class WyomingWhisperHandler(AsyncEventHandler):
         """
         super().__init__(*args, **kwargs)
         self._registry = registry
-        self._audio_bytes: bytes = b""
+        self._audio_bytes = bytearray()
         self._audio_converter = AudioChunkConverter(
             rate=constants.AUDIO_RATE,
             width=constants.AUDIO_FORMAT_WIDTH,
@@ -88,7 +90,7 @@ class WyomingWhisperHandler(AsyncEventHandler):
 
         chunk = AudioChunk.from_event(event)
         chunk = self._audio_converter.convert(chunk)
-        self._audio_bytes += chunk.audio
+        self._audio_bytes.extend(chunk.audio)
         return True
 
     async def _handle_audio_stop(self) -> bool:
@@ -102,12 +104,12 @@ class WyomingWhisperHandler(AsyncEventHandler):
 
         # Wrap PCM in WAV format for the backend
         audio_data = pcm_to_wav(
-            self._audio_bytes,
+            bytes(self._audio_bytes),
             sample_rate=constants.AUDIO_RATE,
             sample_width=constants.AUDIO_FORMAT_WIDTH,
             channels=constants.AUDIO_CHANNELS,
         )
-        self._audio_bytes = b""
+        self._audio_bytes.clear()
 
         # Transcribe
         try:
