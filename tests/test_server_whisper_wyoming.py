@@ -1,5 +1,3 @@
-# Copyright (c) 2025 Bas Nijholt
-
 """Tests for the Wyoming Whisper server handler."""
 
 from unittest.mock import MagicMock

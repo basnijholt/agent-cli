@@ -1,5 +1,3 @@
-# Copyright (c) 2025 Bas Nijholt
-
 """Wyoming protocol handler for Whisper ASR server."""
 
 from __future__ import annotations
