@@ -5,6 +5,28 @@
         <link>https://github.com/basnijholt/agent-cli</link>
         <description>Signed Agent CLI macOS app updates.</description>
         <item>
+            <title>0.102.4</title>
+            <pubDate>Thu, 13 Aug 2026 21:23:13 +0000</pubDate>
+            <link>https://github.com/basnijholt/agent-cli</link>
+            <sparkle:version>201</sparkle:version>
+            <sparkle:shortVersionString>0.102.4</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[## What’s Changed
+
+* Fix quadratic Wyoming audio buffering (#634) @basnijholt, [@pre-commit-ci[bot]](https://github.com/apps/pre-commit-ci)
+* [pre-commit.ci] pre-commit autoupdate (#627) [@pre-commit-ci[bot]](https://github.com/apps/pre-commit-ci), [@github-actions[bot]](https://github.com/apps/github-actions)
+
+## What's Changed
+* [pre-commit.ci] pre-commit autoupdate by @pre-commit-ci[bot] in https://github.com/basnijholt/agent-cli/pull/627
+* Fix quadratic Wyoming audio buffering by @basnijholt in https://github.com/basnijholt/agent-cli/pull/634
+
+
+**Full Changelog**: https://github.com/basnijholt/agent-cli/compare/v0.102.3...v0.102.4
+]]></description>
+            <enclosure url="https://github.com/basnijholt/agent-cli/releases/download/v0.102.4/AgentCLI.zip" length="20511224" type="application/octet-stream" sparkle:edSignature="Sk10Ka432Bkg/joGZR0VdmhY8qBwz4PX3zXhRNYGt8sYb0S3TuT8EPBad8KAaaoJ0lUZPzqcOq+LeP30f3C6Aw=="/>
+        </item>
+        <item>
             <title>0.102.3</title>
             <pubDate>Mon, 27 Jul 2026 16:39:21 +0000</pubDate>
             <link>https://github.com/basnijholt/agent-cli</link>
@@ -183,21 +205,6 @@
 
 ]]></description>
             <enclosure url="https://github.com/basnijholt/agent-cli/releases/download/v0.98.4/AgentCLI.zip" length="22902781" type="application/octet-stream" sparkle:edSignature="7ozRAuD+LY4sh7h792LgmHn55ZnUHFHKTyro+436GCnfJydmJo9/PJK1er7y3pyvsrHiqGO6bKkszA+HY3VRBA=="/>
-        </item>
-        <item>
-            <title>0.98.3</title>
-            <pubDate>Thu, 04 Jun 2026 18:19:53 +0000</pubDate>
-            <link>https://github.com/basnijholt/agent-cli</link>
-            <sparkle:version>191</sparkle:version>
-            <sparkle:shortVersionString>0.98.3</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[## What’s Changed
-
-* Fix early hold-to-transcribe release (#579) @basnijholt
-
-]]></description>
-            <enclosure url="https://github.com/basnijholt/agent-cli/releases/download/v0.98.3/AgentCLI.zip" length="22897167" type="application/octet-stream" sparkle:edSignature="9ay65m/VwKuqQePrh/eSgIZNk5472WewHemR/2yl+DAl8cRrfcuazGe4Vzns+WHgRJHbvOlg/tJouHK3VOxBCg=="/>
         </item>
     </channel>
 </rss>
