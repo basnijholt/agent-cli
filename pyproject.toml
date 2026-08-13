@@ -197,10 +197,6 @@ ignore = [
     "FBT002",  # Boolean-typed keyword-only argument in function definition
     "BLE001",  # Do not catch blind exception: `Exception`
     "COM812",  # Missing trailing comma (conflicts with formatter)
-    # Newly stable in Ruff 0.16; preserve the existing lint baseline.
-    "CPY001",
-    "LOG004",
-    "PLR0917",
     "D203",  # Incorrect blank line before class (incompatible with D211)
     "D213",  # Multi-line summary second line (incompatible with D212)
 ]
