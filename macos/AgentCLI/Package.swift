@@ -11,7 +11,7 @@ let package = Package(
         .executable(name: "AgentCLI", targets: ["AgentCLI"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/sindresorhus/KeyboardShortcuts", exact: "1.10.0"),
+        .package(url: "https://github.com/sindresorhus/KeyboardShortcuts", exact: "3.0.1"),
         .package(url: "https://github.com/sparkle-project/Sparkle", exact: "2.9.4"),
     ],
     targets: [
