@@ -8,7 +8,7 @@ Run a local ASR server with automatic backend selection based on your platform:
 
 - **macOS Apple Silicon** → [mlx-whisper](https://github.com/ml-explore/mlx-examples/tree/main/whisper) (Metal acceleration)
 - **Linux/CUDA** → [faster-whisper](https://github.com/SYSTRAN/faster-whisper) (CTranslate2)
-- **HuggingFace** → [transformers](https://huggingface.co/docs/transformers/model_doc/whisper) (supports safetensors models and known remote-code ASR models such as Cohere Transcribe)
+- **HuggingFace** → [transformers](https://huggingface.co/docs/transformers/model_doc/whisper) (supports safetensors models, Qwen3-ASR, and known remote-code ASR models such as Cohere Transcribe)
 - **NVIDIA Parakeet** → [NeMo](https://github.com/NVIDIA/NeMo) (e.g., `parakeet-tdt-0.6b-v3`)
 
 > [!NOTE]
@@ -32,6 +32,14 @@ Run a local ASR server with automatic backend selection based on your platform:
 >   --backend transformers \
 >   --model CohereLabs/cohere-transcribe-03-2026 \
 >   --default-language en
+> ```
+>
+> Qwen3-ASR via native HuggingFace transformers support:
+> ```bash
+> pip install "agent-cli[whisper-transformers]"
+> agent-cli server whisper \
+>   --backend transformers \
+>   --model Qwen/Qwen3-ASR-1.7B-hf
 > ```
 >
 > NVIDIA Parakeet via NeMo:
@@ -96,6 +104,11 @@ agent-cli server whisper \
   --backend transformers \
   --model CohereLabs/cohere-transcribe-03-2026 \
   --default-language en
+
+# Run Qwen3-ASR through its native transformers integration
+agent-cli server whisper \
+  --backend transformers \
+  --model Qwen/Qwen3-ASR-1.7B-hf
 ```
 
 ## Options
@@ -285,7 +298,26 @@ pip install "agent-cli[whisper-transformers]"
 agent-cli server whisper --backend transformers
 ```
 
-This uses HuggingFace's `transformers` library, which supports loading `.safetensors` models directly from the Hub.
+This uses HuggingFace's `transformers` library, which supports loading `.safetensors` models directly from the Hub. Qwen3-ASR requires `transformers>=5.13.0` and supports automatic language detection and transcription prompts.
+
+### Qwen3-ASR
+
+```bash
+pip install "agent-cli[whisper-transformers]"
+agent-cli server whisper \
+  --backend transformers \
+  --model Qwen/Qwen3-ASR-1.7B-hf
+```
+
+Qwen3-ASR supports transcription, automatic language detection, and context or hotwords through the OpenAI-compatible `prompt` field. Translation and timestamped subtitle output are not currently supported.
+
+To install it as the standard `whisper` background daemon:
+
+```bash
+agent-cli daemon install whisper -- \
+  --backend transformers \
+  --model Qwen/Qwen3-ASR-1.7B-hf
+```
 
 For Cohere Transcribe specifically:
 

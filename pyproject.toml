@@ -65,7 +65,12 @@ mlx-whisper = [
     # (0.23.2 and older only expose the deprecated mx.metal.clear_cache).
     "mlx>=0.24; sys_platform == 'darwin' and platform_machine == 'arm64'",
 ]
-whisper-transformers = ["agent-cli[server]", "transformers>=4.30.0", "torch>=2.0.0"]
+whisper-transformers = [
+    "agent-cli[server]",
+    "librosa>=0.10.0",
+    "transformers>=5.13.0",
+    "torch>=2.0.0",
+]
 nemo-whisper = [
     "agent-cli[server]",
     # Keep the publishable extra capped until NeMo releases NVIDIA-NeMo/NeMo#15438.
@@ -131,6 +136,9 @@ agent = "agent_cli.cli:app"
 ag = "agent_cli.cli:app"
 
 [tool.uv]
+# curated-tokenizers 0.0.9 crashes when built with newer Cython releases on
+# Python 3.13, where no pre-built wheel is available.
+build-constraint-dependencies = ["cython<3.1"]
 required-environments = [
     "sys_platform == 'darwin' and platform_machine == 'arm64' and python_full_version == '3.13.*'",
 ]

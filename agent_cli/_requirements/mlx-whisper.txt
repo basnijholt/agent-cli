@@ -73,9 +73,7 @@ httpx==0.28.1
     #   fastapi
     #   fastapi-cloud-cli
     #   huggingface-hub
-huggingface-hub==0.36.2 ; python_full_version >= '3.13' and platform_machine == 'arm64' and sys_platform == 'darwin'
-    # via mlx-whisper
-huggingface-hub==1.16.1 ; python_full_version < '3.13' and platform_machine == 'arm64' and sys_platform == 'darwin'
+huggingface-hub==1.16.1 ; platform_machine == 'arm64' and sys_platform == 'darwin'
     # via mlx-whisper
 idna==3.17
     # via
@@ -160,9 +158,7 @@ pyyaml==6.0.3
 regex==2026.5.9 ; platform_machine == 'arm64' and sys_platform == 'darwin'
     # via tiktoken
 requests==2.34.2 ; platform_machine == 'arm64' and sys_platform == 'darwin'
-    # via
-    #   huggingface-hub
-    #   tiktoken
+    # via tiktoken
 rich==15.0.0
     # via
     #   agent-cli

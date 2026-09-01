@@ -93,6 +93,7 @@ class _SubprocessState:
     dtype: Any = None
     device: str | None = None
     is_cohere_asr: bool = False
+    is_qwen3_asr: bool = False
     has_transcribe_helper: bool = False
 
 
@@ -110,7 +111,12 @@ def _load_model_in_subprocess(
 ) -> str:
     """Load model in subprocess. Returns actual device string."""
     import torch  # noqa: PLC0415
-    from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor  # noqa: PLC0415
+    from transformers import (  # noqa: PLC0415
+        AutoConfig,
+        AutoModelForMultimodalLM,
+        AutoModelForSpeechSeq2Seq,
+        AutoProcessor,
+    )
 
     set_process_title("whisper-transformers")
 
@@ -125,16 +131,25 @@ def _load_model_in_subprocess(
 
     allow_remote_code = trust_remote_code or requires_remote_code(model_name)
 
+    model_config = AutoConfig.from_pretrained(
+        model_name,
+        cache_dir=download_root,
+        trust_remote_code=allow_remote_code,
+    )
+    is_qwen3_asr = model_config.model_type == "qwen3_asr"
+    model_class = AutoModelForMultimodalLM if is_qwen3_asr else AutoModelForSpeechSeq2Seq
+
     _state.processor = AutoProcessor.from_pretrained(
         model_name,
         cache_dir=download_root,
         trust_remote_code=allow_remote_code,
     )
     dtype = torch.float16 if device != "cpu" else torch.float32
-    _state.model = AutoModelForSpeechSeq2Seq.from_pretrained(
+    _state.model = model_class.from_pretrained(
         model_name,
+        config=model_config,
         cache_dir=download_root,
-        torch_dtype=dtype,
+        dtype=dtype,
         low_cpu_mem_usage=True,
         trust_remote_code=allow_remote_code,
     )
@@ -144,6 +159,7 @@ def _load_model_in_subprocess(
     _state.dtype = dtype
     _state.device = device
     _state.is_cohere_asr = requires_remote_code(model_name)
+    _state.is_qwen3_asr = is_qwen3_asr
     _state.has_transcribe_helper = hasattr(_state.model, "transcribe")
 
     return device
@@ -160,6 +176,20 @@ def _read_wav_audio(wav_path: str) -> tuple[Any, int, float]:
 
     audio_array = np.frombuffer(audio_bytes, dtype=np.int16).astype(np.float32) / 32768.0
     return audio_array, sample_rate, duration
+
+
+def _read_wav_duration(wav_path: str) -> float:
+    """Read a WAV duration without decoding its sample format."""
+    with wave.open(wav_path, "rb") as wav_file:
+        return wav_file.getnframes() / wav_file.getframerate()
+
+
+def _load_qwen_audio(wav_path: str) -> Any:
+    """Decode and resample audio for Qwen3-ASR."""
+    import librosa  # noqa: PLC0415
+
+    audio_array, _ = librosa.load(wav_path, sr=16000, mono=True)
+    return audio_array
 
 
 def _make_result(
@@ -235,6 +265,47 @@ def _transcribe_cohere_asr(
         text=text,
         language=effective_language,
         language_probability=1.0,
+        duration=duration,
+    )
+
+
+def _transcribe_qwen3_asr(
+    *,
+    audio_array: Any,
+    effective_language: str | None,
+    task: str,
+    initial_prompt: str | None,
+    duration: float,
+) -> dict[str, Any]:
+    """Transcribe with Qwen3-ASR's native transformers interface."""
+    if task != "transcribe":
+        msg = "Translation is not supported by Qwen3-ASR."
+        raise UnsupportedRequestError(msg)
+
+    import torch  # noqa: PLC0415
+
+    inputs = _state.processor.apply_transcription_request(
+        audio=audio_array,
+        language=effective_language,
+        prompt=initial_prompt,
+    )
+    inputs = _move_inputs_to_device(inputs)
+
+    with torch.inference_mode():
+        output_ids = _state.model.generate(
+            **inputs,
+            max_new_tokens=256,
+            do_sample=False,
+        )
+
+    generated_ids = output_ids[:, inputs["input_ids"].shape[1] :]
+    parsed = _state.processor.decode(generated_ids, return_format="parsed")[0]
+    language = parsed["language"] or effective_language or "unknown"
+
+    return _make_result(
+        text=parsed["transcription"],
+        language=language,
+        language_probability=1.0 if effective_language else 0.0,
         duration=duration,
     )
 
@@ -334,9 +405,20 @@ def _transcribe_in_subprocess(kwargs: dict[str, Any]) -> dict[str, Any]:
         msg = "Model not loaded in subprocess. Call _load_model_in_subprocess first."
         raise RuntimeError(msg)
 
-    audio_array, sample_rate, duration = _read_wav_audio(kwargs.pop("wav_path"))
+    wav_path = kwargs.pop("wav_path")
     effective_language = kwargs.get("language") or kwargs.get("default_language")
     task = kwargs.get("task", "transcribe")
+
+    if _state.is_qwen3_asr:
+        return _transcribe_qwen3_asr(
+            audio_array=_load_qwen_audio(wav_path),
+            effective_language=effective_language,
+            task=task,
+            initial_prompt=kwargs.get("initial_prompt"),
+            duration=_read_wav_duration(wav_path),
+        )
+
+    audio_array, sample_rate, duration = _read_wav_audio(wav_path)
 
     if _is_cohere_asr_model():
         return _transcribe_cohere_asr(
