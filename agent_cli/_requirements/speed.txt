@@ -10,12 +10,10 @@ certifi==2026.1.4
     # via
     #   httpcore
     #   httpx
-click==8.3.1
+click==8.5.0
     # via
     #   typer
     #   typer-slim
-colorama==0.4.6 ; sys_platform == 'win32'
-    # via click
 dotenv==0.9.9
     # via agent-cli
 fire==0.7.1

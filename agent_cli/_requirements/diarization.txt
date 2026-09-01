@@ -25,13 +25,13 @@ cffi==2.0.0
     # via soundfile
 charset-normalizer==3.4.4
     # via requests
-click==8.3.1
+click==8.5.0
     # via
+    #   huggingface-hub
     #   typer
     #   typer-slim
 colorama==0.4.6 ; sys_platform == 'win32'
     # via
-    #   click
     #   colorlog
     #   tqdm
 colorlog==6.10.1
@@ -71,13 +71,15 @@ grpcio==1.76.0
     # via opentelemetry-exporter-otlp-proto-grpc
 h11==0.16.0
     # via httpcore
-hf-xet==1.2.0 ; platform_machine == 'aarch64' or platform_machine == 'amd64' or platform_machine == 'arm64' or platform_machine == 'x86_64'
+hf-xet==1.6.0 ; platform_machine == 'AMD64' or platform_machine == 'aarch64' or platform_machine == 'amd64' or platform_machine == 'arm64' or platform_machine == 'x86_64'
     # via huggingface-hub
 httpcore==1.0.9
     # via httpx
 httpx==0.28.1
-    # via agent-cli
-huggingface-hub==0.36.0
+    # via
+    #   agent-cli
+    #   huggingface-hub
+huggingface-hub==1.29.0
     # via pyannote-audio
 idna==3.11
     # via
@@ -284,7 +286,6 @@ pyyaml==6.0.3
     #   pytorch-lightning
 requests==2.32.5
     # via
-    #   huggingface-hub
     #   opentelemetry-exporter-otlp-proto-http
     #   pyannoteai-sdk
 rich==14.2.0
@@ -292,7 +293,7 @@ rich==14.2.0
     #   agent-cli
     #   pyannote-audio
     #   typer
-safetensors==0.7.0
+safetensors==0.8.0
     # via pyannote-audio
 scikit-learn==1.8.0
     # via

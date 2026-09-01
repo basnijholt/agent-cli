@@ -21,11 +21,14 @@ Install, uninstall, and monitor agent-cli servers running as system daemons:
 
 Daemons run via `uv tool run` and start automatically at login.
 
+`whisper` and `whisper-qwen3` use the same ports and are mutually exclusive. Uninstall one before installing the other.
+
 ## Available Daemons
 
 | Daemon | Description | Ports |
 |--------|-------------|-------|
 | `whisper` | Speech-to-text ASR server | 10300/10301 |
+| `whisper-qwen3` | Qwen3 speech-to-text ASR server | 10300/10301 |
 | `tts-kokoro` | Text-to-speech with Kokoro (GPU) | 10200/10201 |
 | `tts-piper` | Text-to-speech with Piper (CPU) | 10200/10201 |
 | `transcription-proxy` | ASR provider proxy | 61337 |
@@ -94,6 +97,10 @@ agent-cli daemon uninstall --all
 # Install whisper as a background daemon
 agent-cli daemon install whisper
 
+# Install Qwen3-ASR instead of the default Whisper daemon
+agent-cli daemon uninstall whisper
+agent-cli daemon install whisper-qwen3
+
 # Check status of all daemons
 agent-cli daemon status
 
@@ -137,6 +144,7 @@ agent-cli daemon uninstall whisper
    Daemon                Description                Ports
   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
    whisper               Speech-to-text ASR         10300/10301
+   whisper-qwen3         Qwen3 speech-to-text ASR   10300/10301
    tts-kokoro            Text-to-speech (GPU)       10200/10201
    tts-piper             Text-to-speech (CPU)       10200/10201
    transcription-proxy   ASR provider proxy         61337

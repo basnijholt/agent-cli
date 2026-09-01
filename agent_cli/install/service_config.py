@@ -36,6 +36,9 @@ class ServiceConfig:
 # TTS services that are mutually exclusive (same ports)
 TTS_SERVICES = ("tts-kokoro", "tts-piper")
 
+# ASR services that are mutually exclusive (same ports)
+ASR_SERVICES = ("whisper", "whisper-qwen3")
+
 
 def detect_preferred_tts() -> str:
     """Detect the preferred TTS backend based on platform.
@@ -63,7 +66,8 @@ def get_default_services() -> list[str]:
     """Get default services for --all, picking one TTS backend automatically."""
     preferred_tts = detect_preferred_tts()
     excluded_tts = "tts-piper" if preferred_tts == "tts-kokoro" else "tts-kokoro"
-    return [name for name in SERVICES if name != excluded_tts]
+    excluded_services = {excluded_tts, "whisper-qwen3"}
+    return [name for name in SERVICES if name not in excluded_services]
 
 
 # Available services for installation
@@ -76,6 +80,20 @@ SERVICES: dict[str, ServiceConfig] = {
         command_args=[],
         python_version="3.13",  # onnxruntime lacks py3.14 wheels (Linux only)
         macos_extra="server,mlx-whisper,wyoming",
+    ),
+    "whisper-qwen3": ServiceConfig(
+        name="whisper-qwen3",
+        display_name="Qwen3 ASR",
+        description="Qwen3 speech-to-text server (ports 10300/10301)",
+        extra="server,whisper-transformers,wyoming",
+        command_args=[
+            "--backend",
+            "transformers",
+            "--model",
+            "Qwen/Qwen3-ASR-1.7B-hf",
+        ],
+        python_version="3.13",
+        command=["server", "whisper"],
     ),
     "tts-kokoro": ServiceConfig(
         name="tts",  # Server command is still "tts"

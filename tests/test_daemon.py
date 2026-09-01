@@ -61,6 +61,26 @@ class TestServiceConfig:
         assert whisper.extra
         assert isinstance(whisper.command_args, list)
 
+    def test_qwen3_whisper_service_command(self, tmp_path: Path) -> None:
+        """Test the Qwen3 daemon installs its backend and selects its model."""
+        service = SERVICES["whisper-qwen3"]
+        command = build_service_command(service, tmp_path / "uv")
+
+        assert service.name == "whisper-qwen3"
+        assert "agent-cli[server,whisper-transformers,wyoming]" in command
+        assert command[-5:] == [
+            "whisper",
+            "--backend",
+            "transformers",
+            "--model",
+            "Qwen/Qwen3-ASR-1.7B-hf",
+        ]
+
+    def test_qwen3_whisper_is_not_installed_by_default(self) -> None:
+        """The optional Qwen daemon must not conflict with the default Whisper daemon."""
+        assert "whisper" in get_default_services()
+        assert "whisper-qwen3" not in get_default_services()
+
     def test_build_service_command(self, tmp_path: Path) -> None:
         """Test building service command for uv tool run."""
         uv_path = tmp_path / "uv"
@@ -301,6 +321,50 @@ class TestDaemonCLI:
         assert result.exit_code == 1
         # Error goes to stderr, check combined output
         assert "Unknown service" in result.output
+
+    @patch("agent_cli.daemon.cli.get_service_manager")
+    def test_daemon_install_rejects_both_asr_profiles(
+        self,
+        mock_get_manager: MagicMock,
+    ) -> None:
+        """The two ASR profiles cannot be installed together on the same ports."""
+        mock_manager = MagicMock(spec=ServiceManager)
+        mock_get_manager.return_value = mock_manager
+
+        result = runner.invoke(
+            app,
+            ["daemon", "install", "whisper", "whisper-qwen3", "-y"],
+        )
+
+        assert result.exit_code == 1
+        assert "mutually exclusive" in result.output
+        mock_manager.install_service.assert_not_called()
+
+    @pytest.mark.parametrize(
+        ("selected", "installed"),
+        [("whisper", "whisper-qwen3"), ("whisper-qwen3", "whisper")],
+    )
+    @patch("agent_cli.daemon.cli.get_service_manager")
+    def test_daemon_install_rejects_installed_asr_profile(
+        self,
+        mock_get_manager: MagicMock,
+        selected: str,
+        installed: str,
+    ) -> None:
+        """Installing an ASR profile must not leave a same-port profile active."""
+        mock_manager = MagicMock(spec=ServiceManager)
+        mock_manager.get_service_status.return_value = ServiceStatus(
+            name=installed,
+            installed=True,
+            running=True,
+        )
+        mock_get_manager.return_value = mock_manager
+
+        result = runner.invoke(app, ["daemon", "install", selected, "-y"])
+
+        assert result.exit_code == 1
+        assert f"uninstall {installed}" in result.output
+        mock_manager.install_service.assert_not_called()
 
     @patch("agent_cli.daemon.cli.get_service_manager")
     def test_daemon_install_success(self, mock_get_manager: MagicMock) -> None:

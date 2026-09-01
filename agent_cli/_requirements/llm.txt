@@ -20,14 +20,13 @@ cffi==2.0.0 ; platform_python_implementation != 'CPython'
     # via brotlicffi
 charset-normalizer==3.4.4
     # via requests
-click==8.3.1
+click==8.5.0
     # via
     #   ddgs
     #   typer
     #   typer-slim
 colorama==0.4.6
     # via
-    #   click
     #   griffe
     #   tqdm
 ddgs==9.10.0

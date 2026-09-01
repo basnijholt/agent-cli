@@ -14,16 +14,14 @@ certifi==2026.1.4
     #   httpcore
     #   httpx
     #   sentry-sdk
-click==8.3.1
+click==8.5.0
     # via
     #   rich-toolkit
     #   typer
     #   typer-slim
     #   uvicorn
 colorama==0.4.6 ; sys_platform == 'win32'
-    # via
-    #   click
-    #   uvicorn
+    # via uvicorn
 dnspython==2.8.0
     # via email-validator
 dotenv==0.9.9

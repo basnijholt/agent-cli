@@ -15,19 +15,16 @@ certifi==2026.1.4
     # via
     #   httpcore
     #   httpx
-    #   requests
     #   sentry-sdk
-charset-normalizer==3.4.4
-    # via requests
-click==8.3.1
+click==8.5.0
     # via
+    #   huggingface-hub
     #   rich-toolkit
     #   typer
     #   typer-slim
     #   uvicorn
 colorama==0.4.6 ; sys_platform == 'win32'
     # via
-    #   click
     #   tqdm
     #   uvicorn
 coloredlogs==15.0.1
@@ -62,7 +59,7 @@ h11==0.16.0
     # via
     #   httpcore
     #   uvicorn
-hf-xet==1.2.0 ; platform_machine == 'aarch64' or platform_machine == 'amd64' or platform_machine == 'arm64' or platform_machine == 'x86_64'
+hf-xet==1.6.0 ; platform_machine == 'AMD64' or platform_machine == 'aarch64' or platform_machine == 'amd64' or platform_machine == 'arm64' or platform_machine == 'x86_64'
     # via huggingface-hub
 httpcore==1.0.9
     # via httpx
@@ -73,7 +70,8 @@ httpx==0.28.1
     #   agent-cli
     #   fastapi
     #   fastapi-cloud-cli
-huggingface-hub==0.36.0
+    #   huggingface-hub
+huggingface-hub==1.29.0
     # via
     #   faster-whisper
     #   tokenizers
@@ -84,7 +82,6 @@ idna==3.11
     #   anyio
     #   email-validator
     #   httpx
-    #   requests
 jinja2==3.1.6
     # via fastapi
 markdown-it-py==4.0.0
@@ -140,8 +137,6 @@ pyyaml==6.0.3
     #   ctranslate2
     #   huggingface-hub
     #   uvicorn
-requests==2.32.5
-    # via huggingface-hub
 rich==14.2.0
     # via
     #   agent-cli
@@ -165,7 +160,7 @@ starlette==0.50.0
     # via fastapi
 sympy==1.14.0
     # via onnxruntime
-tokenizers==0.22.2
+tokenizers==0.23.1
     # via faster-whisper
 tqdm==4.67.1
     # via
@@ -196,9 +191,7 @@ typing-inspection==0.4.2
     #   pydantic
     #   pydantic-settings
 urllib3==2.3.0
-    # via
-    #   requests
-    #   sentry-sdk
+    # via sentry-sdk
 uvicorn==0.40.0
     # via
     #   fastapi
