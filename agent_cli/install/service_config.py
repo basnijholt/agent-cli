@@ -10,6 +10,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, NamedTuple
 
+from agent_cli.core.deps import _uv_tool_extra_args
+
 if TYPE_CHECKING:
     from collections.abc import Callable
 
@@ -35,6 +37,12 @@ class ServiceConfig:
 
 # TTS services that are mutually exclusive (same ports)
 TTS_SERVICES = ("tts-kokoro", "tts-piper")
+_WHISPER_BACKEND_EXTRAS = {
+    "faster-whisper",
+    "mlx-whisper",
+    "whisper-transformers",
+    "nemo-whisper",
+}
 
 # ASR services that are mutually exclusive (same ports)
 ASR_SERVICES = ("whisper", "whisper-qwen3")
@@ -141,16 +149,24 @@ def build_service_command(
     uv_path: Path,
     *,
     use_macos_extra: bool = False,
+    extra_command_args: list[str] | None = None,
 ) -> list[str]:
     """Build the command args for running a service via uv tool run."""
     extra = (service.macos_extra or service.extra) if use_macos_extra else service.extra
+    extra = _service_extra_for_command(service, extra, extra_command_args)
+    extras = _split_extras(extra)
+    package_source = os.environ.get("AGENTCLI_PACKAGE_SOURCE", "agent-cli")
 
     args = [str(uv_path), "tool", "run"]
 
     # Add python version constraint (skip on macOS when using macos_extra,
     # since macos_extra typically avoids deps that lack py3.14 wheels)
-    if service.python_version and not (use_macos_extra and service.macos_extra):
+    uses_macos_extra_without_python_pin = (
+        use_macos_extra and service.macos_extra and "nemo-whisper" not in extras
+    )
+    if service.python_version and not uses_macos_extra_without_python_pin:
         args.extend(["--python", service.python_version])
+    args.extend(_uv_tool_extra_args(extras))
 
     # Build the command: either custom command path or default "server <name>"
     cmd_path = service.command or ["server", service.name]
@@ -158,17 +174,69 @@ def build_service_command(
     args.extend(
         [
             "--from",
-            f"agent-cli[{extra}]",
+            f"{package_source}[{extra}]",
             "agent-cli",
             *cmd_path,
             *service.command_args,
+            *(extra_command_args or []),
         ],
     )
     return args
 
 
+def _service_extra_for_command(
+    service: ServiceConfig,
+    extra: str,
+    extra_command_args: list[str] | None,
+) -> str:
+    """Adjust service extras when custom daemon args select a specific backend."""
+    if service.name != "whisper" or not _uses_nemo_backend(extra_command_args):
+        return extra
+
+    parts = _split_extras(extra)
+    result: list[str] = []
+    inserted = False
+    for part in parts:
+        if part in _WHISPER_BACKEND_EXTRAS:
+            if not inserted:
+                result.append("nemo-whisper")
+                inserted = True
+            continue
+        result.append(part)
+
+    if not inserted:
+        result.append("nemo-whisper")
+    return ",".join(result)
+
+
+def _split_extras(extra: str) -> list[str]:
+    return [part.strip() for part in extra.split(",") if part.strip()]
+
+
+def _uses_nemo_backend(extra_command_args: list[str] | None) -> bool:
+    args = extra_command_args or []
+    for index, arg in enumerate(args):
+        if arg in {"--backend", "-b"} and index + 1 < len(args):
+            return args[index + 1] == "nemo"
+        if arg in {"--backend=nemo", "-b=nemo"}:
+            return True
+    return False
+
+
 def find_uv(extra_paths: list[Path] | None = None) -> Path | None:
     """Find uv executable, preferring system paths over virtualenv."""
+    explicit_uv = os.environ.get("AGENTCLI_UV_PATH")
+    if explicit_uv:
+        explicit_uv_path = Path(explicit_uv).expanduser()
+        if explicit_uv_path.is_file() and os.access(explicit_uv_path, os.X_OK):
+            return explicit_uv_path
+
+    bundled_uv = os.environ.get("AGENTCLI_BUNDLED_UV")
+    if bundled_uv:
+        bundled_uv_path = Path(bundled_uv).expanduser()
+        if bundled_uv_path.is_file() and os.access(bundled_uv_path, os.X_OK):
+            return bundled_uv_path
+
     paths = [
         Path.home() / ".local" / "bin" / "uv",
         Path.home() / ".cargo" / "bin" / "uv",
@@ -198,7 +266,6 @@ def install_uv() -> tuple[bool, str]:
             ["sh"],  # noqa: S607
             input=result.stdout,
             capture_output=True,
-            text=True,
             check=True,
         )
         return True, "uv installed successfully"
@@ -245,7 +312,7 @@ class ServiceManager(NamedTuple):
 
     check_uv_installed: Callable[[], tuple[bool, Path | None]]
     install_uv: Callable[[], tuple[bool, str]]
-    install_service: Callable[[str], InstallResult]
+    install_service: Callable[..., InstallResult]
     uninstall_service: Callable[[str], UninstallResult]
     get_service_status: Callable[[str], ServiceStatus]
     get_log_command: Callable[[str], str]

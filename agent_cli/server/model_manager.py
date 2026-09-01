@@ -37,8 +37,8 @@ class ModelConfig:
 
     def __post_init__(self) -> None:
         """Validate configuration."""
-        if self.ttl_seconds < 1:
-            msg = f"ttl_seconds must be >= 1, got {self.ttl_seconds}"
+        if self.ttl_seconds < 0:
+            msg = f"ttl_seconds must be >= 0, got {self.ttl_seconds}"
             raise ValueError(msg)
 
 
@@ -140,12 +140,16 @@ class ModelManager:
         """Get seconds remaining before model unloads, or None if not loaded."""
         if not self.is_loaded or self.stats.last_request_time is None:
             return None
+        if self.config.ttl_seconds == 0:
+            return None
         elapsed = time.time() - self.stats.last_request_time
         remaining = self.config.ttl_seconds - elapsed
         return max(0.0, remaining)
 
     async def start(self) -> None:
         """Start the TTL unload watcher."""
+        if self.config.ttl_seconds == 0:
+            return
         if self._unload_task is None:
             self._unload_task = asyncio.create_task(self._unload_watcher())
 

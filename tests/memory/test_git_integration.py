@@ -35,6 +35,7 @@ def _git_log(path: Path) -> list[str]:
 
 
 @pytest.mark.skipif(shutil.which("git") is None, reason="git not installed")
+@pytest.mark.timeout(60)
 @pytest.mark.asyncio
 async def test_memory_client_git_versioning(
     tmp_path: Path,

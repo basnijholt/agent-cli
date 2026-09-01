@@ -316,7 +316,7 @@ class Dev(BaseModel):
     )
     agent_env: dict[str, dict[str, str]] | None = None
     setup: bool = True  # Run project setup (npm install, etc.)
-    copy_env: bool = True  # Copy .env files from main repo
+    copy_env: bool = True  # Copy env and local agent instruction files from main repo
     fetch: bool = True  # Git fetch before creating worktree
 
 

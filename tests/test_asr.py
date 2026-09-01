@@ -2,6 +2,11 @@
 
 from __future__ import annotations
 
+import asyncio
+import json
+import threading
+from contextlib import suppress
+from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -10,6 +15,214 @@ from wyoming.audio import AudioChunk, AudioStart, AudioStop
 
 from agent_cli import config
 from agent_cli.services import asr, transcribe_audio_gemini, transcribe_audio_openai
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+
+def test_write_live_preview_event(tmp_path: Path) -> None:
+    """Test that live preview events are written as JSONL."""
+    log_file = tmp_path / "preview.jsonl"
+
+    asr._write_live_preview_event(
+        log_file,
+        event_type="partial",
+        revision=1,
+        text="hello world",
+    )
+
+    entry = json.loads(log_file.read_text().strip())
+    assert entry["type"] == "partial"
+    assert entry["revision"] == 1
+    assert entry["text"] == "hello world"
+    assert entry["is_final"] is False
+    assert "timestamp" in entry
+
+
+def test_print_live_preview_event(capsys: pytest.CaptureFixture[str]) -> None:
+    """Test that live preview events can be printed to the terminal."""
+    asr._print_live_preview_event(
+        event_type="partial",
+        revision=3,
+        text="hello terminal",
+    )
+
+    captured = capsys.readouterr()
+    assert "live #3:" in captured.err
+    assert "hello terminal" in captured.err
+
+
+@pytest.mark.asyncio
+async def test_live_preview_streamer_emits_unique_partials(tmp_path: Path) -> None:
+    """Test that rolling previews write changed transcript revisions."""
+    log_file = tmp_path / "preview.jsonl"
+    preview = asr.LivePreviewStreamer(
+        asr.LivePreviewConfig(
+            log_file=log_file,
+            interval_seconds=60,
+            window_seconds=1,
+            min_audio_seconds=0,
+        ),
+        wyoming_asr_cfg=config.WyomingASR(asr_wyoming_ip="localhost", asr_wyoming_port=10300),
+        logger=MagicMock(),
+    )
+    preview.reset_log()
+
+    with patch(
+        "agent_cli.services.asr._transcribe_recorded_audio_wyoming",
+        new_callable=AsyncMock,
+        return_value="hello world",
+    ):
+        await preview.add_chunk(b"\x00\x00" * 160)
+        await preview.emit_partial()
+        await preview.emit_partial()
+
+    entries = [json.loads(line) for line in log_file.read_text().splitlines()]
+    assert len(entries) == 1
+    assert entries[0]["type"] == "partial"
+    assert entries[0]["text"] == "hello world"
+
+
+@pytest.mark.asyncio
+async def test_live_preview_streamer_can_emit_console_only(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Test that rolling previews can be printed without a log file."""
+    preview = asr.LivePreviewStreamer(
+        asr.LivePreviewConfig(
+            log_file=None,
+            interval_seconds=60,
+            window_seconds=1,
+            min_audio_seconds=0,
+            console=True,
+        ),
+        wyoming_asr_cfg=config.WyomingASR(asr_wyoming_ip="localhost", asr_wyoming_port=10300),
+        logger=MagicMock(),
+    )
+
+    with patch(
+        "agent_cli.services.asr._transcribe_recorded_audio_wyoming",
+        new_callable=AsyncMock,
+        return_value="hello console",
+    ):
+        await preview.add_chunk(b"\x00\x00" * 160)
+        await preview.emit_partial()
+
+    captured = capsys.readouterr()
+    assert "live #1:" in captured.err
+    assert "hello console" in captured.err
+
+
+@pytest.mark.asyncio
+async def test_live_preview_streamer_stop_writes_final(tmp_path: Path) -> None:
+    """Test that the final transcript is written to the preview log."""
+    log_file = tmp_path / "preview.jsonl"
+    preview = asr.LivePreviewStreamer(
+        asr.LivePreviewConfig(log_file=log_file),
+        wyoming_asr_cfg=config.WyomingASR(asr_wyoming_ip="localhost", asr_wyoming_port=10300),
+        logger=MagicMock(),
+    )
+    preview.reset_log()
+
+    await preview.stop("final words")
+
+    entry = json.loads(log_file.read_text().strip())
+    assert entry["type"] == "final"
+    assert entry["text"] == "final words"
+    assert entry["is_final"] is True
+
+
+@pytest.mark.asyncio
+async def test_live_preview_streamer_ignores_partial_after_stop(tmp_path: Path) -> None:
+    """A stale partial must not be appended after the final transcript."""
+    log_file = tmp_path / "preview.jsonl"
+    preview = asr.LivePreviewStreamer(
+        asr.LivePreviewConfig(log_file=log_file),
+        wyoming_asr_cfg=config.WyomingASR(asr_wyoming_ip="localhost", asr_wyoming_port=10300),
+        logger=MagicMock(),
+    )
+    preview.reset_log()
+    await preview.add_chunk(b"\x00\x00" * 16_000)
+    await preview.stop("final words")
+
+    with patch(
+        "agent_cli.services.asr._transcribe_recorded_audio_wyoming",
+        new_callable=AsyncMock,
+        return_value="stale partial",
+    ):
+        await preview.emit_partial()
+
+    entries = [json.loads(line) for line in log_file.read_text().splitlines()]
+    assert [entry["type"] for entry in entries] == ["final"]
+
+
+@pytest.mark.asyncio
+async def test_live_preview_request_stop_blocks_partial_before_final(
+    tmp_path: Path,
+) -> None:
+    """Stop signal must block partials even before the final transcript is written."""
+    log_file = tmp_path / "preview.jsonl"
+    preview = asr.LivePreviewStreamer(
+        asr.LivePreviewConfig(log_file=log_file),
+        wyoming_asr_cfg=config.WyomingASR(asr_wyoming_ip="localhost", asr_wyoming_port=10300),
+        logger=MagicMock(),
+    )
+    preview.reset_log()
+    await preview.add_chunk(b"\x00\x00" * 16_000)
+    preview.request_stop()
+
+    with patch(
+        "agent_cli.services.asr._transcribe_recorded_audio_wyoming",
+        new_callable=AsyncMock,
+        return_value="stale partial",
+    ):
+        await preview.emit_partial()
+
+    await preview.stop("final words")
+
+    entries = [json.loads(line) for line in log_file.read_text().splitlines()]
+    assert [entry["type"] for entry in entries] == ["final"]
+    assert entries[0]["text"] == "final words"
+
+
+@pytest.mark.asyncio
+async def test_live_preview_run_cancel_drops_resolved_partial_before_final(
+    tmp_path: Path,
+) -> None:
+    """A resolved preview response must not publish after the run task is canceled."""
+    log_file = tmp_path / "preview.jsonl"
+    preview = asr.LivePreviewStreamer(
+        asr.LivePreviewConfig(log_file=log_file, interval_seconds=0.01),
+        wyoming_asr_cfg=config.WyomingASR(asr_wyoming_ip="localhost", asr_wyoming_port=10300),
+        logger=MagicMock(),
+    )
+    preview.reset_log()
+    await preview.add_chunk(b"\x00\x00" * 16_000)
+
+    entered_transcription = asyncio.Event()
+    transcription_result: asyncio.Future[str] = asyncio.Future()
+
+    async def transcribe_after_signal(**_kwargs: object) -> str:
+        entered_transcription.set()
+        return await transcription_result
+
+    with patch(
+        "agent_cli.services.asr._transcribe_recorded_audio_wyoming",
+        side_effect=transcribe_after_signal,
+    ):
+        task = asyncio.create_task(preview.run())
+        await asyncio.wait_for(entered_transcription.wait(), timeout=1)
+        transcription_result.set_result("stale partial")
+        preview.request_stop()
+        task.cancel()
+        with suppress(asyncio.CancelledError):
+            await task
+
+    await preview.stop("final words")
+
+    entries = [json.loads(line) for line in log_file.read_text().splitlines()]
+    assert [entry["type"] for entry in entries] == ["final"]
+    assert entries[0]["text"] == "final words"
 
 
 @pytest.mark.asyncio
@@ -26,6 +239,7 @@ async def test_send_audio() -> None:
     mock_data.tobytes.return_value = b"fake_audio_chunk"
     stream.read.return_value = (mock_data, False)
     logger = MagicMock()
+    levels: list[bytes] = []
 
     # Act
     # No need to create a task and sleep, just await the coroutine.
@@ -38,6 +252,7 @@ async def test_send_audio() -> None:
         live=MagicMock(),
         quiet=False,
         save_recording=False,
+        audio_level_callback=levels.append,
     )
 
     # Assert
@@ -55,6 +270,55 @@ async def test_send_audio() -> None:
         ).event(),
     )
     client.write_event.assert_any_call(AudioStop().event())
+    assert levels == [b"fake_audio_chunk"]
+
+
+@pytest.mark.asyncio
+async def test_send_audio_does_not_wait_for_audio_level_callback() -> None:
+    """Test that level callbacks cannot block audio delivery to Wyoming."""
+    client = AsyncMock()
+    stream = MagicMock()
+    stop_event = MagicMock()
+    stop_event.is_set.side_effect = [False, True]
+    stop_event.ctrl_c_pressed = False
+
+    mock_data = MagicMock()
+    mock_data.tobytes.return_value = b"fake_audio_chunk"
+    stream.read.return_value = (mock_data, False)
+    logger = MagicMock()
+    callback_started = threading.Event()
+    release_callback = threading.Event()
+
+    def slow_audio_level_callback(_chunk: bytes) -> None:
+        callback_started.set()
+        release_callback.wait(timeout=2)
+
+    send_task = asyncio.create_task(
+        asr._send_audio(
+            client,
+            stream,
+            stop_event,
+            logger,
+            live=MagicMock(),
+            quiet=False,
+            save_recording=False,
+            audio_level_callback=slow_audio_level_callback,
+        ),
+    )
+
+    try:
+        for _ in range(100):
+            if callback_started.is_set() and client.write_event.call_count >= 3:
+                break
+            await asyncio.sleep(0.01)
+
+        assert callback_started.is_set()
+        assert client.write_event.call_count >= 3
+        assert not send_task.done()
+    finally:
+        release_callback.set()
+
+    await asyncio.wait_for(send_task, timeout=2)
 
 
 @pytest.mark.asyncio

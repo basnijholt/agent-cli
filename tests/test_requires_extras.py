@@ -2,20 +2,29 @@
 
 from __future__ import annotations
 
+import ast
 import os
+from pathlib import Path
 from unittest.mock import patch
 
 import pytest
 import typer
 
+from agent_cli.core import process
 from agent_cli.core.deps import (
     EXTRAS,
     _check_and_install_extras,
+    _find_python_incompatible_extras,
+    _find_runtime_uv,
     _get_auto_install_setting,
     _get_install_hint,
+    _install_via_uv_tool,
     _maybe_reexec_after_install,
+    _maybe_reexec_with_uvx,
     _resolve_extras_for_install,
     _should_skip_extra_check_for_process_control,
+    get_combined_install_hint,
+    install_extras_impl,
     requires_extras,
 )
 
@@ -33,6 +42,32 @@ class TestRequiresExtrasDecorator:
         assert hasattr(sample_command, "_required_extras")
         assert sample_command._required_extras == ("audio", "llm")
 
+    def test_decorator_uses_runtime_extras_resolver(self) -> None:
+        """Commands can choose concrete extras after Typer parses options."""
+
+        def resolve_extras(kwargs: dict[str, object]) -> tuple[str, ...]:
+            backend = kwargs["backend"]
+            return ("server", str(backend), "wyoming")
+
+        @requires_extras(
+            "server",
+            "piper|kokoro",
+            "wyoming",
+            resolve_extras=resolve_extras,
+        )
+        def sample_command(*, backend: str) -> str:
+            return f"success:{backend}"
+
+        with patch("agent_cli.core.deps._check_and_install_extras", return_value=[]) as mock_check:
+            assert sample_command(backend="kokoro") == "success:kokoro"
+
+        mock_check.assert_called_once_with(("server", "kokoro", "wyoming"))
+        assert getattr(sample_command, "_required_extras") == (  # noqa: B009
+            "server",
+            "piper|kokoro",
+            "wyoming",
+        )
+
     def test__get_install_hint_with_pipe_syntax(self) -> None:
         """Pipe syntax shows all alternatives in the hint."""
         hint = _get_install_hint("piper|kokoro")
@@ -42,6 +77,44 @@ class TestRequiresExtrasDecorator:
         # Brackets are escaped for rich markup (\\[)
         assert "agent-cli\\[piper]" in hint
         assert "agent-cli\\[kokoro]" in hint
+
+    def test_commands_with_alternative_extras_have_runtime_resolver(self) -> None:
+        """Alternative extras on commands need a resolver for explicit backend options."""
+        repo_root = Path(__file__).resolve().parents[1]
+        violations: list[str] = []
+
+        for path in (repo_root / "agent_cli").rglob("*.py"):
+            tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+            for node in ast.walk(tree):
+                if not isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
+                    continue
+
+                for decorator in node.decorator_list:
+                    if not isinstance(decorator, ast.Call):
+                        continue
+
+                    func = decorator.func
+                    if not isinstance(func, ast.Name) or func.id != "requires_extras":
+                        continue
+
+                    extras = [
+                        arg.value
+                        for arg in decorator.args
+                        if isinstance(arg, ast.Constant) and isinstance(arg.value, str)
+                    ]
+                    if not any("|" in extra for extra in extras):
+                        continue
+
+                    has_resolver = any(
+                        keyword.arg == "resolve_extras" for keyword in decorator.keywords
+                    )
+                    if not has_resolver:
+                        violations.append(f"{path.relative_to(repo_root)}:{node.lineno}")
+
+        assert not violations, (
+            "requires_extras alternatives choose a default extra during auto-install. "
+            "Pass resolve_extras for commands with alternative extras: " + ", ".join(violations)
+        )
 
 
 class TestExtrasMetadata:
@@ -190,6 +263,169 @@ class TestCheckAndInstallExtras:
             mock_error.assert_called_once()
             assert "Auto-install failed" in mock_error.call_args[0][0]
 
+    def test_returns_missing_for_python_incompatible_extra_without_installing(self) -> None:
+        """Python-incompatible extras should fail before auto-install."""
+        with (
+            patch("agent_cli.core.deps._check_extra_installed", return_value=False),
+            patch("agent_cli.core.deps._get_auto_install_setting", return_value=True),
+            patch(
+                "agent_cli.core.deps._find_python_incompatible_extras",
+                return_value=["nemo-whisper"],
+            ),
+            patch("agent_cli.core.deps._try_auto_install") as mock_install,
+            patch("agent_cli.core.deps.print_error_message") as mock_error,
+        ):
+            result = _check_and_install_extras(("nemo-whisper", "wyoming"))
+            assert result == ["nemo-whisper", "wyoming"]
+            mock_install.assert_not_called()
+            message = mock_error.call_args[0][0]
+            assert "nemo-whisper is not supported on Python" in message
+            assert "Python 3.13" in message
+
+    def test_python_incompatible_extra_detection(self) -> None:
+        """NeMo should use the uv override path on Python 3.14 when available."""
+        assert _find_python_incompatible_extras(["nemo-whisper"], python_version=(3, 13)) == []
+        assert (
+            _find_python_incompatible_extras(
+                ["nemo-whisper"],
+                python_version=(3, 14),
+                uv_available=True,
+            )
+            == []
+        )
+        assert _find_python_incompatible_extras(
+            ["nemo-whisper"],
+            python_version=(3, 14),
+            uv_available=False,
+        ) == ["nemo-whisper"]
+
+    def test_python_incompatible_extra_detection_uses_bundled_uv(self, tmp_path: Path) -> None:
+        """Bundled uv should enable NeMo runtime overrides even when uv is not on PATH."""
+        uv_path = tmp_path / "uv"
+        uv_path.touch()
+        uv_path.chmod(0o755)
+
+        with (
+            patch.dict(os.environ, {"AGENTCLI_BUNDLED_UV": str(uv_path)}, clear=True),
+            patch("agent_cli.core.deps.shutil.which", return_value=None),
+        ):
+            assert _find_runtime_uv() == str(uv_path)
+            assert (
+                _find_python_incompatible_extras(
+                    ["nemo-whisper"],
+                    python_version=(3, 14),
+                )
+                == []
+            )
+
+    def test_uvx_cache_reexec_uses_bundled_uv_with_nemo_overrides(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """uvx-cache NeMo commands should re-exec via bundled uv with runtime overrides."""
+        uv_path = tmp_path / "uv"
+        uv_path.touch()
+        uv_path.chmod(0o755)
+        package_source = tmp_path / "agent_cli.whl"
+        captured: dict[str, object] = {}
+
+        def fake_execvpe(file: str, cmd: list[str], env: dict[str, str]) -> None:
+            captured["file"] = file
+            captured["cmd"] = cmd
+            captured["env"] = env
+
+        monkeypatch.setenv("AGENTCLI_BUNDLED_UV", str(uv_path))
+        monkeypatch.setenv("AGENTCLI_PACKAGE_SOURCE", str(package_source))
+        monkeypatch.setattr("agent_cli.core.deps.shutil.which", lambda _: None)
+        monkeypatch.setattr("agent_cli.core.deps._is_uvx_cache", lambda: True)
+        monkeypatch.setattr("agent_cli.core.deps.os.execvpe", fake_execvpe)
+        monkeypatch.setattr(
+            "sys.argv",
+            ["agent-cli", "server", "whisper", "--backend", "nemo"],
+        )
+
+        _maybe_reexec_with_uvx(["server", "nemo-whisper", "wyoming"])
+
+        cmd = captured["cmd"]
+        assert isinstance(cmd, list)
+        assert cmd[:5] == [str(uv_path), "tool", "run", "--python", "3.13"]
+        assert "--overrides" in cmd
+        assert "nemo-whisper.txt" in cmd[cmd.index("--overrides") + 1]
+        assert "--with" in cmd
+        assert (
+            "NVIDIA-NeMo/NeMo.git@be23ce1ee6594da3d7fa2f37e603d3b3ba230a9e"
+            in cmd[cmd.index("--with") + 1]
+        )
+        assert cmd[cmd.index("--from") + 1] == f"{package_source}[server,nemo-whisper,wyoming]"
+        assert cmd[-4:] == ["server", "whisper", "--backend", "nemo"]
+
+    def test_uv_pip_install_uses_nemo_git_override(self) -> None:
+        """Uv pip installs NeMo from a pinned Git revision with the kaldialign override."""
+        with (
+            patch("agent_cli.core.deps.is_uv_tool_install", return_value=False),
+            patch(
+                "agent_cli.core.deps._install_cmd",
+                return_value=["uv", "pip", "install", "--python", "/bin/python"],
+            ),
+            patch("agent_cli.core.deps.subprocess.run") as mock_run,
+        ):
+            mock_run.return_value.returncode = 0
+
+            assert install_extras_impl(["nemo-whisper"], quiet=True) is True
+
+        cmd = mock_run.call_args.args[0]
+        assert "--overrides" in cmd
+        assert "nemo-whisper.txt" in cmd[cmd.index("--overrides") + 1]
+        assert (
+            "nemo-toolkit[asr] @ "
+            "git+https://github.com/NVIDIA-NeMo/NeMo.git@"
+            "be23ce1ee6594da3d7fa2f37e603d3b3ba230a9e"
+        ) in cmd
+        assert "nemo_toolkit[asr]>=2.2.0" not in cmd
+
+    def test_uv_tool_install_uses_nemo_git_override(self) -> None:
+        """Uv tool installs NeMo from a pinned Git revision with override."""
+        with (
+            patch("agent_cli.core.deps._get_current_uv_tool_extras", return_value=["server"]),
+            patch("agent_cli.core.deps.subprocess.run") as mock_run,
+            patch("sys.version_info", (3, 14, 1)),
+        ):
+            mock_run.return_value.returncode = 0
+
+            assert _install_via_uv_tool(["server", "nemo-whisper"], quiet=True) is True
+
+        cmd = mock_run.call_args.args[0]
+        assert cmd[:3] == ["uv", "tool", "install"]
+        assert "agent-cli[nemo-whisper,server]" in cmd
+        assert "--with" in cmd
+        assert (
+            cmd[cmd.index("--with") + 1] == "nemo-toolkit[asr] @ "
+            "git+https://github.com/NVIDIA-NeMo/NeMo.git@"
+            "be23ce1ee6594da3d7fa2f37e603d3b3ba230a9e"
+        )
+        assert "--overrides" in cmd
+        assert "nemo-whisper.txt" in cmd[cmd.index("--overrides") + 1]
+
+    def test_nemo_override_file_pins_nemo_git_requirement(self) -> None:
+        """Override file should replace released NeMo pins with the Git revision."""
+        override = Path("agent_cli/_overrides/nemo-whisper.txt").read_text()
+        assert "kaldialign==0.9.3" in override
+        assert (
+            "nemo-toolkit[asr] @ "
+            "git+https://github.com/NVIDIA-NeMo/NeMo.git@"
+            "be23ce1ee6594da3d7fa2f37e603d3b3ba230a9e"
+        ) in override
+
+    def test_nemo_python314_hint_prefers_runtime_installer(self) -> None:
+        """Python 3.14 NeMo hints should prefer the uv-aware runtime installer."""
+        with (
+            patch("sys.version_info", (3, 14, 1)),
+            patch("agent_cli.core.deps._supports_uv_runtime_override", return_value=True),
+        ):
+            hint = get_combined_install_hint(["nemo-whisper", "wyoming"])
+
+        assert "agent-cli install-extras nemo-whisper wyoming" in hint
+        assert 'uv tool install "agent-cli\\[nemo-whisper,wyoming]"' not in hint
+
     def test_returns_empty_when_install_succeeds(self) -> None:
         """Should return empty list when auto-install succeeds."""
         check_results = iter([False, True])  # First call: missing, second: installed
@@ -262,14 +498,20 @@ class TestProcessControlBypass:
 
     def test_skip_for_toggle_when_process_running(self) -> None:
         """Toggle should bypass extra checks when it is acting as stop."""
-        with patch("agent_cli.core.process.is_process_running", return_value=True):
+        with patch(
+            "agent_cli.core.process.get_process_status",
+            return_value=process.ProcessStatus("transcribe", running=True, pid=123),
+        ):
             assert (
                 _should_skip_extra_check_for_process_control({"toggle": True}, "transcribe") is True
             )
 
     def test_no_skip_for_toggle_when_process_not_running(self) -> None:
         """Toggle start still needs dependency checks."""
-        with patch("agent_cli.core.process.is_process_running", return_value=False):
+        with patch(
+            "agent_cli.core.process.get_process_status",
+            return_value=process.ProcessStatus("transcribe", running=False, pid=None),
+        ):
             assert (
                 _should_skip_extra_check_for_process_control({"toggle": True}, "transcribe")
                 is False
@@ -278,7 +520,10 @@ class TestProcessControlBypass:
     def test_decorator_skips_extra_checks_for_toggle_stop(self) -> None:
         """Decorated commands should stop an existing process without installing extras."""
         with (
-            patch("agent_cli.core.process.is_process_running", return_value=True),
+            patch(
+                "agent_cli.core.process.get_process_status",
+                return_value=process.ProcessStatus("transcribe", running=True, pid=123),
+            ),
             patch("agent_cli.core.deps._check_and_install_extras") as mock_check,
         ):
 

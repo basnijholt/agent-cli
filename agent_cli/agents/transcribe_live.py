@@ -408,7 +408,8 @@ def transcribe_live(  # noqa: PLR0912
 
     # Handle stop/status commands
     if stop:
-        if process.kill_process(process_name):
+        result = process.stop_process(process_name)
+        if result.was_running or result.stale_cleaned:
             if not quiet:
                 print_with_style(f"✅ Stopped {process_name}", style="green")
         elif not quiet:
@@ -416,7 +417,8 @@ def transcribe_live(  # noqa: PLR0912
         return
 
     if status:
-        if process.is_process_running(process_name):
+        process_status = process.get_process_status(process_name)
+        if process_status.running:
             if not quiet:
                 print_with_style(f"✅ {process_name} is running", style="green")
         elif not quiet:

@@ -57,7 +57,7 @@ While Faster Whisper, Piper, and Kokoro are all available as standalone servers,
 
 2. **TTL-based memory management** - Like [LlamaSwap](https://github.com/mostlygeek/llama-swap), models load on-demand and automatically unload after idle periods. Run voice services 24/7 without permanently consuming RAM/VRAM - memory is freed when you're not actively using speech features.
 
-3. **Multi-platform acceleration** - Whisper automatically uses the optimal backend: [MLX Whisper](https://github.com/ml-explore/mlx-examples/tree/main/whisper) on Apple Silicon for native Metal acceleration, [Faster Whisper](https://github.com/SYSTRAN/faster-whisper) on Linux/CUDA for GPU acceleration.
+3. **Multi-platform acceleration** - Whisper automatically uses the optimal backend: [MLX Whisper](https://github.com/ml-explore/mlx-examples/tree/main/whisper) on Apple Silicon for native Metal acceleration, [Faster Whisper](https://github.com/SYSTRAN/faster-whisper) on Linux/CUDA for GPU acceleration, and [NVIDIA NeMo](https://github.com/NVIDIA/NeMo) for Parakeet models.
 
 4. **Unified configuration** - Consistent CLI interface, environment variables, and Docker setup across all services.
 

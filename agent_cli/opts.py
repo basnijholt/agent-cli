@@ -326,6 +326,12 @@ TTS_GEMINI_VOICE: str = typer.Option(
 
 
 # --- Process Management Options ---
+START: bool = typer.Option(
+    False,  # noqa: FBT003
+    "--start",
+    help="Start this command if it is not already running.",
+    rich_help_panel="Process Management",
+)
 STOP: bool = typer.Option(
     False,  # noqa: FBT003
     "--stop",
@@ -342,6 +348,12 @@ TOGGLE: bool = typer.Option(
     False,  # noqa: FBT003
     "--toggle",
     help="Start if not running, stop if running. Ideal for hotkey binding.",
+    rich_help_panel="Process Management",
+)
+WAIT_FOR_START: bool = typer.Option(
+    False,  # noqa: FBT003
+    "--wait-for-start",
+    help="When stopping, wait briefly for a just-launched process to write its PID.",
     rich_help_panel="Process Management",
 )
 
@@ -416,6 +428,38 @@ TRANSCRIPTION_LOG: Path | None = typer.Option(
     help="Append transcripts to JSONL file (timestamp, hostname, model, raw/processed text). "
     "Recent entries provide context for LLM cleanup.",
     rich_help_panel="General Options",
+)
+VOICE_LEVEL_LOG: Path | None = typer.Option(
+    None,
+    "--voice-level-log",
+    help="Append normalized microphone levels to a JSONL file for UI indicators.",
+    hidden=True,
+    rich_help_panel="General Options",
+)
+LIVE_PREVIEW_LOG: Path | None = typer.Option(
+    None,
+    "--live-preview-log",
+    help="Write rolling live transcription preview events to JSONL while recording.",
+    rich_help_panel="Live Preview",
+)
+LIVE_PREVIEW_INTERVAL: float = typer.Option(
+    2.0,
+    "--live-preview-interval",
+    help="Seconds between live preview retranscriptions.",
+    rich_help_panel="Live Preview",
+)
+LIVE_PREVIEW_WINDOW: float = typer.Option(
+    15.0,
+    "--live-preview-window",
+    help="Seconds of recent audio to include in each live preview retranscription.",
+    rich_help_panel="Live Preview",
+)
+LIVE_PREVIEW_CONSOLE: bool = typer.Option(
+    False,  # noqa: FBT003
+    "--live-preview-console",
+    "--live-preview-stdout",
+    help="Print rolling live transcription preview updates to the terminal while recording.",
+    rich_help_panel="Live Preview",
 )
 
 # --- Server Options ---

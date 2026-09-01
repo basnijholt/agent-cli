@@ -20,8 +20,42 @@ from agent_cli.install.service_config import (
     install_uv,
 )
 
+_MACOS_HOMEBREW_BIN = "/opt/homebrew/bin"
+
 # macOS-specific paths for uv (Homebrew)
-_MACOS_UV_PATHS = [Path("/opt/homebrew/bin/uv")]
+_MACOS_UV_PATHS = [Path(_MACOS_HOMEBREW_BIN) / "uv"]
+
+# Default PATH for launchd-spawned daemons. The system default
+# (`/usr/bin:/bin:/usr/sbin:/sbin`) does not include Homebrew, and
+# `path_helper` does not run for launchd processes, so daemons that
+# shell out to ffmpeg/uv/etc. fail with "command not found" unless
+# we set PATH explicitly here.
+_MACOS_DAEMON_PATH = (
+    f"{_MACOS_HOMEBREW_BIN}:"
+    "/opt/homebrew/sbin:"
+    "/usr/local/bin:"
+    "/usr/local/sbin:"
+    "/usr/bin:"
+    "/bin:"
+    "/usr/sbin:"
+    "/sbin"
+)
+
+_PRESERVED_APP_ENV_KEYS = (
+    "AGENTCLI_APP_SUPPORT_DIR",
+    "AGENTCLI_BUNDLED_UV",
+    "AGENTCLI_PACKAGE_SOURCE",
+    "AGENTCLI_RUNTIME_DIR",
+    "AGENT_CLI_CONFIG_HOME",
+    "UV_CACHE_DIR",
+    "UV_PYTHON_INSTALL_DIR",
+    "UV_PYTHON_BIN_DIR",
+    "UV_TOOL_DIR",
+    "UV_TOOL_BIN_DIR",
+    "UV_NO_PROGRESS",
+    "NO_COLOR",
+    "TERM",
+)
 
 
 def _get_label(service_name: str) -> str:
@@ -54,16 +88,18 @@ def _get_recent_logs(service_name: str, num_lines: int = 10) -> list[str]:
 
     lines: list[str] = []
 
-    # Prefer stdout as it has structured output (startup message, usage examples)
-    # stderr often has noisy warnings from libraries like PyTorch/Kokoro
     for log_file in [stdout_log, stderr_log]:
         if log_file.exists():
             try:
                 with log_file.open() as f:
                     all_lines = f.readlines()
-                    lines = [line.rstrip() for line in all_lines[-num_lines:]]
+                    recent_lines = [line.rstrip() for line in all_lines[-num_lines:]]
+                    if not recent_lines:
+                        continue
                     if lines:
-                        break
+                        lines.append("")
+                    lines.append(f"==> {log_file.name} <==")
+                    lines.extend(recent_lines)
             except OSError:
                 continue
 
@@ -75,14 +111,28 @@ def _generate_plist(
     uv_path: Path,
     home_dir: Path,
     log_dir: Path,
+    extra_command_args: list[str] | None = None,
 ) -> dict:
     """Generate plist dictionary for a launchd service."""
+    environment = {"PATH": _MACOS_DAEMON_PATH}
+    for key in _PRESERVED_APP_ENV_KEYS:
+        value = os.environ.get(key)
+        if value:
+            environment[key] = value
+    environment["AGENTCLI_UV_PATH"] = uv_path.as_posix()
+
     return {
         "Label": _get_label(service.name),
-        "ProgramArguments": build_service_command(service, uv_path, use_macos_extra=True),
+        "ProgramArguments": build_service_command(
+            service,
+            uv_path,
+            use_macos_extra=True,
+            extra_command_args=extra_command_args,
+        ),
         "RunAtLoad": True,
         "KeepAlive": True,
         "WorkingDirectory": str(home_dir),
+        "EnvironmentVariables": environment,
         "StandardOutPath": str(log_dir / "stdout.log"),
         "StandardErrorPath": str(log_dir / "stderr.log"),
     }
@@ -129,7 +179,10 @@ def _get_service_status(service_name: str) -> ServiceStatus:
     )
 
 
-def _install_service(service_name: str) -> InstallResult:
+def _install_service(
+    service_name: str,
+    extra_command_args: list[str] | None = None,
+) -> InstallResult:
     """Install a service as a macOS launchd service.
 
     Returns an InstallResult with success status and message.
@@ -159,7 +212,7 @@ def _install_service(service_name: str) -> InstallResult:
     plist_path.parent.mkdir(parents=True, exist_ok=True)
 
     # Generate and write plist
-    plist_data = _generate_plist(service, uv_path, home_dir, log_dir)
+    plist_data = _generate_plist(service, uv_path, home_dir, log_dir, extra_command_args)
 
     with plist_path.open("wb") as f:
         plistlib.dump(plist_data, f)

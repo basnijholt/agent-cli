@@ -10,14 +10,14 @@ import time
 from contextlib import suppress
 from datetime import UTC, datetime, timedelta
 from pathlib import Path  # noqa: TC003
-from typing import Any, TypedDict
+from typing import TYPE_CHECKING, Any, TypedDict
 
 import typer
 
 from agent_cli import config, opts
 from agent_cli.cli import app
 from agent_cli.core import process
-from agent_cli.core.audio import setup_devices
+from agent_cli.core.audio import AudioLevelLogWriter, setup_devices
 from agent_cli.core.deps import requires_extras
 from agent_cli.core.diarization import (
     SpeakerDiarizer,
@@ -53,6 +53,9 @@ from agent_cli.services.asr import (
 from agent_cli.services.llm import process_and_update_clipboard
 
 LOGGER = logging.getLogger()
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 class TranscriptResult(TypedDict, total=False):
@@ -252,6 +255,7 @@ def log_transcription(
     }
 
     # Append to log file
+    log_file.parent.mkdir(parents=True, exist_ok=True)
     with log_file.open("a", encoding="utf-8") as f:
         f.write(json.dumps(log_entry) + "\n")
 
@@ -360,13 +364,21 @@ async def _async_main(  # noqa: PLR0912, PLR0915, C901
     diarization_cfg: config.Diarization | None = None,
     emit_output: bool = True,
     raise_diarization_errors: bool = False,
+    audio_level_callback: Callable[[bytes], None] | None = None,
+    live_preview_log: Path | None = None,
+    live_preview_interval: float = 2.0,
+    live_preview_window: float = 15.0,
+    live_preview_console: bool = False,
 ) -> TranscriptResult:
     """Unified async entry point for both live and file-based transcription."""
     start_time = time.monotonic()
     transcript: str | None
     saved_recording_path: Path | None = None
+    live_preview_console_active = (
+        live_preview_console and audio_file_path is None and provider_cfg.asr_provider == "wyoming"
+    )
 
-    with maybe_live(not general_cfg.quiet) as live:
+    with maybe_live(not general_cfg.quiet and not live_preview_console_active) as live:
         if audio_file_path:
             # File-based transcription
             # Determine if we can use native format support (skip PCM conversion)
@@ -442,6 +454,17 @@ async def _async_main(  # noqa: PLR0912, PLR0915, C901
                     openai_asr_cfg,
                     gemini_asr_cfg,
                 )
+                live_preview_config = (
+                    asr.LivePreviewConfig(
+                        log_file=live_preview_log,
+                        interval_seconds=live_preview_interval,
+                        window_seconds=live_preview_window,
+                        console=live_preview_console,
+                    )
+                    if (live_preview_log or live_preview_console)
+                    and provider_cfg.asr_provider == "wyoming"
+                    else None
+                )
                 transcript = await live_transcriber(
                     logger=LOGGER,
                     stop_event=stop_event,
@@ -450,6 +473,8 @@ async def _async_main(  # noqa: PLR0912, PLR0915, C901
                     save_recording=save_recording,
                     extra_instructions=extra_instructions,
                     recording_path_callback=_set_saved_recording_path,
+                    audio_level_callback=audio_level_callback,
+                    live_preview_config=live_preview_config,
                 )
 
         elapsed = time.monotonic() - start_time
@@ -597,7 +622,10 @@ def transcribe(  # noqa: PLR0912, PLR0911, PLR0915, C901
     extra_instructions: str | None = typer.Option(
         None,
         "--extra-instructions",
-        help="Extra instructions appended to the LLM cleanup prompt (requires `--llm`).",
+        help=(
+            "Extra ASR context where supported, and LLM cleanup instructions when "
+            "`--llm` is enabled. The NeMo backend ignores ASR text prompts."
+        ),
         rich_help_panel="LLM Configuration",
     ),
     from_file: Path | None = opts.FROM_FILE,
@@ -625,9 +653,11 @@ def transcribe(  # noqa: PLR0912, PLR0911, PLR0915, C901
     gemini_api_key: str | None = opts.GEMINI_API_KEY,
     llm: bool = opts.LLM,
     # --- Process Management ---
+    start: bool = opts.START,
     stop: bool = opts.STOP,
     status: bool = opts.STATUS,
     toggle: bool = opts.TOGGLE,
+    wait_for_start: bool = opts.WAIT_FOR_START,
     # --- General Options ---
     clipboard: bool = opts.CLIPBOARD,
     log_level: opts.LogLevel = opts.LOG_LEVEL,
@@ -638,6 +668,11 @@ def transcribe(  # noqa: PLR0912, PLR0911, PLR0915, C901
     config_file: str | None = opts.CONFIG_FILE,
     print_args: bool = opts.PRINT_ARGS,
     transcription_log: Path | None = opts.TRANSCRIPTION_LOG,
+    voice_level_log: Path | None = opts.VOICE_LEVEL_LOG,
+    live_preview_log: Path | None = opts.LIVE_PREVIEW_LOG,
+    live_preview_interval: float = opts.LIVE_PREVIEW_INTERVAL,
+    live_preview_window: float = opts.LIVE_PREVIEW_WINDOW,
+    live_preview_console: bool = opts.LIVE_PREVIEW_CONSOLE,
     # --- Diarization Options ---
     diarize: bool = opts.DIARIZE,
     diarize_format: opts.DiarizeFormat = opts.DIARIZE_FORMAT,
@@ -685,15 +720,24 @@ def transcribe(  # noqa: PLR0912, PLR0911, PLR0915, C901
 
     setup_logging(log_level, log_file, quiet=effective_quiet)
 
-    # Expand user path for transcription log
-    if transcription_log:
-        transcription_log = transcription_log.expanduser()
-
     enroll_speakers = _option_default(enroll_speakers)
     identify_speakers = _option_default(identify_speakers)
     remember_unknown_speakers = _option_default(remember_unknown_speakers)
     speaker_profiles_file = _option_default(speaker_profiles_file)
     speaker_match_threshold = _option_default(speaker_match_threshold)
+    live_preview_log = _option_default(live_preview_log)
+    live_preview_interval = _option_default(live_preview_interval)
+    live_preview_window = _option_default(live_preview_window)
+    live_preview_console = _option_default(live_preview_console)
+
+    # Expand user path for transcription log
+    if transcription_log:
+        transcription_log = transcription_log.expanduser()
+    voice_level_log = _option_default(voice_level_log)
+    if voice_level_log:
+        voice_level_log = voice_level_log.expanduser()
+    if live_preview_log:
+        live_preview_log = live_preview_log.expanduser()
 
     # Validate diarization options
     if not diarize and (enroll_speakers or remember_unknown_speakers):
@@ -835,6 +879,10 @@ def transcribe(  # noqa: PLR0912, PLR0911, PLR0915, C901
                     diarization_cfg=diarization_cfg,
                     emit_output=not json_output,
                     raise_diarization_errors=diarize,
+                    live_preview_log=live_preview_log,
+                    live_preview_interval=live_preview_interval,
+                    live_preview_window=live_preview_window,
+                    live_preview_console=live_preview_console,
                 ),
             )
         except ImportError as exc:
@@ -854,6 +902,29 @@ def transcribe(  # noqa: PLR0912, PLR0911, PLR0915, C901
 
     # Normal recording mode
     process_name = "transcribe"
+    if start:
+        process_status = process.get_process_status(process_name)
+        if process_status.running:
+            if json_output:
+                print(
+                    json.dumps(
+                        {
+                            "action": "start",
+                            "process": process_name,
+                            "running": True,
+                            "status": "running",
+                            "pid": process_status.pid,
+                            "stale_cleaned": process_status.stale_cleaned,
+                        },
+                    ),
+                )
+            elif not general_cfg.quiet:
+                print_with_style(
+                    f"✅ Transcribe is already running (PID: {process_status.pid}).",
+                    style="green",
+                )
+            return
+
     if stop_or_status_or_toggle(
         process_name,
         "transcribe",
@@ -861,24 +932,27 @@ def transcribe(  # noqa: PLR0912, PLR0911, PLR0915, C901
         status,
         toggle,
         quiet=general_cfg.quiet,
+        json_output=json_output,
+        wait_for_start_seconds=300.0 if wait_for_start else 0.0,
     ):
         return
 
-    audio_in_cfg = config.AudioInput(
-        input_device_index=input_device_index,
-        input_device_name=input_device_name,
-    )
-
-    # We only use setup_devices for its input device handling
-    device_info = setup_devices(general_cfg, audio_in_cfg, None)
-    if device_info is None:
-        return
-    input_device_index, _, _ = device_info
-    audio_in_cfg.input_device_index = input_device_index
-
-    # Use context manager for PID file management
+    # Use context manager before audio setup so --stop can target startup reliably.
     try:
         with process.pid_file_context(process_name), suppress(KeyboardInterrupt):
+            audio_level_writer = AudioLevelLogWriter(voice_level_log) if voice_level_log else None
+            audio_in_cfg = config.AudioInput(
+                input_device_index=input_device_index,
+                input_device_name=input_device_name,
+            )
+
+            # We only use setup_devices for its input device handling
+            device_info = setup_devices(general_cfg, audio_in_cfg, None)
+            if device_info is None:
+                return
+            input_device_index, _, _ = device_info
+            audio_in_cfg.input_device_index = input_device_index
+
             result = asyncio.run(
                 _async_main(
                     extra_instructions=extra_instructions,
@@ -898,6 +972,13 @@ def transcribe(  # noqa: PLR0912, PLR0911, PLR0915, C901
                     diarization_cfg=diarization_cfg,
                     emit_output=not json_output,
                     raise_diarization_errors=diarize,
+                    audio_level_callback=audio_level_writer.write_chunk
+                    if audio_level_writer
+                    else None,
+                    live_preview_log=live_preview_log,
+                    live_preview_interval=live_preview_interval,
+                    live_preview_window=live_preview_window,
+                    live_preview_console=live_preview_console,
                 ),
             )
     except ImportError as exc:

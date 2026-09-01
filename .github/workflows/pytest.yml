@@ -18,24 +18,31 @@ jobs:
         python-version: ["3.11", "3.13"]
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7.0.1
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7.0.0
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install portaudio (Linux only)
         if: matrix.os == 'ubuntu-latest'
         run: sudo apt-get update && sudo apt-get install -y portaudio19-dev
       - name: Install uv
-        uses: astral-sh/setup-uv@v8.1.0
+        uses: astral-sh/setup-uv@v9.0.0
+      - name: Run macOS app Swift tests
+        if: matrix.os == 'macos-latest' && matrix.python-version == '3.13'
+        run: swift test --package-path macos/AgentCLI --enable-xctest
       - name: Run pytest (macOS - all extras)
         if: matrix.os == 'macos-latest'
+        env:
+          # kaldialign builds pybind11 2.10.x from source, which needs this
+          # compatibility floor with CMake 4 on current macOS runners.
+          CMAKE_POLICY_VERSION_MINIMUM: "3.5"
         run: uv run --all-extras pytest -vvv
       - name: Run pytest (non-macOS - exclude mlx-whisper)
         if: matrix.os != 'macos-latest'
         run: uv run --extra audio --extra diarization --extra llm --extra rag --extra memory --extra vad --extra faster-whisper --extra piper --extra kokoro --extra server --extra speed --extra test pytest -vvv
       - name: Upload coverage reports to Codecov
         if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.13'
-        uses: codecov/codecov-action@v6
+        uses: codecov/codecov-action@v7.0.0
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}

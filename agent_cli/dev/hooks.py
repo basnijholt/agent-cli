@@ -45,11 +45,14 @@ def _normalize_hook_commands(value: Any, *, config_key: str) -> list[str]:
     return commands
 
 
-def _load_dev_hook_settings(agent_name: str) -> tuple[bool, list[str]]:
+def _load_dev_hook_settings(
+    agent_name: str,
+    runtime_config: dict[str, Any] | None = None,
+) -> tuple[bool, list[str]]:
     """Load auto-trust and pre-launch hook settings for an agent."""
-    auto_trust = bool(get_dev_config().get("auto_trust", True))
-    global_hooks = get_dev_table("hooks")
-    agent_hooks = get_dev_child_table("hooks", agent_name)
+    auto_trust = bool(get_dev_config(runtime_config).get("auto_trust", True))
+    global_hooks = get_dev_table("hooks", runtime_config)
+    agent_hooks = get_dev_child_table("hooks", agent_name, runtime_config)
 
     pre_launch_hooks = _normalize_hook_commands(
         global_hooks.get("pre_launch"),
@@ -123,12 +126,17 @@ def _run_pre_launch_hook(command: str, context: LaunchContext) -> None:
     raise RuntimeError(msg)
 
 
-def prepare_agent_launch(context: LaunchContext, *, hooks_enabled: bool = True) -> None:
+def prepare_agent_launch(
+    context: LaunchContext,
+    *,
+    hooks_enabled: bool = True,
+    runtime_config: dict[str, Any] | None = None,
+) -> None:
     """Run built-in preparation and configured pre-launch hooks."""
     if not hooks_enabled:
         return
 
-    auto_trust, pre_launch_hooks = _load_dev_hook_settings(context.agent.name)
+    auto_trust, pre_launch_hooks = _load_dev_hook_settings(context.agent.name, runtime_config)
     if auto_trust and (
         message := context.agent.prepare_launch(context.worktree_path, context.repo_root)
     ):

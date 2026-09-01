@@ -12,8 +12,10 @@ from agent_cli.server.model_manager import ModelConfig, ModelManager, ModelStats
 from agent_cli.server.tts.backends import (
     BackendConfig,
     BackendType,
+    ResolvedBackendType,
     SynthesisResult,
     create_backend,
+    detect_backend,
 )
 
 if TYPE_CHECKING:
@@ -40,15 +42,24 @@ class TTSModelManager:
     def __init__(self, config: TTSModelConfig) -> None:
         """Initialize the TTS model manager."""
         self.config = config
+        backend_type: ResolvedBackendType = (
+            detect_backend() if config.backend_type == "auto" else config.backend_type
+        )
+        self._backend_type = backend_type
         backend = create_backend(
             BackendConfig(
                 model_name=config.model_name,
                 device=config.device,
                 cache_dir=config.cache_dir,
             ),
-            backend_type=config.backend_type,
+            backend_type=backend_type,
         )
         self._manager = ModelManager(backend, config)
+
+    @property
+    def backend_type(self) -> ResolvedBackendType:
+        """Get the resolved backend type."""
+        return self._backend_type
 
     @property
     def stats(self) -> ModelStats:

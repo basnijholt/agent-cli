@@ -78,6 +78,28 @@ def test_convert_audio_arguments() -> None:
         assert "s16le" in cmd
 
 
+def test_convert_audio_to_wav_arguments() -> None:
+    """Regression test: WAV conversion should produce a PCM WAV container."""
+    with (
+        patch("shutil.which", return_value="/usr/bin/ffmpeg"),
+        patch("subprocess.run") as mock_run,
+        patch("pathlib.Path.read_bytes", return_value=b"wav_data"),
+        patch("shutil.rmtree"),
+    ):
+        mock_run.return_value = MagicMock(returncode=0, stdout=b"", stderr=b"")
+
+        converted = audio_format.convert_audio_to_wav_format(b"input_data", "test.mp3")
+
+        assert converted == b"wav_data"
+        args, kwargs = mock_run.call_args
+        assert kwargs.get("text") is False
+        cmd = args[0]
+        assert cmd[0] == "ffmpeg"
+        assert "-acodec" in cmd
+        assert "pcm_s16le" in cmd
+        assert "-f" not in cmd
+
+
 def test_convert_audio_integration(sample_wav_data: bytes) -> None:
     """Integration test using actual ffmpeg if available."""
     if not shutil.which("ffmpeg"):

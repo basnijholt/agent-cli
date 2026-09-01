@@ -69,21 +69,27 @@ Since then I have expanded the tool with many more features, all focused on loca
 
 ## Quick Start
 
+### Prefer the macOS app?
+
+Install the native menu bar app with Homebrew:
+
+```bash
+brew install --cask basnijholt/tap/agent-cli
+```
+
+The app provides global shortcuts, a menu bar UI, automatic local Whisper setup, and a private bundled `agent-cli` runtime. See the [macOS app guide](installation/macos-app.md).
+
 ### Just want the CLI tool?
 
 If you already have AI services running (or plan to use OpenAI):
 
 ```bash
 # Using uv (recommended)
-uv tool install agent-cli -p 3.13
+uv tool install agent-cli
 
 # Using pip
 pip install agent-cli
 ```
-
-> [!NOTE]
-> The `-p 3.13` flag is required because some dependencies don't support Python 3.14 yet.
-> See [uv issue #8206](https://github.com/astral-sh/uv/issues/8206) for details.
 
 Then use it:
 
@@ -95,7 +101,7 @@ agent-cli autocorrect "this has an eror"
 
 ```bash
 # 1. Install agent-cli
-uv tool install agent-cli -p 3.13
+uv tool install agent-cli
 
 # 2. Install all required services
 agent-cli install-services
@@ -129,6 +135,7 @@ The setup automatically installs:
 ## Documentation
 
 - [Getting Started](getting-started.md) - Installation and first steps
+- [macOS App](installation/macos-app.md) - Native menu bar app and Homebrew cask
 - [Configuration](configuration.md) - All configuration options
 - [Commands](commands/index.md) - CLI reference
 - [System Integration](system-integration.md) - Hotkeys and system setup

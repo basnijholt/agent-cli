@@ -10,8 +10,8 @@ from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
-from click import Command
 from typer import Context
+from typer.core import TyperCommand as Command
 from typer.testing import CliRunner
 
 import agent_cli.config as config_module

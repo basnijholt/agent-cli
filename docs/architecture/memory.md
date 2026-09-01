@@ -75,7 +75,7 @@ docker run -d -p 3000:8080 \
   ghcr.io/open-webui/open-webui:main
 
 # 3. Start the memory proxy (runs in foreground so you can watch the logs)
-uvx -p 3.13 --from "agent-cli[memory]" agent-cli memory proxy \
+uvx --from "agent-cli[memory]" agent-cli memory proxy \
   --memory-path ./my-memories \
   --openai-base-url http://localhost:11434/v1 \
   --embedding-model embeddinggemma:300m
@@ -88,7 +88,7 @@ uvx -p 3.13 --from "agent-cli[memory]" agent-cli memory proxy \
 ```bash
 # Terminal 1: Pull models and start proxy
 ollama pull embeddinggemma:300m && ollama pull qwen3:4b
-uvx -p 3.13 --from "agent-cli[memory]" agent-cli memory proxy \
+uvx --from "agent-cli[memory]" agent-cli memory proxy \
   --memory-path ./my-memories \
   --openai-base-url http://localhost:11434/v1 \
   --embedding-model embeddinggemma:300m

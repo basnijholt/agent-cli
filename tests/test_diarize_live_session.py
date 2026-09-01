@@ -147,7 +147,11 @@ def test_select_recent_session_picks_nth_most_recent_session() -> None:
     assert [segment.audio_file.name for segment in selected] == ["first-one.mp3", "first-two.mp3"]
 
 
-def test_run_retranscribe_uses_transcribe_config_defaults(tmp_path: Path) -> None:
+def test_run_retranscribe_uses_transcribe_config_defaults(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     options = DiarizeLiveSessionOptions(
         date=date.fromisoformat("2026-04-23"),
         start=parse_clock_time("11:32"),

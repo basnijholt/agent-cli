@@ -7,7 +7,7 @@ import shlex
 import subprocess
 import tempfile
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from agent_cli.core.utils import console
 
@@ -85,7 +85,9 @@ def resolve_agent(
     return agent
 
 
-def get_config_agent_args() -> dict[str, list[str]] | None:
+def get_config_agent_args(
+    runtime_config: dict[str, Any] | None = None,
+) -> dict[str, list[str]] | None:
     """Load agent_args from config file.
 
     Config format:
@@ -95,11 +97,13 @@ def get_config_agent_args() -> dict[str, list[str]] | None:
     Note: The config loader may flatten section names, so we check both
     nested structure and flattened 'dev.agent_args' key.
     """
-    agent_args = get_dev_table("agent_args")
+    agent_args = get_dev_table("agent_args", runtime_config)
     return agent_args or None
 
 
-def get_config_agent_env() -> dict[str, dict[str, str]] | None:
+def get_config_agent_env(
+    runtime_config: dict[str, Any] | None = None,
+) -> dict[str, dict[str, str]] | None:
     """Load agent_env from config file.
 
     Config format:
@@ -110,11 +114,14 @@ def get_config_agent_env() -> dict[str, dict[str, str]] | None:
     'dev.agent_env.claude' become top-level. We reconstruct the
     agent_env dict from these flattened keys.
     """
-    agent_env = get_dev_child_tables("agent_env")
+    agent_env = get_dev_child_tables("agent_env", runtime_config)
     return agent_env or None
 
 
-def get_agent_env(agent: CodingAgent) -> dict[str, str]:
+def get_agent_env(
+    agent: CodingAgent,
+    runtime_config: dict[str, Any] | None = None,
+) -> dict[str, str]:
     """Get environment variables for an agent.
 
     Merges config env vars with agent's built-in env vars.
@@ -124,7 +131,7 @@ def get_agent_env(agent: CodingAgent) -> dict[str, str]:
     env = agent.get_env().copy()
 
     # Add config env vars (these override built-in ones)
-    config_env = get_config_agent_env()
+    config_env = get_config_agent_env(runtime_config)
     if config_env and agent.name in config_env:
         env.update(config_env[agent.name])
 
@@ -134,12 +141,13 @@ def get_agent_env(agent: CodingAgent) -> dict[str, str]:
 def merge_agent_args(
     agent: CodingAgent,
     cli_args: list[str] | None,
+    runtime_config: dict[str, Any] | None = None,
 ) -> list[str] | None:
     """Merge CLI args with config args for an agent.
 
     Config args are applied first, CLI args are appended (and can override).
     """
-    config_args = get_config_agent_args()
+    config_args = get_config_agent_args(runtime_config)
     result: list[str] = []
 
     # Add config args for this agent
@@ -272,44 +280,56 @@ def _tab_name_for_path(path: Path) -> tuple[Path | None, str]:
     return repo_root, tab_name
 
 
-def _launch_in_tmux(
+def _launch_in_multiplexer(
+    path: Path,
+    terminal: terminals.Multiplexer,
+    full_cmd: str,
+    tab_name: str,
+    repo_root: Path | None,
+    *,
+    requested: bool,
+    session_override: str | None,
+) -> TerminalHandle | None:
+    """Launch an agent in a multiplexer and return its tab/pane handle."""
+    session_name = session_override
+    if session_name is None and requested and not terminal.detect():
+        session_name = terminal.session_name_for_repo(repo_root or path)
+
+    return terminal.open_in_session(
+        path,
+        full_cmd,
+        tab_name=tab_name,
+        session_name=session_name,
+    )
+
+
+def _launch_in_cmux(
     path: Path,
     agent: CodingAgent,
     terminal: terminals.Terminal,
     full_cmd: str,
     tab_name: str,
     repo_root: Path | None,
-    multiplexer_name: str | None,
-    tmux_session: str | None,
 ) -> TerminalHandle | None:
-    """Launch an agent via tmux and return its pane handle."""
-    from .terminals.tmux import Tmux  # noqa: PLC0415
+    """Launch an agent in a cmux tab inside a workspace named after the repo."""
+    from .terminals.cmux import Cmux  # noqa: PLC0415
 
-    if not isinstance(terminal, Tmux):
-        warn("Could not open new tab in tmux")
+    if not isinstance(terminal, Cmux):
+        warn("Could not open new tab in cmux")
         return None
 
-    requested_tmux = multiplexer_name == "tmux"
-    session_name = tmux_session
-    if session_name is None and requested_tmux and not terminal.detect():
-        session_name = terminal.session_name_for_repo(repo_root or path)
-
-    handle = terminal.open_in_session(
+    workspace_name = (repo_root or path).name
+    handle = terminal.open_in_workspace(
         path,
         full_cmd,
         tab_name=tab_name,
-        session_name=session_name,
+        workspace_name=workspace_name,
     )
     if handle is None:
-        warn("Could not open new tab in tmux")
+        warn("Could not open new tab in cmux")
         return None
 
-    session_label = (
-        f" in tmux session {handle.session_name}"
-        if (requested_tmux or tmux_session is not None) and handle.session_name
-        else " in new tmux tab"
-    )
-    success(f"Started {agent.name}{session_label}")
+    success(f"Started {agent.name} in cmux workspace {workspace_name!r}")
     return handle
 
 
@@ -321,21 +341,36 @@ def _launch_in_terminal(
     tab_name: str,
     repo_root: Path | None,
     multiplexer_name: str | None,
-    tmux_session: str | None,
+    multiplexer_session: str | None,
 ) -> tuple[bool, TerminalHandle | None]:
     """Launch an agent in the resolved terminal."""
-    if terminal.name == "tmux":
-        handle = _launch_in_tmux(
+    if terminal.name == "cmux":
+        handle = _launch_in_cmux(path, agent, terminal, full_cmd, tab_name, repo_root)
+        return handle is not None, handle
+
+    if isinstance(terminal, terminals.Multiplexer):
+        requested = multiplexer_name == terminal.name or multiplexer_session is not None
+        handle = _launch_in_multiplexer(
             path,
-            agent,
             terminal,
             full_cmd,
             tab_name,
             repo_root,
-            multiplexer_name,
-            tmux_session,
+            requested=requested,
+            session_override=multiplexer_session,
         )
-        return handle is not None, handle
+        if handle is not None:
+            session_label = (
+                f" in {terminal.name} session {handle.session_name}"
+                if requested and handle.session_name
+                else f" in new {terminal.name} tab"
+            )
+            success(f"Started {agent.name}{session_label}")
+            return True, handle
+        if requested:
+            warn(f"Could not open new tab in {terminal.name}")
+            return False, None
+        # Fall through to plain tab opening (e.g. zellij < 0.44 inside a session)
 
     if terminal.open_new_tab(path, full_cmd, tab_name=tab_name):
         success(f"Started {agent.name} in new {terminal.name} tab")
@@ -353,15 +388,14 @@ def launch_agent(
     task_file: Path | None = None,
     env: dict[str, str] | None = None,
     multiplexer_name: str | None = None,
-    tmux_session: str | None = None,
+    multiplexer_session: str | None = None,
 ) -> TerminalHandle | None:
     """Launch agent in a new terminal tab.
 
     Agents are interactive TUIs that need a proper terminal.
     Priority: tmux/zellij tab > terminal tab > print instructions.
     """
-    effective_multiplexer_name = "tmux" if tmux_session is not None else multiplexer_name
-    terminal = _resolve_launch_terminal(effective_multiplexer_name)
+    terminal = _resolve_launch_terminal(multiplexer_name)
     full_cmd = _build_agent_launch_command(
         path, agent, extra_args, prompt, task_file, env, terminal
     )
@@ -375,8 +409,8 @@ def launch_agent(
             full_cmd,
             tab_name,
             repo_root,
-            effective_multiplexer_name,
-            tmux_session,
+            multiplexer_name,
+            multiplexer_session,
         )
         if launched:
             return handle

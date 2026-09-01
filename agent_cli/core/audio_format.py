@@ -152,6 +152,62 @@ def convert_audio_to_wyoming_format(
             output_path.unlink(missing_ok=True)
 
 
+def convert_audio_to_wav_format(
+    audio_data: bytes,
+    source_filename: str,
+    *,
+    timeout: int | None = 60,
+) -> bytes:
+    """Convert audio data to a 16kHz mono 16-bit PCM WAV container using FFmpeg."""
+    if not shutil.which("ffmpeg"):
+        msg = "FFmpeg not found in PATH. Please install FFmpeg to convert audio formats."
+        raise RuntimeError(msg)
+
+    suffix = _get_file_extension(source_filename)
+    tmp_dir = Path(tempfile.mkdtemp())
+    input_path = tmp_dir / f"input{suffix}"
+    output_path = tmp_dir / "output.wav"
+
+    try:
+        input_path.write_bytes(audio_data)
+        cmd = [
+            "ffmpeg",
+            "-y",
+            "-i",
+            str(input_path),
+            "-ar",
+            str(constants.AUDIO_RATE),
+            "-ac",
+            str(constants.AUDIO_CHANNELS),
+            "-acodec",
+            "pcm_s16le",
+            str(output_path),
+        ]
+
+        logger.debug("Running FFmpeg WAV conversion: %s", " ".join(cmd))
+        try:
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=False,
+                check=False,
+                timeout=timeout,
+            )
+        except subprocess.TimeoutExpired as e:
+            msg = f"FFmpeg conversion timed out after {timeout} seconds"
+            raise RuntimeError(msg) from e
+
+        if result.returncode != 0:
+            stderr_text = result.stderr.decode("utf-8", errors="replace")
+            logger.error("FFmpeg WAV conversion failed: %s", stderr_text)
+            msg = f"FFmpeg WAV conversion failed: {stderr_text}"
+            raise RuntimeError(msg)
+
+        return output_path.read_bytes()
+    finally:
+        shutil.rmtree(tmp_dir, ignore_errors=True)
+
+
 def _get_file_extension(filename: str) -> str:
     """Get file extension from filename, defaulting to .tmp.
 

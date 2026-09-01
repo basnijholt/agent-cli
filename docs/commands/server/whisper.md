@@ -9,6 +9,7 @@ Run a local ASR server with automatic backend selection based on your platform:
 - **macOS Apple Silicon** → [mlx-whisper](https://github.com/ml-explore/mlx-examples/tree/main/whisper) (Metal acceleration)
 - **Linux/CUDA** → [faster-whisper](https://github.com/SYSTRAN/faster-whisper) (CTranslate2)
 - **HuggingFace** → [transformers](https://huggingface.co/docs/transformers/model_doc/whisper) (supports safetensors models, Qwen3-ASR, and known remote-code ASR models such as Cohere Transcribe)
+- **NVIDIA Parakeet** → [NeMo](https://github.com/NVIDIA/NeMo) (e.g., `parakeet-tdt-0.6b-v3`)
 
 > [!NOTE]
 > **Quick Start** - Get transcription working in 30 seconds:
@@ -41,6 +42,12 @@ Run a local ASR server with automatic backend selection based on your platform:
 >   --model Qwen/Qwen3-ASR-1.7B-hf
 > ```
 >
+> NVIDIA Parakeet via NeMo:
+> ```bash
+> agent-cli install-extras nemo-whisper wyoming
+> agent-cli server whisper --backend nemo
+> ```
+>
 > Use it with any OpenAI-compatible client, or configure agent-cli to use it - see [Configuration](../../configuration.md#using-local-whisper-server).
 
 ## Features
@@ -50,7 +57,7 @@ Run a local ASR server with automatic backend selection based on your platform:
 - **TTL-based memory management** - models unload after idle period, freeing RAM/VRAM
 - **Multiple models** - run different model sizes with independent TTLs
 - **Background preloading** - downloads start at startup without blocking; use `--preload` to wait
-- **Multi-platform support** - automatically uses the optimal backend for your hardware
+- **Multi-platform support** - automatically uses the optimal backend for your hardware (`auto` switches to `nemo` for Parakeet models)
 
 > [!IMPORTANT]
 > Some backend/model combinations support fewer features than Whisper.
@@ -80,6 +87,15 @@ agent-cli server whisper --device cpu
 # Download model without starting server (requires faster-whisper)
 agent-cli server whisper --model large-v3 --download-only
 
+# Run NVIDIA Parakeet via NeMo
+agent-cli server whisper --backend nemo
+
+# Keep Parakeet loaded after first request (avoids repeated load cost)
+agent-cli server whisper --backend nemo --ttl 0
+
+# Run a specific Parakeet model instead of the NeMo default
+agent-cli server whisper --backend nemo --model parakeet-tdt-0.6b-v3
+
 # Preload model at startup and wait until ready
 agent-cli server whisper --preload
 
@@ -107,9 +123,9 @@ agent-cli server whisper \
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--model, -m` | - | Whisper model(s) to load. Common models: `tiny`, `base`, `small`, `medium`, `large-v3`, `distil-large-v3`. Can specify multiple for different accuracy/speed tradeoffs. Default: `large-v3` |
+| `--model, -m` | - | Whisper model(s) to load. Common models: `tiny`, `base`, `small`, `medium`, `large-v3`, `distil-large-v3`, `parakeet-tdt-0.6b-v3`, `parakeet-unified-en-0.6b` (NeMo backend). Can specify multiple for different accuracy/speed tradeoffs. Default: `large-v3` (`parakeet-unified-en-0.6b` with `--backend nemo`) |
 | `--default-model` | - | Model to use when client doesn't specify one. Must be in the `--model` list |
-| `--device, -d` | `auto` | Compute device: `auto` (detect GPU), `cuda`, `cuda:0`, `cpu`. MLX backend always uses Apple Silicon |
+| `--device, -d` | `auto` | Compute device: `auto` (detect GPU), `cuda`, `cuda:0`, `mps`, `cpu`. MLX backend always uses Apple Silicon |
 | `--compute-type` | `auto` | Precision for faster-whisper: `auto`, `float16`, `int8`, `int8_float16`. Lower precision = faster + less VRAM |
 | `--cache-dir` | - | Custom directory for downloaded models (default: HuggingFace cache) |
 | `--default-language` | - | Fallback language code for requests that omit `language`. Required for models that do not support language auto-detection (for example Cohere Transcribe). |
@@ -117,11 +133,11 @@ agent-cli server whisper \
 | `--ttl` | `300` | Seconds of inactivity before unloading model from memory. Set to 0 to keep loaded indefinitely |
 | `--preload` | `false` | Load model(s) immediately at startup instead of on first request. Useful for reducing first-request latency |
 | `--host` | `0.0.0.0` | Network interface to bind. Use `0.0.0.0` for all interfaces |
-| `--port, -p` | `10301` | Port for OpenAI-compatible HTTP API (`/v1/audio/transcriptions`) |
-| `--wyoming-port` | `10300` | Port for Wyoming protocol (Home Assistant integration) |
+| `--port, --asr-openai-port, -p` | `10301` | Port for OpenAI-compatible HTTP API (`/v1/audio/transcriptions`) |
+| `--wyoming-port, --asr-wyoming-port` | `10300` | Port for Wyoming protocol (Home Assistant integration) |
 | `--no-wyoming` | `false` | Disable Wyoming protocol server (only run HTTP API) |
 | `--download-only` | `false` | Download model(s) to cache and exit. Useful for Docker builds |
-| `--backend, -b` | `auto` | Inference backend: `auto` (faster-whisper on CUDA/CPU, MLX on Apple Silicon), `faster-whisper`, `mlx`, `transformers` (HuggingFace, supports safetensors and known remote-code ASR models) |
+| `--backend, -b` | `auto` | Inference backend: `auto` (faster-whisper on CUDA/CPU, MLX on Apple Silicon), `faster-whisper`, `mlx`, `transformers` (HuggingFace, supports safetensors and known remote-code ASR models), `nemo` (NVIDIA NeMo, supports Parakeet models) |
 
 ### General Options
 
@@ -266,6 +282,13 @@ pip install "agent-cli[mlx-whisper]"
 
 The server will automatically detect and use the MLX backend when available.
 
+For NeMo/Parakeet models on Apple Silicon, `--device auto` uses PyTorch MPS when
+available. You can also request it explicitly:
+
+```bash
+agent-cli server whisper --backend nemo --model parakeet-unified-en-0.6b --device mps
+```
+
 ### HuggingFace Transformers
 
 For loading models in safetensors format (instead of CTranslate2 `.bin` files):
@@ -304,6 +327,65 @@ Notes for Cohere Transcribe:
 - Set `--default-language` unless every client request will pass `language`.
 - `translate`, `srt`, and `vtt` are not available for this model because it does not return timestamped segments or translation output.
 - Use `--trust-remote-code` only for additional custom Hugging Face models that require repository Python code and are not recognized automatically.
+
+### NVIDIA NeMo (Parakeet)
+
+The NeMo backend runs NVIDIA Parakeet models behind the same OpenAI-compatible
+HTTP API and Wyoming protocol as the other Whisper backends. With `--backend
+nemo`, the default model is `parakeet-unified-en-0.6b`.
+
+Install the runtime dependencies:
+
+```bash
+agent-cli install-extras nemo-whisper wyoming
+```
+
+Start the server:
+
+```bash
+agent-cli server whisper --backend nemo
+```
+
+Use it from agent-cli through either protocol:
+
+```bash
+# OpenAI-compatible HTTP API
+ag transcribe \
+  --asr-provider openai \
+  --asr-openai-base-url http://localhost:10301/v1
+
+# Wyoming protocol
+ag transcribe \
+  --asr-provider wyoming \
+  --asr-wyoming-ip localhost \
+  --asr-wyoming-port 10300
+```
+
+Run it as a daemon with persistent arguments:
+
+```bash
+agent-cli daemon install whisper -y -- \
+  --backend nemo \
+  --model parakeet-unified-en-0.6b \
+  --ttl 0
+```
+
+Notes for NeMo/Parakeet:
+
+- `--backend nemo` defaults to `parakeet-unified-en-0.6b`.
+- `--backend auto` switches to NeMo when any requested model name is a Parakeet model.
+- NeMo uses CUDA when available and CPU otherwise; it does not use MLX/MPS on Apple Silicon.
+- First request can be slow because the model loads lazily. Use `--preload` to load at startup, or `--ttl 0` to keep it loaded after the first request.
+- REST uploads can be WAV, MP3, M4A, FLAC, OGG, AAC, or WebM when `ffmpeg` is available.
+- NeMo models are currently transcription-only in this server. Requests to `/v1/audio/translations` return `400`.
+- Segment formats (`verbose_json`, `srt`, `vtt`) require timestamp output from the selected NeMo model.
+
+Python 3.14 note:
+
+On Python 3.14, the plain published extra path does not apply agent-cli's NeMo
+override. The `agent-cli install-extras nemo-whisper` path is uv-aware and can
+apply agent-cli's temporary pinned NeMo Git install plus override file. Prefer it
+over plain `pip install "agent-cli[nemo-whisper]"` on Python 3.14.
 
 ### Docker
 

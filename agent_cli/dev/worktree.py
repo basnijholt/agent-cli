@@ -73,6 +73,15 @@ def get_repo_root(path: Path | None = None) -> Path | None:
         return None
 
 
+def _resolve_git_path(path: str, cwd: Path | None = None) -> Path:
+    """Resolve a path emitted by Git relative to the command cwd."""
+    resolved = Path(path).expanduser()
+    if resolved.is_absolute():
+        return resolved
+    base = cwd if cwd is not None else Path.cwd()
+    return (base / resolved).resolve()
+
+
 def get_common_dir(path: Path | None = None) -> Path | None:
     """Get the common git directory (shared across worktrees)."""
     try:
@@ -82,9 +91,41 @@ def get_common_dir(path: Path | None = None) -> Path | None:
             # In main repo, resolve relative to toplevel
             repo_root = get_repo_root(path)
             return repo_root / ".git" if repo_root else None
-        return Path(common_dir)
+        return _resolve_git_path(common_dir, path)
     except subprocess.CalledProcessError:
         return None
+
+
+def _is_git_modules_path(path: Path) -> bool:
+    """Return True when path points inside a .git/modules directory."""
+    parts = path.parts
+    return any(
+        part == ".git" and parts[i + 1 : i + 2] == ("modules",) for i, part in enumerate(parts)
+    )
+
+
+def _get_configured_worktree(common_dir: Path) -> Path | None:
+    """Read core.worktree from a Git dir config, if present."""
+    config_file = common_dir / "config"
+    if not config_file.exists():
+        return None
+
+    result = _run_git(
+        "config",
+        "--file",
+        str(config_file),
+        "--path",
+        "core.worktree",
+        cwd=common_dir,
+        check=False,
+    )
+    if result.returncode != 0:
+        return None
+
+    worktree = result.stdout.strip()
+    if not worktree:
+        return None
+    return _resolve_git_path(worktree, common_dir)
 
 
 def get_main_repo_root(path: Path | None = None) -> Path | None:
@@ -100,11 +141,17 @@ def get_main_repo_root(path: Path | None = None) -> Path | None:
         return common_dir.parent
     # Check if we're in a submodule (common_dir is inside .git/modules/)
     # e.g., /path/to/parent/.git/modules/submodule-name
-    parts = common_dir.parts
-    for i, part in enumerate(parts[:-1]):
-        if part == ".git" and parts[i + 1] == "modules":
-            # For submodules, use --show-toplevel to get the submodule's working directory
-            return get_repo_root(path)
+    if _is_git_modules_path(common_dir):
+        # For submodules, use --show-toplevel to get the submodule's working
+        # directory. Linked worktrees of submodules can report the internal
+        # .git/modules directory instead, so fall back to core.worktree.
+        repo_root = get_repo_root(path)
+        if repo_root is not None and not _is_git_modules_path(repo_root):
+            return repo_root
+        configured_worktree = _get_configured_worktree(common_dir)
+        if configured_worktree is not None:
+            return configured_worktree
+        return repo_root
     # For bare repos or unusual setups, try to go up from common_dir
     return common_dir.parent
 

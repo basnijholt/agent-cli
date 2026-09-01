@@ -17,7 +17,7 @@ from agent_cli.server.whisper.backends.base import (
 
 logger = logging.getLogger(__name__)
 
-BackendType = Literal["faster-whisper", "mlx", "transformers", "auto"]
+BackendType = Literal["faster-whisper", "mlx", "transformers", "nemo", "auto"]
 
 
 def detect_backend() -> Literal["faster-whisper", "mlx"]:
@@ -82,6 +82,11 @@ def create_backend(
         )
 
         return TransformersWhisperBackend(config)
+
+    if backend_type == "nemo":
+        from agent_cli.server.whisper.backends.nemo import NemoWhisperBackend  # noqa: PLC0415
+
+        return NemoWhisperBackend(config)
 
     msg = f"Unknown backend type: {backend_type}"
     raise ValueError(msg)

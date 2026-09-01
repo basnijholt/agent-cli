@@ -95,7 +95,7 @@ The `--from-file` option supports multiple audio formats:
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--extra-instructions` | - | Extra instructions appended to the LLM cleanup prompt (requires `--llm`). |
+| `--extra-instructions` | - | Extra ASR context where supported, and LLM cleanup instructions when `--llm` is enabled. The NeMo backend ignores ASR text prompts. |
 | `--llm/--no-llm` | `false` | Clean up transcript with LLM: fix errors, add punctuation, remove filler words. Uses `--extra-instructions` if set (via CLI or config file). Not compatible with --diarize. |
 
 ### Audio Recovery
@@ -168,9 +168,11 @@ The `--from-file` option supports multiple audio formats:
 
 | Option | Default | Description |
 |--------|---------|-------------|
+| `--start` | `false` | Start this command if it is not already running. |
 | `--stop` | `false` | Stop any running instance of this command. |
 | `--status` | `false` | Check if an instance is currently running. |
 | `--toggle` | `false` | Start if not running, stop if running. Ideal for hotkey binding. |
+| `--wait-for-start` | `false` | When stopping, wait briefly for a just-launched process to write its PID. |
 
 ### General Options
 
@@ -184,6 +186,15 @@ The `--from-file` option supports multiple audio formats:
 | `--config` | - | Path to a TOML configuration file. |
 | `--print-args` | `false` | Print the command line arguments, including variables taken from the configuration file. |
 | `--transcription-log` | - | Append transcripts to JSONL file (timestamp, hostname, model, raw/processed text). Recent entries provide context for LLM cleanup. |
+
+### Live Preview
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--live-preview-log` | - | Write rolling live transcription preview events to JSONL while recording. |
+| `--live-preview-interval` | `2.0` | Seconds between live preview retranscriptions. |
+| `--live-preview-window` | `15.0` | Seconds of recent audio to include in each live preview retranscription. |
+| `--live-preview-console, --live-preview-stdout` | `false` | Print rolling live transcription preview updates to the terminal while recording. |
 
 ### Diarization
 
@@ -224,6 +235,19 @@ agent-cli transcribe --toggle
 ```
 cmd + shift + r : /path/to/agent-cli transcribe --toggle --input-device-index 1
 ```
+
+### Live Preview
+
+Use live preview options when another UI should display provisional transcription text during a recording. The transcriber periodically reprocesses the most recent audio window, so preview text can rewrite earlier words until the final transcription is ready.
+
+```bash
+agent-cli transcribe --toggle \
+  --live-preview-log ~/.config/agent-cli/live-preview.jsonl \
+  --live-preview-interval 1 \
+  --live-preview-window 10
+```
+
+For terminal testing, add `--live-preview-console` to print each rolling update while recording. The macOS menu bar app uses the JSONL log when **Show Live Transcription Preview** is enabled in Settings; that setting is off by default.
 
 ### Transcription Log
 

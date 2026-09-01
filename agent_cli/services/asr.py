@@ -4,7 +4,10 @@ from __future__ import annotations
 
 import asyncio
 import io
+import json
 import wave
+from contextlib import suppress
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from functools import partial
 from pathlib import Path
@@ -18,7 +21,7 @@ from agent_cli.core.audio import (
     setup_input_stream,
 )
 from agent_cli.core.audio_format import check_ffmpeg_available, convert_audio_to_wyoming_format
-from agent_cli.core.utils import manage_send_receive_tasks
+from agent_cli.core.utils import err_console, manage_send_receive_tasks
 from agent_cli.services import (
     transcribe_audio_gemini,
     transcribe_audio_openai,
@@ -35,6 +38,176 @@ if TYPE_CHECKING:
 
     from agent_cli import config
     from agent_cli.core.utils import InteractiveStopEvent
+
+
+@dataclass(frozen=True)
+class LivePreviewConfig:
+    """Configuration for rolling transcription previews."""
+
+    log_file: Path | None = None
+    interval_seconds: float = 2.0
+    window_seconds: float = 15.0
+    min_audio_seconds: float = 1.0
+    console: bool = False
+
+    @property
+    def max_audio_bytes(self) -> int:
+        """Maximum number of PCM bytes to keep in the rolling preview window."""
+        return int(
+            self.window_seconds
+            * constants.AUDIO_RATE
+            * constants.AUDIO_CHANNELS
+            * constants.AUDIO_FORMAT_WIDTH,
+        )
+
+    @property
+    def min_audio_bytes(self) -> int:
+        """Minimum number of PCM bytes before attempting a preview."""
+        return int(
+            self.min_audio_seconds
+            * constants.AUDIO_RATE
+            * constants.AUDIO_CHANNELS
+            * constants.AUDIO_FORMAT_WIDTH,
+        )
+
+
+def _write_live_preview_event(
+    log_file: Path,
+    *,
+    event_type: str,
+    revision: int,
+    text: str,
+) -> None:
+    """Append one live preview event to a JSONL log."""
+    entry = {
+        "timestamp": datetime.now(UTC).isoformat(),
+        "type": event_type,
+        "revision": revision,
+        "text": text,
+        "is_final": event_type == "final",
+    }
+    log_file.parent.mkdir(parents=True, exist_ok=True)
+    with log_file.open("a", encoding="utf-8") as f:
+        f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+
+
+def _print_live_preview_event(
+    *,
+    event_type: str,
+    revision: int,
+    text: str,
+) -> None:
+    """Print one live preview event to the terminal."""
+    label = "final" if event_type == "final" else f"live #{revision}"
+    err_console.print(f"[dim]{label}:[/dim] {text}")
+
+
+class LivePreviewStreamer:
+    """Periodically transcribe a rolling audio window and write preview events."""
+
+    def __init__(
+        self,
+        preview_config: LivePreviewConfig,
+        *,
+        wyoming_asr_cfg: config.WyomingASR,
+        logger: logging.Logger,
+        extra_instructions: str | None = None,
+    ) -> None:
+        """Initialize the preview streamer."""
+        self.config = preview_config
+        self.wyoming_asr_cfg = wyoming_asr_cfg
+        self.logger = logger
+        self.extra_instructions = extra_instructions
+        self._audio = bytearray()
+        self._lock = asyncio.Lock()
+        self._stop_event = asyncio.Event()
+        self._revision = 0
+        self._last_text = ""
+
+    def reset_log(self) -> None:
+        """Clear the preview log for a new recording session."""
+        if self.config.log_file is None:
+            return
+        self.config.log_file.parent.mkdir(parents=True, exist_ok=True)
+        self.config.log_file.write_text("", encoding="utf-8")
+
+    async def add_chunk(self, chunk: bytes) -> None:
+        """Add a microphone audio chunk to the rolling preview buffer."""
+        async with self._lock:
+            self._audio.extend(chunk)
+            max_bytes = max(0, self.config.max_audio_bytes)
+            if max_bytes and len(self._audio) > max_bytes:
+                del self._audio[: len(self._audio) - max_bytes]
+
+    async def run(self) -> None:
+        """Run the periodic preview loop until stopped."""
+        while not self._stop_event.is_set():
+            try:
+                await asyncio.wait_for(self._stop_event.wait(), self.config.interval_seconds)
+                break
+            except TimeoutError:
+                pass
+
+            try:
+                await self.emit_partial()
+            except asyncio.CancelledError:
+                raise
+            except Exception:
+                self.logger.exception("Live transcription preview failed")
+
+    async def emit_partial(self) -> None:
+        """Transcribe the current rolling window and write a partial if changed."""
+        snapshot = await self._audio_snapshot()
+        if len(snapshot) < self.config.min_audio_bytes:
+            return
+
+        text = await _transcribe_recorded_audio_wyoming(
+            audio_data=snapshot,
+            wyoming_asr_cfg=self.wyoming_asr_cfg,
+            logger=self.logger,
+            quiet=True,
+            extra_instructions=self.extra_instructions,
+        )
+        text = text.strip()
+        if not text or text == self._last_text:
+            return
+        if self._stop_event.is_set():
+            return
+
+        self._revision += 1
+        self._last_text = text
+        self._publish_event(event_type="partial", revision=self._revision, text=text)
+
+    def request_stop(self) -> None:
+        """Stop partial preview emission without writing the final transcript."""
+        self._stop_event.set()
+
+    async def stop(self, final_text: str | None = None) -> None:
+        """Stop previewing and optionally append the final transcript."""
+        self.request_stop()
+        final_text = (final_text or "").strip()
+        if final_text:
+            self._revision += 1
+            self._publish_event(event_type="final", revision=self._revision, text=final_text)
+
+    def _publish_event(self, *, event_type: str, revision: int, text: str) -> None:
+        if self.config.log_file is not None:
+            _write_live_preview_event(
+                self.config.log_file,
+                event_type=event_type,
+                revision=revision,
+                text=text,
+            )
+        if self.config.console:
+            _print_live_preview_event(
+                event_type=event_type,
+                revision=revision,
+                text=text,
+            )
+
+    async def _audio_snapshot(self) -> bytes:
+        async with self._lock:
+            return bytes(self._audio)
 
 
 def _get_transcriptions_dir() -> Path:
@@ -210,6 +383,31 @@ def create_recorded_audio_transcriber(
     raise ValueError(msg)
 
 
+def _schedule_audio_level_callback(
+    pending_tasks: set[asyncio.Task[None]],
+    audio_level_callback: Callable[[bytes], None],
+    chunk: bytes,
+    logger: logging.Logger,
+) -> None:
+    """Run level callbacks off the event loop so UI metering cannot delay ASR sends."""
+
+    async def run_callback() -> None:
+        try:
+            await asyncio.to_thread(audio_level_callback, chunk)
+        except Exception:
+            logger.exception("Audio level callback failed")
+
+    task = asyncio.create_task(run_callback())
+    pending_tasks.add(task)
+    task.add_done_callback(pending_tasks.discard)
+
+
+async def _finish_audio_level_callbacks(pending_tasks: set[asyncio.Task[None]]) -> None:
+    """Wait for scheduled level callbacks to finish before returning."""
+    if pending_tasks:
+        await asyncio.gather(*pending_tasks, return_exceptions=True)
+
+
 async def _send_audio(
     client: AsyncClient,
     stream: sd.InputStream,
@@ -221,6 +419,8 @@ async def _send_audio(
     save_recording: bool = True,
     initial_prompt: str | None = None,
     recording_path_callback: Callable[[Path], None] | None = None,
+    audio_level_callback: Callable[[bytes], None] | None = None,
+    live_preview_callback: Callable[[bytes], Awaitable[None]] | None = None,
 ) -> None:
     """Read from mic and send to Wyoming server."""
     from wyoming.asr import Transcribe  # noqa: PLC0415
@@ -233,11 +433,21 @@ async def _send_audio(
 
     # Buffer to save audio if requested
     audio_buffer = io.BytesIO() if save_recording else None
+    pending_audio_level_tasks: set[asyncio.Task[None]] = set()
 
     async def send_chunk(chunk: bytes) -> None:
         """Send audio chunk to ASR server and optionally buffer it."""
         if audio_buffer is not None:
             audio_buffer.write(chunk)
+        if audio_level_callback:
+            _schedule_audio_level_callback(
+                pending_audio_level_tasks,
+                audio_level_callback,
+                chunk,
+                logger,
+            )
+        if live_preview_callback is not None:
+            await live_preview_callback(chunk)
         await client.write_event(AudioChunk(audio=chunk, **constants.WYOMING_AUDIO_CONFIG).event())
 
     try:
@@ -252,16 +462,19 @@ async def _send_audio(
             progress_style="blue",
         )
     finally:
-        await client.write_event(AudioStop().event())
-        logger.debug("Sent AudioStop")
+        try:
+            await client.write_event(AudioStop().event())
+            logger.debug("Sent AudioStop")
 
-        # Save the recording to disk if requested
-        if save_recording and audio_buffer:
-            audio_data = audio_buffer.getvalue()
-            if audio_data:
-                saved_path = _save_audio_to_file(audio_data, logger)
-                if saved_path and recording_path_callback:
-                    recording_path_callback(saved_path)
+            # Save the recording to disk if requested
+            if save_recording and audio_buffer:
+                audio_data = audio_buffer.getvalue()
+                if audio_data:
+                    saved_path = _save_audio_to_file(audio_data, logger)
+                    if saved_path and recording_path_callback:
+                        recording_path_callback(saved_path)
+        finally:
+            await _finish_audio_level_callbacks(pending_audio_level_tasks)
 
 
 async def record_audio_to_buffer(queue: asyncio.Queue, logger: logging.Logger) -> bytes:
@@ -328,6 +541,7 @@ async def record_audio_with_manual_stop(
     live: Live | None = None,
     save_recording: bool = True,
     recording_path_callback: Callable[[Path], None] | None = None,
+    audio_level_callback: Callable[[bytes], None] | None = None,
 ) -> bytes:
     """Record audio to a buffer using a manual stop signal.
 
@@ -339,29 +553,41 @@ async def record_audio_with_manual_stop(
         live: Rich Live display for progress
         save_recording: If True, save the recording to disk
         recording_path_callback: Optional callback invoked with the saved WAV path.
+        audio_level_callback: Optional callback invoked with each PCM chunk.
 
     Returns:
         The recorded audio data as bytes
 
     """
     audio_buffer = io.BytesIO()
+    pending_audio_level_tasks: set[asyncio.Task[None]] = set()
 
     def buffer_chunk(chunk: bytes) -> None:
         """Buffer audio chunk."""
         audio_buffer.write(chunk)
+        if audio_level_callback:
+            _schedule_audio_level_callback(
+                pending_audio_level_tasks,
+                audio_level_callback,
+                chunk,
+                logger,
+            )
 
     stream_config = setup_input_stream(input_device_index)
     with open_audio_stream(stream_config) as stream:
-        await read_audio_stream(
-            stream=stream,
-            stop_event=stop_event,
-            chunk_handler=buffer_chunk,
-            logger=logger,
-            live=live,
-            quiet=quiet,
-            progress_message="Recording",
-            progress_style="green",
-        )
+        try:
+            await read_audio_stream(
+                stream=stream,
+                stop_event=stop_event,
+                chunk_handler=buffer_chunk,
+                logger=logger,
+                live=live,
+                quiet=quiet,
+                progress_message="Recording",
+                progress_style="green",
+            )
+        finally:
+            await _finish_audio_level_callbacks(pending_audio_level_tasks)
 
     audio_data = audio_buffer.getvalue()
 
@@ -431,9 +657,23 @@ async def _transcribe_live_audio_wyoming(
     final_callback: Callable[[str], None] | None = None,
     extra_instructions: str | None = None,
     recording_path_callback: Callable[[Path], None] | None = None,
+    audio_level_callback: Callable[[bytes], None] | None = None,
+    live_preview_config: LivePreviewConfig | None = None,
     **_kwargs: object,
 ) -> str | None:
     """Unified ASR transcription function."""
+    live_preview = (
+        LivePreviewStreamer(
+            live_preview_config,
+            wyoming_asr_cfg=wyoming_asr_cfg,
+            logger=logger,
+            extra_instructions=extra_instructions,
+        )
+        if live_preview_config is not None
+        else None
+    )
+    live_preview_task: asyncio.Task[None] | None = None
+    final_transcript: str | None = None
     try:
         async with wyoming_client_context(
             wyoming_asr_cfg.asr_wyoming_ip,
@@ -449,6 +689,9 @@ async def _transcribe_live_audio_wyoming(
 
             stream_config = setup_input_stream(audio_input_cfg.input_device_index)
             with open_audio_stream(stream_config) as stream:
+                if live_preview is not None:
+                    live_preview.reset_log()
+                    live_preview_task = asyncio.create_task(live_preview.run())
                 _, recv_task = await manage_send_receive_tasks(
                     _send_audio(
                         client,
@@ -460,6 +703,8 @@ async def _transcribe_live_audio_wyoming(
                         save_recording=save_recording,
                         initial_prompt=effective_prompt,
                         recording_path_callback=recording_path_callback,
+                        audio_level_callback=audio_level_callback,
+                        live_preview_callback=live_preview.add_chunk if live_preview else None,
                     ),
                     _receive_transcript(
                         client,
@@ -469,10 +714,21 @@ async def _transcribe_live_audio_wyoming(
                     ),
                     return_when=asyncio.ALL_COMPLETED,
                 )
-                return recv_task.result()
+                result = recv_task.result()
+                final_transcript = result
+                return result
     except (ConnectionRefusedError, Exception):
         logger.warning("Failed to connect to Wyoming ASR server")
         return None
+    finally:
+        if live_preview is not None:
+            live_preview.request_stop()
+        if live_preview_task is not None:
+            live_preview_task.cancel()
+            with suppress(asyncio.CancelledError):
+                await live_preview_task
+        if live_preview is not None:
+            await live_preview.stop(final_transcript)
 
 
 async def _transcribe_live_audio_buffered(
@@ -488,6 +744,7 @@ async def _transcribe_live_audio_buffered(
     save_recording: bool = True,
     extra_instructions: str | None = None,
     recording_path_callback: Callable[[Path], None] | None = None,
+    audio_level_callback: Callable[[bytes], None] | None = None,
     **_kwargs: object,
 ) -> str | None:
     """Record audio to buffer, then transcribe.
@@ -502,6 +759,7 @@ async def _transcribe_live_audio_buffered(
         live=live,
         save_recording=save_recording,
         recording_path_callback=recording_path_callback,
+        audio_level_callback=audio_level_callback,
     )
     if not audio_data:
         return None

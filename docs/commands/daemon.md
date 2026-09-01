@@ -62,6 +62,9 @@ agent-cli daemon install --all
 
 # Skip confirmation prompts
 agent-cli daemon install whisper -y
+
+# Pass server args to one daemon command
+agent-cli daemon install whisper -- --model small --port 10311
 ```
 
 **Options:**
@@ -71,6 +74,8 @@ agent-cli daemon install whisper -y
 | `--all, -a` | Install all available services |
 | `--skip-deps` | Skip uv dependency check |
 | `--no-confirm, -y` | Skip confirmation prompts |
+
+Arguments after `--` are appended to the installed service command. This is only supported when installing exactly one daemon.
 
 ### `uninstall`
 
@@ -100,6 +105,9 @@ agent-cli daemon install whisper
 # Install Qwen3-ASR instead of the default Whisper daemon
 agent-cli daemon uninstall whisper
 agent-cli daemon install whisper-qwen3
+
+# Install whisper with custom server args
+agent-cli daemon install whisper -- --model small --port 10311
 
 # Check status of all daemons
 agent-cli daemon status
@@ -141,22 +149,28 @@ agent-cli daemon uninstall whisper
  Available daemons:
 
 
-   Daemon                Description                Ports
-  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   whisper               Speech-to-text ASR         10300/10301
-   whisper-qwen3         Qwen3 speech-to-text ASR   10300/10301
-   tts-kokoro            Text-to-speech (GPU)       10200/10201
-   tts-piper             Text-to-speech (CPU)       10200/10201
-   transcription-proxy   ASR provider proxy         61337
-   memory                Long-term memory proxy     8100
-   rag                   Document retrieval proxy   8000
+  Daemon               Description               Ports
+  ──────────────────────────────────────────────────────────
+  whisper              Speech-to-text ASR        10300/10301
+  whisper-qwen3        Qwen3 speech-to-text ASR  10300/10301
+  tts-kokoro           Text-to-speech (GPU)      10200/10201
+  tts-piper            Text-to-speech (CPU)      10200/10201
+  transcription-proxy  ASR provider proxy        61337
+  memory               Long-term memory proxy    8100
+  rag                  Document retrieval proxy  8000
 
 
  Examples:
 
 
+  # Ensure whisper is installed and running
+  agent-cli daemon ensure whisper
+
   # Install whisper as a background daemon
   agent-cli daemon install whisper
+
+  # Install whisper with custom server args
+  agent-cli daemon install whisper -- --model small --port 10311
 
   # Install GPU-accelerated TTS
   agent-cli daemon install tts-kokoro
@@ -174,9 +188,10 @@ agent-cli daemon uninstall whisper
 │ --help  -h        Show this message and exit.                                          │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Commands ─────────────────────────────────────────────────────────────────────────────╮
-│ status      Check status of installed daemons.                                         │
-│ install     Install server daemons as background processes.                            │
-│ uninstall   Uninstall server daemons.                                                  │
+│ status     Check status of installed daemons.                                          │
+│ ensure     Ensure one daemon is installed and running.                                 │
+│ install    Install server daemons as background processes.                             │
+│ uninstall  Uninstall server daemons.                                                   │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 
 ```

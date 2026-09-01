@@ -7,6 +7,7 @@ Manage agent-cli servers as background daemons:
 
 from __future__ import annotations
 
+import json
 import platform
 from typing import Annotated
 
@@ -18,6 +19,8 @@ from agent_cli.core.utils import console, err_console
 from agent_cli.install.service_config import (
     ASR_SERVICES,
     SERVICES,
+    ServiceManager,
+    ServiceStatus,
     get_default_services,
     get_service_manager,
 )
@@ -44,8 +47,14 @@ Install, uninstall, and monitor agent-cli servers running as system daemons
 **Examples:**
 
 ```bash
+# Ensure whisper is installed and running
+agent-cli daemon ensure whisper
+
 # Install whisper as a background daemon
 agent-cli daemon install whisper
+
+# Install whisper with custom server args
+agent-cli daemon install whisper -- --model small --port 10311
 
 # Install GPU-accelerated TTS
 agent-cli daemon install tts-kokoro
@@ -148,9 +157,11 @@ def status_cmd(
     console.print()
     system = platform.system()
     if system == "Darwin":
-        console.print("[dim]Full logs: ~/Library/Logs/agent-cli-<service>/[/dim]")
+        log_service = service or "<service>"
+        console.print(f"[dim]Full logs: ~/Library/Logs/agent-cli-{log_service}/[/dim]")
     else:
-        console.print("[dim]Full logs: journalctl --user -u agent-cli-<service> -f[/dim]")
+        log_service = service or "<service>"
+        console.print(f"[dim]Full logs: journalctl --user -u agent-cli-{log_service} -f[/dim]")
 
 
 def _confirm_action(message: str) -> bool:
@@ -193,6 +204,147 @@ def _ensure_uv_installed(no_confirm: bool) -> None:
         console.print(f"  [green]✓[/green] {msg}")
     else:
         console.print(f"  [red]✗[/red] {msg}")
+        raise typer.Exit(1)
+
+
+def _service_status_payload(
+    *,
+    service: str,
+    action: str,
+    status: ServiceStatus,
+    message: str,
+) -> dict[str, object]:
+    installed = bool(status.installed)
+    running = bool(status.running)
+    return {
+        "service": service,
+        "action": action,
+        "installed": installed,
+        "running": running,
+        "pid": getattr(status, "pid", None) if running else None,
+        "message": message,
+    }
+
+
+def _split_services_and_command_args(tokens: list[str]) -> tuple[list[str], list[str]]:
+    """Split daemon names from trailing service command args."""
+    services: list[str] = []
+    for index, token in enumerate(tokens):
+        if token.startswith("-"):
+            return services, tokens[index:]
+        services.append(token)
+
+    return services, []
+
+
+@app.command("ensure")
+def ensure_cmd(
+    service: Annotated[
+        str,
+        typer.Argument(help="Service to ensure is installed and running"),
+    ],
+    json_output: Annotated[
+        bool,
+        typer.Option("--json", help="Output machine-readable status as JSON"),
+    ] = False,
+    quiet: Annotated[
+        bool,
+        typer.Option("--quiet", "-q", help="Suppress normal success output"),
+    ] = False,
+) -> None:
+    """Ensure one daemon is installed and running.
+
+    This is intended for app integrations that need a single repair command
+    instead of parsing human-oriented `daemon status` output.
+    """
+    if service not in SERVICES:
+        err_console.print(
+            f"[bold red]Error:[/bold red] Unknown service '{service}'. "
+            f"Available: {', '.join(SERVICES.keys())}",
+        )
+        raise typer.Exit(1)
+
+    try:
+        manager = get_service_manager()
+    except RuntimeError as e:
+        err_console.print(f"[bold red]Error:[/bold red] {e}")
+        raise typer.Exit(1) from None
+
+    status = manager.get_service_status(service)
+    if status.installed and status.running:
+        payload = _service_status_payload(
+            service=service,
+            action="already_running",
+            status=status,
+            message="Already running",
+        )
+    else:
+        action = "installed" if not status.installed else "restarted"
+        result = manager.install_service(service)
+        if not result.success:
+            payload = _service_status_payload(
+                service=service,
+                action="failed",
+                status=status,
+                message=result.message,
+            )
+            if json_output:
+                console.print(json.dumps(payload))
+            else:
+                err_console.print(f"[bold red]Error:[/bold red] {service}: {result.message}")
+            raise typer.Exit(1)
+
+        status = manager.get_service_status(service)
+        if not status.installed or not status.running:
+            message = f"{result.message}, but service is not running"
+            payload = _service_status_payload(
+                service=service,
+                action="failed",
+                status=status,
+                message=message,
+            )
+            if json_output:
+                console.print(json.dumps(payload))
+            else:
+                err_console.print(f"[bold red]Error:[/bold red] {service}: {message}")
+            raise typer.Exit(1)
+
+        payload = _service_status_payload(
+            service=service,
+            action=action,
+            status=status,
+            message=result.message,
+        )
+
+    if json_output:
+        console.print(json.dumps(payload))
+    elif not quiet:
+        console.print(f"{service}: {payload['message']}")
+
+
+def _validate_asr_service_selection(
+    selected_services: list[str],
+    manager: ServiceManager,
+) -> None:
+    """Reject ASR daemon selections that would bind the same ports."""
+    selected_asr = [name for name in ASR_SERVICES if name in selected_services]
+    if len(selected_asr) > 1:
+        err_console.print(
+            "[bold red]Error:[/bold red] whisper and whisper-qwen3 are mutually exclusive "
+            "because they use the same ports. Install only one ASR daemon.",
+        )
+        raise typer.Exit(1)
+    if not selected_asr:
+        return
+
+    selected_asr_name = selected_asr[0]
+    conflicting_asr = next(name for name in ASR_SERVICES if name != selected_asr_name)
+    if manager.get_service_status(conflicting_asr).installed is True:
+        err_console.print(
+            f"[bold red]Error:[/bold red] {conflicting_asr} is already installed and "
+            f"uses the same ports as {selected_asr_name}. Run "
+            f"`agent-cli daemon uninstall {conflicting_asr}` first.",
+        )
         raise typer.Exit(1)
 
 
@@ -255,13 +407,26 @@ def install_cmd(  # noqa: PLR0912, PLR0915
         # Skip confirmation prompts
         agent-cli daemon install whisper -y
 
+        # Pass server args to one daemon command
+        agent-cli daemon install whisper -- --model small --port 10311
+
     After installation, check status with:
         agent-cli daemon status
     """
-    if not services and not all_services:
+    raw_services = services or []
+    requested_services, command_args = _split_services_and_command_args(raw_services)
+
+    if not raw_services and not all_services:
         err_console.print(
             f"[bold red]Error:[/bold red] Specify services to install or use --all. "
             f"Available: {', '.join(SERVICES.keys())}",
+        )
+        raise typer.Exit(1)
+
+    if command_args and (all_services or len(requested_services) != 1):
+        err_console.print(
+            "[bold red]Error:[/bold red] Custom service command args are only supported "
+            "when installing exactly one service.",
         )
         raise typer.Exit(1)
 
@@ -276,33 +441,22 @@ def install_cmd(  # noqa: PLR0912, PLR0915
         # Get default services (auto-selects one TTS backend based on platform)
         selected_services = get_default_services()
     else:
-        assert services is not None  # Already checked above
-        invalid = [s for s in services if s not in SERVICES]
+        if not requested_services:
+            err_console.print(
+                f"[bold red]Error:[/bold red] Specify services to install or use --all. "
+                f"Available: {', '.join(SERVICES.keys())}",
+            )
+            raise typer.Exit(1)
+        invalid = [s for s in requested_services if s not in SERVICES]
         if invalid:
             err_console.print(
                 f"[bold red]Error:[/bold red] Unknown service(s): {', '.join(invalid)}. "
                 f"Available: {', '.join(SERVICES.keys())}",
             )
             raise typer.Exit(1)
-        selected_services = services
+        selected_services = requested_services
 
-    selected_asr = [name for name in ASR_SERVICES if name in selected_services]
-    if len(selected_asr) > 1:
-        err_console.print(
-            "[bold red]Error:[/bold red] whisper and whisper-qwen3 are mutually exclusive "
-            "because they use the same ports. Install only one ASR daemon.",
-        )
-        raise typer.Exit(1)
-    if selected_asr:
-        selected_asr_name = selected_asr[0]
-        conflicting_asr = next(name for name in ASR_SERVICES if name != selected_asr_name)
-        if manager.get_service_status(conflicting_asr).installed is True:
-            err_console.print(
-                f"[bold red]Error:[/bold red] {conflicting_asr} is already installed and "
-                f"uses the same ports as {selected_asr_name}. Run "
-                f"`agent-cli daemon uninstall {conflicting_asr}` first.",
-            )
-            raise typer.Exit(1)
+    _validate_asr_service_selection(selected_services, manager)
 
     # Check uv dependency
     if not skip_deps:
@@ -312,6 +466,8 @@ def install_cmd(  # noqa: PLR0912, PLR0915
     if not no_confirm:
         console.print()
         console.print(f"[bold]Will install:[/bold] {', '.join(selected_services)}")
+        if command_args:
+            console.print(f"[bold]With args:[/bold] {' '.join(command_args)}")
         if not _confirm_action("Continue?"):
             console.print("[dim]Cancelled.[/dim]")
             raise typer.Exit(0)
@@ -324,7 +480,11 @@ def install_cmd(  # noqa: PLR0912, PLR0915
     failed = []
 
     for svc_name in selected_services:
-        result = manager.install_service(svc_name)
+        result = (
+            manager.install_service(svc_name, command_args)
+            if command_args
+            else manager.install_service(svc_name)
+        )
         if result.success:
             if result.log_dir:
                 console.print(

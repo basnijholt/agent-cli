@@ -28,6 +28,26 @@ F = TypeVar("F", bound="Callable[..., object]")
 _REEXEC_MARKER = "_AGENT_CLI_REEXEC"
 
 
+_EXTRA_PYTHON_MAX_EXCLUSIVE: dict[str, tuple[int, int]] = {
+    "nemo-whisper": (3, 14),
+}
+
+_NEMO_GIT_REF = "be23ce1ee6594da3d7fa2f37e603d3b3ba230a9e"
+_NEMO_GIT_REQUIREMENT = (
+    f"nemo-toolkit[asr] @ git+https://github.com/NVIDIA-NeMo/NeMo.git@{_NEMO_GIT_REF}"
+)
+
+_EXTRA_UV_RUNTIME_REQUIREMENTS: dict[str, tuple[str, ...]] = {
+    # NeMo 2.7.3 cannot load parakeet-unified-en-0.6b and still caps
+    # kaldialign below the first Python 3.14 macOS wheel. Keep agent-cli's
+    # public extra publishable, and apply this pinned Git build plus override
+    # only for runtime uv installs.
+    "nemo-whisper": (_NEMO_GIT_REQUIREMENT,),
+}
+
+_OVERRIDES_DIR = Path(__file__).parent.parent / "_overrides"
+
+
 # -- Settings --
 
 
@@ -48,6 +68,18 @@ def _is_uvx_cache() -> bool:
     # Use as_posix() for cross-platform forward-slash paths
     prefix_str = Path(sys.prefix).resolve().as_posix()
     return "/cache/uv/" in prefix_str or "/archive-v" in prefix_str
+
+
+def _find_runtime_uv() -> str | None:
+    """Find uv for runtime dependency installs, including bundled app uv."""
+    for env_name in ("AGENTCLI_UV_PATH", "AGENTCLI_BUNDLED_UV"):
+        value = os.environ.get(env_name)
+        if not value:
+            continue
+        uv_path = Path(value).expanduser()
+        if uv_path.is_file() and os.access(uv_path, os.X_OK):
+            return str(uv_path)
+    return shutil.which("uv")
 
 
 # -- Package Checking --
@@ -101,9 +133,16 @@ def _format_install_commands(extras: list[str]) -> list[str]:
     """Format install commands for one or more extras."""
     combined = ",".join(extras)
     extras_args = " ".join(extras)
+    if _needs_runtime_install_hint(extras):
+        return [
+            "Install with:",
+            f"  [bold cyan]agent-cli install-extras {extras_args}[/bold cyan]",
+            "  # or use Python 3.13 with the published extra",
+            f'  [bold cyan]uv tool install --python 3.13 "agent-cli\\[{combined}]"[/bold cyan]',
+        ]
     return [
         "Install with:",
-        f'  [bold cyan]uv tool install -p 3.13 "agent-cli\\[{combined}]"[/bold cyan]',
+        f'  [bold cyan]uv tool install "agent-cli\\[{combined}]"[/bold cyan]',
         "  # or",
         f"  [bold cyan]agent-cli install-extras {extras_args}[/bold cyan]",
     ]
@@ -122,8 +161,7 @@ def _get_install_hint(extra: str) -> str:
         lines.append("")
         lines.append("Install one with:")
         lines.extend(
-            f'  [bold cyan]uv tool install -p 3.13 "agent-cli\\[{alt}]"[/bold cyan]'
-            for alt in alternatives
+            f'  [bold cyan]uv tool install "agent-cli\\[{alt}]"[/bold cyan]' for alt in alternatives
         )
         lines.append("  # or")
         lines.extend(
@@ -152,6 +190,15 @@ def get_combined_install_hint(extras: list[str]) -> str:
     lines.append("")
     lines.extend(_format_install_commands(extras))
     return "\n".join(lines)
+
+
+def _needs_runtime_install_hint(extras: list[str]) -> bool:
+    """Return True when the regular published extra cannot express the install."""
+    return (
+        "nemo-whisper" in extras
+        and sys.version_info[:2] >= (3, 14)
+        and _supports_uv_runtime_override("nemo-whisper")
+    )
 
 
 # -- Installation --
@@ -197,12 +244,14 @@ def _get_current_uv_tool_extras() -> list[str]:
 
 def _install_via_uv_tool(extras: list[str], *, quiet: bool = False) -> bool:
     """Reinstall agent-cli via uv tool with the specified extras."""
+    extras = sorted(set(extras))
     extras_str = ",".join(extras)
     package_spec = f"agent-cli[{extras_str}]"
     # Cap at Python 3.13 for compatibility - onnxruntime doesn't support 3.14 yet
     major, minor = sys.version_info[:2]
     python_version = f"{major}.{min(minor, 13)}"
     cmd = ["uv", "tool", "install", package_spec, "--force", "--python", python_version]
+    cmd.extend(_uv_tool_extra_args(extras))
     if quiet:
         cmd.append("-q")
     # Use stderr for status messages so they don't pollute stdout
@@ -215,8 +264,9 @@ def _install_via_uv_tool(extras: list[str], *, quiet: bool = False) -> bool:
 def _install_cmd() -> list[str]:
     """Build the install command with appropriate flags."""
     in_venv = _in_virtualenv()
-    if shutil.which("uv"):
-        cmd = ["uv", "pip", "install", "--python", sys.executable]
+    uv_path = _find_runtime_uv()
+    if uv_path:
+        cmd = [uv_path, "pip", "install", "--python", sys.executable]
         if not in_venv:
             cmd.append("--system")
         return cmd
@@ -224,6 +274,92 @@ def _install_cmd() -> list[str]:
     if not in_venv:
         cmd.append("--user")
     return cmd
+
+
+def _is_uv_cmd(cmd: list[str]) -> bool:
+    """Return True if the install command is uv."""
+    return bool(cmd) and Path(cmd[0]).name == "uv"
+
+
+def _uv_override_path(extra: str) -> Path:
+    """Return the override file path for an extra."""
+    source = _OVERRIDES_DIR / f"{extra}.txt"
+    if not _path_contains_whitespace(source):
+        return source
+    # uv mishandles --overrides paths with spaces (for example, app bundles
+    # installed under "Application Support"), so hand it a copied no-space path.
+    return _materialize_uv_override(source)
+
+
+def _path_contains_whitespace(path: Path) -> bool:
+    return any(character.isspace() for character in str(path))
+
+
+def _materialized_uv_overrides_dir() -> Path:
+    configured_dir = os.environ.get("AGENTCLI_UV_OVERRIDES_DIR")
+    if configured_dir:
+        configured_path = Path(configured_dir).expanduser()
+        if not _path_contains_whitespace(configured_path):
+            return configured_path
+
+    # Keep this outside AGENTCLI_APP_SUPPORT_DIR; that path usually contains a
+    # space on macOS and would reintroduce the launchd/uv parse failure.
+    return Path.home() / ".cache" / "agent-cli" / "uv-overrides"
+
+
+def _materialize_uv_override(source: Path) -> Path:
+    """Copy a bundled override to a no-space path that uv can parse."""
+    target = _materialized_uv_overrides_dir() / source.name
+    try:
+        source_bytes = source.read_bytes()
+        target.parent.mkdir(parents=True, exist_ok=True)
+        if not target.exists() or target.read_bytes() != source_bytes:
+            target.write_bytes(source_bytes)
+    except OSError:
+        return source
+    return target
+
+
+def _supports_uv_runtime_override(
+    extra: str,
+    *,
+    uv_available: bool | None = None,
+) -> bool:
+    """Return True when uv can install an extra with runtime overrides."""
+    if extra not in _EXTRA_UV_RUNTIME_REQUIREMENTS:
+        return False
+    has_uv = _find_runtime_uv() is not None if uv_available is None else uv_available
+    return has_uv and _uv_override_path(extra).exists()
+
+
+def _uv_pip_extra_args(extra: str, cmd: list[str]) -> list[str]:
+    """Return uv pip arguments needed for an extra."""
+    if not _is_uv_cmd(cmd) or not _supports_uv_runtime_override(extra):
+        return []
+    return ["--overrides", str(_uv_override_path(extra))]
+
+
+def _uv_pip_extra_requirements(extra: str, cmd: list[str]) -> list[str]:
+    """Return direct uv pip requirements needed for an extra."""
+    if not _is_uv_cmd(cmd) or not _supports_uv_runtime_override(extra):
+        return []
+    return list(_EXTRA_UV_RUNTIME_REQUIREMENTS[extra])
+
+
+def _uv_tool_extra_args(
+    extras: list[str],
+    *,
+    uv_available: bool | None = None,
+) -> list[str]:
+    """Return uv tool arguments needed for extras with runtime overrides."""
+    args: list[str] = []
+    for extra in extras:
+        if not _supports_uv_runtime_override(extra, uv_available=uv_available):
+            continue
+        args.extend(["--overrides", str(_uv_override_path(extra))])
+        for requirement in _EXTRA_UV_RUNTIME_REQUIREMENTS[extra]:
+            args.extend(["--with", requirement])
+    return args
 
 
 def install_extras_impl(extras: list[str], *, quiet: bool = False) -> bool:
@@ -239,7 +375,13 @@ def install_extras_impl(extras: list[str], *, quiet: bool = False) -> bool:
         if not quiet:
             console.print(f"Installing [cyan]{extra}[/]...")
         result = subprocess.run(
-            [*cmd, "-r", str(req_file)],
+            [
+                *cmd,
+                *_uv_pip_extra_args(extra, cmd),
+                "-r",
+                str(req_file),
+                *_uv_pip_extra_requirements(extra, cmd),
+            ],
             check=False,
             capture_output=quiet,
         )
@@ -274,6 +416,39 @@ def _resolve_extras_for_install(extras: tuple[str, ...]) -> list[str]:
     return result
 
 
+def _find_python_incompatible_extras(
+    extras: list[str],
+    *,
+    python_version: tuple[int, int] | None = None,
+    uv_available: bool | None = None,
+) -> list[str]:
+    """Return extras that are not compatible with the current Python version."""
+    version = python_version or sys.version_info[:2]
+    return [
+        extra
+        for extra in extras
+        if extra in _EXTRA_PYTHON_MAX_EXCLUSIVE
+        and version >= _EXTRA_PYTHON_MAX_EXCLUSIVE[extra]
+        and not _supports_uv_runtime_override(extra, uv_available=uv_available)
+    ]
+
+
+def _python_incompatibility_message(extras: list[str]) -> str:
+    """Build a helpful error for extras unavailable on this Python version."""
+    version = f"{sys.version_info.major}.{sys.version_info.minor}"
+    extras_list = ", ".join(extras)
+    return (
+        f"{extras_list} is not supported on Python {version}.\n"
+        "NeMo's released package metadata still caps dependencies below "
+        "Python 3.14-compatible wheels. agent-cli can work around this only "
+        "when uv is available.\n\n"
+        "Install uv, or use Python 3.13 for this backend, for example:\n"
+        "  CMAKE_POLICY_VERSION_MINIMUM=3.5 \\\n"
+        "  uv run --python 3.13 --extra server --extra nemo-whisper \\\n"
+        "    agent-cli server whisper --backend nemo --model parakeet-tdt-0.6b-v3"
+    )
+
+
 def _maybe_exec_with_marker(cmd: list[str], message: str) -> None:
     """Re-execute with a new command, preventing infinite loops."""
     if os.environ.get(_REEXEC_MARKER):
@@ -285,19 +460,33 @@ def _maybe_exec_with_marker(cmd: list[str], message: str) -> None:
 
 
 def _maybe_reexec_with_uvx(extras: list[str]) -> None:
-    """Try to re-execute with uvx running agent-cli[extras] directly.
+    """Try to re-execute with uv running agent-cli[extras] directly.
 
     If successful, replaces the current process (never returns).
-    If not in uvx cache or uvx unavailable, returns normally.
+    If not in uvx cache or uv unavailable, returns normally.
     """
     if os.environ.get(_REEXEC_MARKER) or not _is_uvx_cache():
         return
-    uvx_path = shutil.which("uvx")
-    if not uvx_path:
+
+    uv_path = _find_runtime_uv()
+    if not uv_path:
         return
+
     extras_str = ",".join(extras)
-    # Run agent-cli[extras] directly with Python 3.13 (some deps lack 3.14 wheels)
-    cmd = [uvx_path, "--python", "3.13", f"agent-cli[{extras_str}]", *sys.argv[1:]]
+    package_source = os.environ.get("AGENTCLI_PACKAGE_SOURCE", "agent-cli")
+    package_spec = f"{package_source}[{extras_str}]"
+    cmd = [
+        uv_path,
+        "tool",
+        "run",
+        "--python",
+        "3.13",
+        *_uv_tool_extra_args(extras, uv_available=True),
+        "--from",
+        package_spec,
+        "agent-cli",
+        *sys.argv[1:],
+    ]
     _maybe_exec_with_marker(cmd, f"Re-running with extras: {extras_str}")
 
 
@@ -328,6 +517,11 @@ def _check_and_install_extras(extras: tuple[str, ...]) -> list[str]:
     missing = [e for e in extras if not _check_extra_installed(e)]
     if not missing:
         return []
+
+    incompatible = _find_python_incompatible_extras(_resolve_extras_for_install(tuple(missing)))
+    if incompatible:
+        print_error_message(_python_incompatibility_message(incompatible))
+        return missing
 
     # 2. Auto-install disabled? Show error and return missing
     if not _get_auto_install_setting():
@@ -382,10 +576,14 @@ def _should_skip_extra_check_for_process_control(
 
     from agent_cli.core import process  # noqa: PLC0415
 
-    return process.is_process_running(process_name)
+    return process.get_process_status(process_name).running
 
 
-def requires_extras(*extras: str, process_name: str | None = None) -> Callable[[F], F]:
+def requires_extras(
+    *extras: str,
+    process_name: str | None = None,
+    resolve_extras: Callable[[dict[str, object]], tuple[str, ...]] | None = None,
+) -> Callable[[F], F]:
     """Decorator to declare required extras for a command.
 
     Auto-installs missing extras by default. Disable via AGENT_CLI_NO_AUTO_INSTALL=1
@@ -399,7 +597,8 @@ def requires_extras(*extras: str, process_name: str | None = None) -> Callable[[
         def wrapper(*args: object, **kwargs: object) -> object:
             if _should_skip_extra_check_for_process_control(kwargs, process_name):
                 return func(*args, **kwargs)
-            if _check_and_install_extras(extras):
+            required_extras = resolve_extras(kwargs) if resolve_extras is not None else extras
+            if _check_and_install_extras(required_extras):
                 raise typer.Exit(1)
             return func(*args, **kwargs)
 

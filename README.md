@@ -49,9 +49,19 @@ Since then I have expanded the tool with many more features, all focused on loca
 - **[`rag-proxy`](docs/commands/rag-proxy.md)**: RAG proxy server for chatting with your documents.
 - **[`dev`](docs/commands/dev.md)**: Parallel development with git worktrees and AI coding agents.
 - **[`server`](docs/commands/server/index.md)**: Local ASR and TTS servers with dual-protocol (Wyoming & OpenAI-compatible APIs), TTL-based memory management, and multi-platform acceleration. Whisper uses MLX on Apple Silicon or Faster Whisper on Linux/CUDA. TTS supports Kokoro (GPU) or Piper (CPU).
-- **[`transcribe-live`](docs/commands/transcribe-live.md)**: Continuous background transcription with VAD. Install with `uv tool install "agent-cli[vad]" -p 3.13`.
+- **[`transcribe-live`](docs/commands/transcribe-live.md)**: Continuous background transcription with VAD. Install with `uv tool install "agent-cli[vad]"`.
 
 ## Quick Start
+
+### Prefer the macOS menu bar app?
+
+Install the native AgentCLI app with Homebrew:
+
+```bash
+brew install --cask basnijholt/tap/agent-cli
+```
+
+The app provides global shortcuts, a menu bar UI, automatic local Whisper setup on first transcription, and a private bundled `agent-cli` runtime. See the [macOS app guide](docs/installation/macos-app.md) for setup, updates, and uninstall instructions.
 
 ### Just want the CLI tool?
 
@@ -59,15 +69,11 @@ If you already have AI services running (or plan to use OpenAI), simply install:
 
 ```bash
 # Using uv (recommended)
-uv tool install agent-cli -p 3.13
+uv tool install agent-cli
 
 # Using pip
 pip install agent-cli
 ```
-
-> [!NOTE]
-> The `-p 3.13` flag is required because some dependencies (like `onnxruntime`) don't support Python 3.14 yet.
-> See [uv issue #8206](https://github.com/astral-sh/uv/issues/8206) for details.
 
 Then use it:
 ```bash
@@ -102,12 +108,12 @@ agent-cli autocorrect "this has an eror"
 
 > [!NOTE]
 > `agent-cli` uses `sounddevice` for real-time microphone/voice features.
-> On Linux only, you need to install the system-level PortAudio library  (`sudo apt install portaudio19-dev` / your distro's equivalent on Linux) **before** you run `uv tool install agent-cli -p 3.13`.
+> On Linux only, you need to install the system-level PortAudio library  (`sudo apt install portaudio19-dev` / your distro's equivalent on Linux) **before** you run `uv tool install agent-cli`.
 > On Windows and macOS, this is handled automatically.
 
 ```bash
 # 1. Install agent-cli
-uv tool install agent-cli -p 3.13
+uv tool install agent-cli
 
 # 2. Install all required services
 agent-cli install-services
@@ -143,6 +149,7 @@ The setup scripts automatically install:
     - [Step 2: Run the Setup Script](#step-2-run-the-setup-script)
     - [Step 3: Start All Services](#step-3-start-all-services)
     - [Step 4: Test Your Installation](#step-4-test-your-installation)
+- [macOS Menu Bar App](#macos-menu-bar-app)
 - [System Integration](#system-integration)
   - [macOS Hotkeys](#macos-hotkeys)
   - [Linux Hotkeys](#linux-hotkeys)
@@ -191,7 +198,7 @@ If you already have AI services set up or plan to use cloud services (OpenAI/Gem
 
 ```bash
 # Using uv (recommended)
-uv tool install agent-cli -p 3.13
+uv tool install agent-cli
 
 # Using pip
 pip install agent-cli
@@ -247,6 +254,27 @@ source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 ```
 
 </details>
+
+## macOS Menu Bar App
+
+AgentCLI is also available as a native macOS menu bar app for voice workflows that should work from any app without keeping a terminal open.
+
+Install it with Homebrew:
+
+```bash
+brew install --cask basnijholt/tap/agent-cli
+```
+
+The app is a SwiftUI wrapper around the same `agent-cli` commands. It bundles `uv`, installs a private `agent-cli[audio,llm]` runtime in your Application Support folder on first use, and starts the local Whisper daemon automatically the first time you transcribe.
+
+Default shortcuts:
+
+- **`Fn+Space`** - Toggle transcription
+- **`Fn`** - Record while held and insert the transcript
+- **`Cmd+Shift+A`** - Autocorrect clipboard text
+- **`Cmd+Shift+V`** - Start voice edit
+
+You can change shortcuts, enable **Start at Login**, or switch to a user-installed `agent-cli` runtime from the app's **Settings...** screen. See the [macOS app guide](docs/installation/macos-app.md) for details.
 
 ## System Integration
 
@@ -430,6 +458,7 @@ agent-cli install-extras rag memory vad
   • llm - LLM framework (pydantic-ai)
   • memory - Long-term memory proxy
   • mlx-whisper - Whisper ASR for Apple Silicon
+  • nemo-whisper - Whisper-compatible ASR via NVIDIA NeMo (Parakeet)
   • piper - Piper TTS (CPU)
   • rag - RAG proxy (ChromaDB, embeddings)
   • server - FastAPI server components
@@ -450,8 +479,8 @@ agent-cli install-extras rag memory vad
 
 ╭─ Arguments ────────────────────────────────────────────────────────────────────────────╮
 │   extras      [EXTRAS]...  Extras to install: audio, diarization, faster-whisper,      │
-│                            kokoro, llm, memory, mlx-whisper, piper, rag, server,       │
-│                            speed, vad, vectordb, whisper-transformers, wyoming         │
+│                            kokoro, llm, memory, mlx-whisper, nemo-whisper, piper, rag, │
+│                            server, speed, vad, vectordb, whisper-transformers, wyoming │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Options ──────────────────────────────────────────────────────────────────────────────╮
 │ --list  -l        Show available extras with descriptions (what each one enables)      │
@@ -556,9 +585,9 @@ agent-cli config edit
 │ --help  -h        Show this message and exit.                                          │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Commands ─────────────────────────────────────────────────────────────────────────────╮
-│ init   Create a new config file with all options as commented-out examples.            │
-│ edit   Open the config file in your default editor.                                    │
-│ show   Display the active config file path and contents.                               │
+│ init  Create a new config file with all options as commented-out examples.             │
+│ edit  Open the config file in your default editor.                                     │
+│ show  Display the active config file path and contents.                                │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 
 ```
@@ -762,8 +791,9 @@ the `[defaults]` section of your configuration file.
 │ --help  -h        Show this message and exit.                                          │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM Configuration ────────────────────────────────────────────────────────────────────╮
-│ --extra-instructions                TEXT  Extra instructions appended to the LLM       │
-│                                           cleanup prompt (requires --llm).             │
+│ --extra-instructions                TEXT  Extra ASR context where supported, and LLM   │
+│                                           cleanup instructions when --llm is enabled.  │
+│                                           The NeMo backend ignores ASR text prompts.   │
 │ --llm                   --no-llm          Clean up transcript with LLM: fix errors,    │
 │                                           add punctuation, remove filler words. Uses   │
 │                                           --extra-instructions if set (via CLI or      │
@@ -856,9 +886,13 @@ the `[defaults]` section of your configuration file.
 │                                 [env var: GEMINI_API_KEY]                              │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Process Management ───────────────────────────────────────────────────────────────────╮
-│ --stop            Stop any running instance of this command.                           │
-│ --status          Check if an instance is currently running.                           │
-│ --toggle          Start if not running, stop if running. Ideal for hotkey binding.     │
+│ --start                   Start this command if it is not already running.             │
+│ --stop                    Stop any running instance of this command.                   │
+│ --status                  Check if an instance is currently running.                   │
+│ --toggle                  Start if not running, stop if running. Ideal for hotkey      │
+│                           binding.                                                     │
+│ --wait-for-start          When stopping, wait briefly for a just-launched process to   │
+│                           write its PID.                                               │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ General Options ──────────────────────────────────────────────────────────────────────╮
 │ --clipboard              --no-clipboard                          Copy result to        │
@@ -888,6 +922,21 @@ the `[defaults]` section of your configuration file.
 │                                                                  text). Recent entries │
 │                                                                  provide context for   │
 │                                                                  LLM cleanup.          │
+╰────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Live Preview ─────────────────────────────────────────────────────────────────────────╮
+│ --live-preview-log                          PATH   Write rolling live transcription    │
+│                                                    preview events to JSONL while       │
+│                                                    recording.                          │
+│ --live-preview-interval                     FLOAT  Seconds between live preview        │
+│                                                    retranscriptions.                   │
+│                                                    [default: 2.0]                      │
+│ --live-preview-window                       FLOAT  Seconds of recent audio to include  │
+│                                                    in each live preview                │
+│                                                    retranscription.                    │
+│                                                    [default: 15.0]                     │
+│ --live-preview-console,--live-previ…               Print rolling live transcription    │
+│                                                    preview updates to the terminal     │
+│                                                    while recording.                    │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Diarization ──────────────────────────────────────────────────────────────────────────╮
 │ --diarize               --no-diarize                               Enable speaker      │
@@ -1001,7 +1050,7 @@ the `[defaults]` section of your configuration file.
 
 **Installation:** Requires the `vad` extra:
 ```bash
-uv tool install "agent-cli[vad]" -p 3.13
+uv tool install "agent-cli[vad]"
 ```
 
 **How to Use It:**

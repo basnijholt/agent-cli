@@ -12,15 +12,13 @@ dependencies = [
     "pydantic",  # Required for config.py models
     "rich",
     "pyperclip",
-    "typer-slim",  # Depend on both typer and typer-slim to prevent
-    "typer",  # uv namespace corruption (astral-sh/uv#17645)
+    "typer>=0.26",
     "dotenv",
     "httpx",
     "psutil; sys_platform == 'win32'",
     "setproctitle",
 ]
-# TODO: remove <3.14 constraint when onnxruntime supports 3.14 (https://github.com/microsoft/onnxruntime/issues/26309)
-requires-python = ">=3.11,<3.14"
+requires-python = ">=3.11"
 
 [project.readme]
 file = "README.md"
@@ -58,10 +56,14 @@ speed = ["audiostretchy>=1.3.0"]
 diarization = ["pyannote-audio>=3.3"]
 
 # ASR backends
-faster-whisper = ["agent-cli[server]", "faster-whisper>=1.0.0"]
+faster-whisper = ["agent-cli[server]", "faster-whisper>=1.0.0", "ctranslate2>=4.6.2"]
 mlx-whisper = [
     "agent-cli[server]; sys_platform == 'darwin' and platform_machine == 'arm64'",
     "mlx-whisper>=0.4.0; sys_platform == 'darwin' and platform_machine == 'arm64'",
+    # mlx-whisper only requires mlx>=0.11, but the MLX backend calls the
+    # top-level mx.clear_cache(), which does not exist before mlx 0.24
+    # (0.23.2 and older only expose the deprecated mx.metal.clear_cache).
+    "mlx>=0.24; sys_platform == 'darwin' and platform_machine == 'arm64'",
 ]
 whisper-transformers = [
     "agent-cli[server]",
@@ -69,16 +71,23 @@ whisper-transformers = [
     "transformers>=5.13.0",
     "torch>=2.0.0",
 ]
+nemo-whisper = [
+    "agent-cli[server]",
+    # Keep the publishable extra capped until NeMo releases NVIDIA-NeMo/NeMo#15438.
+    # Runtime uv installs apply a temporary kaldialign override.
+    "nemo_toolkit[asr]>=2.2.0; python_version < '3.14'",
+]
 
 # TTS backends
 piper = ["agent-cli[server]", "piper-tts>=1.2.0"]
 kokoro = [
     "agent-cli[server]",
-    "kokoro>=0.9.0",
-    "soundfile>=0.12.0",
-    "huggingface-hub>=0.20.0",
-    "pip",  # Kokoro uses spacy which calls `pip install` to download language models at runtime
-    "transformers>=4.40.0",  # Ensure pre-built tokenizers wheels for Python 3.13+
+    # Kokoro pulls in misaki[en] -> spacy, which does not publish Python 3.14 wheels yet.
+    "kokoro>=0.9.0; python_version < '3.14'",
+    "soundfile>=0.12.0; python_version < '3.14'",
+    "huggingface-hub>=0.20.0; python_version < '3.14'",
+    "pip; python_version < '3.14'",  # Kokoro uses spacy which calls `pip install` to download language models at runtime
+    "transformers>=4.40.0; python_version < '3.14'",  # Ensure pre-built tokenizers wheels for Python 3.13+
 ]
 
 # Development extras
@@ -125,6 +134,11 @@ dev = [
 agent-cli = "agent_cli.cli:app"
 agent = "agent_cli.cli:app"
 ag = "agent_cli.cli:app"
+
+[tool.uv]
+required-environments = [
+    "sys_platform == 'darwin' and platform_machine == 'arm64' and python_full_version == '3.13.*'",
+]
 
 [tool.hatch.version]
 source = "versioningit"

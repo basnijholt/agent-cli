@@ -77,8 +77,8 @@ agent-cli server tts --preload
 | `--ttl` | `300` | Seconds of inactivity before unloading model from memory. Set to 0 to keep loaded indefinitely |
 | `--preload` | `false` | Load model(s) immediately at startup instead of on first request. Useful for reducing first-request latency |
 | `--host` | `0.0.0.0` | Network interface to bind. Use `0.0.0.0` for all interfaces |
-| `--port, -p` | `10201` | Port for OpenAI-compatible HTTP API (`/v1/audio/speech`) |
-| `--wyoming-port` | `10200` | Port for Wyoming protocol (Home Assistant integration) |
+| `--port, --tts-openai-port, -p` | `10201` | Port for OpenAI-compatible HTTP API (`/v1/audio/speech`) |
+| `--wyoming-port, --tts-wyoming-port` | `10200` | Port for Wyoming protocol (Home Assistant integration) |
 | `--no-wyoming` | `false` | Disable Wyoming protocol server (only run HTTP API) |
 | `--download-only` | `false` | Download model(s)/voice(s) to cache and exit. Useful for Docker builds |
 | `--backend, -b` | `auto` | TTS engine: `auto` (prefer Kokoro if available), `piper` (CPU, many languages), `kokoro` (GPU, high quality) |

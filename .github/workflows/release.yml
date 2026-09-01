@@ -1,4 +1,4 @@
-name: Upload Python Package
+name: Publish Release
 
 on:
   release:
@@ -6,6 +6,7 @@ on:
 
 jobs:
   deploy:
+    name: Publish Python package
     runs-on: ubuntu-latest
     environment:
       name: pypi
@@ -13,10 +14,115 @@ jobs:
     permissions:
       id-token: write
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7.0.1
       - name: Install uv
-        uses: astral-sh/setup-uv@v8.1.0
+        uses: astral-sh/setup-uv@v9.0.0
       - name: Build
         run: uv build
       - name: Publish package distributions to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
+
+  build_macos_app:
+    name: Build and publish macOS app
+    runs-on: macos-latest
+    timeout-minutes: 45
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - name: Install uv
+        uses: astral-sh/setup-uv@v9.0.0
+      - name: Import Developer ID certificate
+        uses: apple-actions/import-codesign-certs@v7.0.0
+        with:
+          p12-file-base64: ${{ secrets.MACOS_CODESIGN_CERTIFICATE_BASE64 }}
+          p12-password: ${{ secrets.MACOS_CODESIGN_CERTIFICATE_PASSWORD }}
+          keychain-password: ${{ secrets.MACOS_KEYCHAIN_PASSWORD }}
+      - name: Resolve Developer ID identity
+        id: codesign
+        run: |
+          IDENTITY=$(
+            security find-identity -v -p codesigning |
+              awk -F '"' '/Developer ID Application/ { print $2; exit }'
+          )
+          if [[ -z "$IDENTITY" ]]; then
+            echo "Developer ID Application signing identity not found." >&2
+            exit 1
+          fi
+          echo "identity=$IDENTITY" >> "$GITHUB_OUTPUT"
+      - name: Build notarized macOS DMG
+        env:
+          CODESIGN_IDENTITY: ${{ steps.codesign.outputs.identity }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APP_VERSION: ${{ github.event.release.tag_name }}
+          BUILD_VERSION: ${{ github.run_number }}
+          SPARKLE_PUBLIC_ED_KEY: ${{ vars.SPARKLE_PUBLIC_ED_KEY }}
+        run: |
+          if [[ -z "$SPARKLE_PUBLIC_ED_KEY" ]]; then
+            echo "SPARKLE_PUBLIC_ED_KEY repository variable is required to enable Sparkle updates." >&2
+            exit 1
+          fi
+          NOTARIZE=1 macos/build-macos-app.sh --dmg
+          ditto -c -k --keepParent dist/macos/AgentCLI.app dist/macos/AgentCLI.zip
+      - name: Upload macOS app to GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG_NAME: ${{ github.event.release.tag_name }}
+        run: gh release upload "$TAG_NAME" dist/macos/AgentCLI.dmg dist/macos/AgentCLI.zip --clobber
+      - name: Update Sparkle appcast
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG_NAME: ${{ github.event.release.tag_name }}
+          SPARKLE_PRIVATE_ED_KEY: ${{ secrets.SPARKLE_PRIVATE_ED_KEY }}
+        run: |
+          git fetch origin main
+          git switch --force-create release-metadata origin/main
+
+          if [[ -z "$SPARKLE_PRIVATE_ED_KEY" ]]; then
+            echo "SPARKLE_PRIVATE_ED_KEY is required to sign Sparkle updates." >&2
+            exit 1
+          fi
+
+          SPARKLE_GENERATE_APPCAST="macos/AgentCLI/.build/artifacts/sparkle/Sparkle/bin/generate_appcast"
+          if [[ ! -x "$SPARKLE_GENERATE_APPCAST" ]]; then
+            echo "Sparkle generate_appcast not found: $SPARKLE_GENERATE_APPCAST" >&2
+            exit 1
+          fi
+
+          APPCAST_DIR="$RUNNER_TEMP/agentcli-appcast"
+          rm -rf "$APPCAST_DIR"
+          mkdir -p "$APPCAST_DIR"
+          cp dist/macos/AgentCLI.zip "$APPCAST_DIR/AgentCLI.zip"
+          cp macos/appcast.xml "$APPCAST_DIR/appcast.xml"
+          gh release view "$TAG_NAME" --json body --jq .body >"$APPCAST_DIR/AgentCLI.md"
+
+          printf '%s' "$SPARKLE_PRIVATE_ED_KEY" |
+            "$SPARKLE_GENERATE_APPCAST" \
+              --ed-key-file - \
+              --download-url-prefix "https://github.com/basnijholt/agent-cli/releases/download/${TAG_NAME}/" \
+              --link "https://github.com/basnijholt/agent-cli" \
+              --embed-release-notes \
+              --maximum-versions 10 \
+              -o "$APPCAST_DIR/appcast.xml" \
+              "$APPCAST_DIR"
+
+          cp "$APPCAST_DIR/appcast.xml" macos/appcast.xml
+      - name: Update Sparkle appcast metadata
+        env:
+          TAG_NAME: ${{ github.event.release.tag_name }}
+        run: |
+          python3 .github/scripts/normalize_appcast.py macos/appcast.xml
+
+          if git diff --quiet -- macos/appcast.xml; then
+            echo "macos/appcast.xml is already up to date."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add macos/appcast.xml
+          git commit -m "Update AgentCLI release metadata to ${TAG_NAME}"
+          git pull --rebase origin main
+          git push origin HEAD:main
