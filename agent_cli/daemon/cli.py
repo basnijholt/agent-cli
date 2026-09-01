@@ -17,9 +17,7 @@ from rich.panel import Panel
 from agent_cli.cli import app as main_app
 from agent_cli.core.utils import console, err_console
 from agent_cli.install.service_config import (
-    ASR_SERVICES,
     SERVICES,
-    ServiceManager,
     ServiceStatus,
     get_default_services,
     get_service_manager,
@@ -37,7 +35,6 @@ Install, uninstall, and monitor agent-cli servers running as system daemons
 | Daemon | Description | Ports |
 |--------|-------------|-------|
 | `whisper` | Speech-to-text ASR | 10300/10301 |
-| `whisper-qwen3` | Qwen3 speech-to-text ASR | 10300/10301 |
 | `tts-kokoro` | Text-to-speech (GPU) | 10200/10201 |
 | `tts-piper` | Text-to-speech (CPU) | 10200/10201 |
 | `transcription-proxy` | ASR provider proxy | 61337 |
@@ -322,38 +319,12 @@ def ensure_cmd(
         console.print(f"{service}: {payload['message']}")
 
 
-def _validate_asr_service_selection(
-    selected_services: list[str],
-    manager: ServiceManager,
-) -> None:
-    """Reject ASR daemon selections that would bind the same ports."""
-    selected_asr = [name for name in ASR_SERVICES if name in selected_services]
-    if len(selected_asr) > 1:
-        err_console.print(
-            "[bold red]Error:[/bold red] whisper and whisper-qwen3 are mutually exclusive "
-            "because they use the same ports. Install only one ASR daemon.",
-        )
-        raise typer.Exit(1)
-    if not selected_asr:
-        return
-
-    selected_asr_name = selected_asr[0]
-    conflicting_asr = next(name for name in ASR_SERVICES if name != selected_asr_name)
-    if manager.get_service_status(conflicting_asr).installed is True:
-        err_console.print(
-            f"[bold red]Error:[/bold red] {conflicting_asr} is already installed and "
-            f"uses the same ports as {selected_asr_name}. Run "
-            f"`agent-cli daemon uninstall {conflicting_asr}` first.",
-        )
-        raise typer.Exit(1)
-
-
 @app.command("install")
 def install_cmd(  # noqa: PLR0912, PLR0915
     services: Annotated[
         list[str] | None,
         typer.Argument(
-            help="Services to install (whisper, whisper-qwen3, tts-kokoro, tts-piper, transcription-proxy, memory, rag).",
+            help="Services to install (whisper, tts-kokoro, tts-piper, transcription-proxy, memory, rag).",
         ),
     ] = None,
     all_services: Annotated[
@@ -384,15 +355,14 @@ def install_cmd(  # noqa: PLR0912, PLR0915
 
     **Available daemons:**
     - **whisper**: Speech-to-text ASR server (ports 10300/10301)
-    - **whisper-qwen3**: Qwen3 speech-to-text ASR server (ports 10300/10301)
     - **tts-kokoro**: Text-to-speech with Kokoro/GPU (ports 10200/10201)
     - **tts-piper**: Text-to-speech with Piper/CPU (ports 10200/10201)
     - **transcription-proxy**: Proxy for ASR providers (port 61337)
     - **memory**: Long-term memory proxy for LLMs (port 8100)
     - **rag**: Document retrieval proxy for LLMs (port 8000)
 
-    Note: whisper and whisper-qwen3 are mutually exclusive, as are tts-kokoro
-    and tts-piper. Use `--all` to auto-select the default ASR and TTS backends.
+    Note: tts-kokoro and tts-piper are mutually exclusive. Use `--all` to
+    auto-select the default TTS backend.
 
     Daemons run via `uv tool run` and don't require a virtual environment.
 
@@ -409,6 +379,9 @@ def install_cmd(  # noqa: PLR0912, PLR0915
 
         # Pass server args to one daemon command
         agent-cli daemon install whisper -- --model small --port 10311
+
+        # Install Qwen3-ASR through the Transformers backend
+        agent-cli daemon install whisper -- --backend transformers --model Qwen/Qwen3-ASR-1.7B-hf
 
     After installation, check status with:
         agent-cli daemon status
@@ -455,8 +428,6 @@ def install_cmd(  # noqa: PLR0912, PLR0915
             )
             raise typer.Exit(1)
         selected_services = requested_services
-
-    _validate_asr_service_selection(selected_services, manager)
 
     # Check uv dependency
     if not skip_deps:
@@ -537,7 +508,7 @@ def uninstall_cmd(
     services: Annotated[
         list[str] | None,
         typer.Argument(
-            help="Services to uninstall (whisper, whisper-qwen3, tts-kokoro, tts-piper, transcription-proxy, memory, rag).",
+            help="Services to uninstall (whisper, tts-kokoro, tts-piper, transcription-proxy, memory, rag).",
         ),
     ] = None,
     all_services: Annotated[

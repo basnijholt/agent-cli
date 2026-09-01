@@ -311,6 +311,14 @@ agent-cli server whisper \
 
 Qwen3-ASR supports transcription, automatic language detection, and context or hotwords through the OpenAI-compatible `prompt` field. Translation and timestamped subtitle output are not currently supported.
 
+To install it as the standard `whisper` background daemon:
+
+```bash
+agent-cli daemon install whisper -- \
+  --backend transformers \
+  --model Qwen/Qwen3-ASR-1.7B-hf
+```
+
 For Cohere Transcribe specifically:
 
 ```bash

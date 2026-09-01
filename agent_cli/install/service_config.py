@@ -43,9 +43,12 @@ _WHISPER_BACKEND_EXTRAS = {
     "whisper-transformers",
     "nemo-whisper",
 }
-
-# ASR services that are mutually exclusive (same ports)
-ASR_SERVICES = ("whisper", "whisper-qwen3")
+_WHISPER_EXTRA_BY_BACKEND = {
+    "faster-whisper": "faster-whisper",
+    "mlx": "mlx-whisper",
+    "nemo": "nemo-whisper",
+    "transformers": "whisper-transformers",
+}
 
 
 def detect_preferred_tts() -> str:
@@ -74,8 +77,7 @@ def get_default_services() -> list[str]:
     """Get default services for --all, picking one TTS backend automatically."""
     preferred_tts = detect_preferred_tts()
     excluded_tts = "tts-piper" if preferred_tts == "tts-kokoro" else "tts-kokoro"
-    excluded_services = {excluded_tts, "whisper-qwen3"}
-    return [name for name in SERVICES if name not in excluded_services]
+    return [name for name in SERVICES if name != excluded_tts]
 
 
 # Available services for installation
@@ -88,20 +90,6 @@ SERVICES: dict[str, ServiceConfig] = {
         command_args=[],
         python_version="3.13",  # onnxruntime lacks py3.14 wheels (Linux only)
         macos_extra="server,mlx-whisper,wyoming",
-    ),
-    "whisper-qwen3": ServiceConfig(
-        name="whisper-qwen3",
-        display_name="Qwen3 ASR",
-        description="Qwen3 speech-to-text server (ports 10300/10301)",
-        extra="server,whisper-transformers,wyoming",
-        command_args=[
-            "--backend",
-            "transformers",
-            "--model",
-            "Qwen/Qwen3-ASR-1.7B-hf",
-        ],
-        python_version="3.13",
-        command=["server", "whisper"],
     ),
     "tts-kokoro": ServiceConfig(
         name="tts",  # Server command is still "tts"
@@ -190,7 +178,15 @@ def _service_extra_for_command(
     extra_command_args: list[str] | None,
 ) -> str:
     """Adjust service extras when custom daemon args select a specific backend."""
-    if service.name != "whisper" or not _uses_nemo_backend(extra_command_args):
+    if service.name != "whisper":
+        return extra
+
+    backend = _backend_from_args(extra_command_args)
+    if backend is None:
+        return extra
+
+    backend_extra = _WHISPER_EXTRA_BY_BACKEND.get(backend)
+    if backend_extra is None:
         return extra
 
     parts = _split_extras(extra)
@@ -199,13 +195,13 @@ def _service_extra_for_command(
     for part in parts:
         if part in _WHISPER_BACKEND_EXTRAS:
             if not inserted:
-                result.append("nemo-whisper")
+                result.append(backend_extra)
                 inserted = True
             continue
         result.append(part)
 
     if not inserted:
-        result.append("nemo-whisper")
+        result.append(backend_extra)
     return ",".join(result)
 
 
@@ -213,14 +209,14 @@ def _split_extras(extra: str) -> list[str]:
     return [part.strip() for part in extra.split(",") if part.strip()]
 
 
-def _uses_nemo_backend(extra_command_args: list[str] | None) -> bool:
+def _backend_from_args(extra_command_args: list[str] | None) -> str | None:
     args = extra_command_args or []
     for index, arg in enumerate(args):
         if arg in {"--backend", "-b"} and index + 1 < len(args):
-            return args[index + 1] == "nemo"
-        if arg in {"--backend=nemo", "-b=nemo"}:
-            return True
-    return False
+            return args[index + 1]
+        if arg.startswith(("--backend=", "-b=")):
+            return arg.split("=", maxsplit=1)[1]
+    return None
 
 
 def find_uv(extra_paths: list[Path] | None = None) -> Path | None:
