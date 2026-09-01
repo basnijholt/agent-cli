@@ -136,6 +136,9 @@ agent = "agent_cli.cli:app"
 ag = "agent_cli.cli:app"
 
 [tool.uv]
+# curated-tokenizers 0.0.9 crashes when built with newer Cython releases on
+# Python 3.13, where no pre-built wheel is available.
+build-constraint-dependencies = ["cython<3.1"]
 required-environments = [
     "sys_platform == 'darwin' and platform_machine == 'arm64' and python_full_version == '3.13.*'",
 ]

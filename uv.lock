@@ -26,6 +26,9 @@ required-markers = [
     "python_full_version == '3.13.*' and platform_machine == 'arm64' and sys_platform == 'darwin'",
 ]
 
+[manifest]
+build-constraints = [{ name = "cython", specifier = "<3.1" }]
+
 [[package]]
 name = "absl-py"
 version = "2.4.0"
