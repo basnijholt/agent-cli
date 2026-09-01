@@ -37,18 +37,13 @@ class ServiceConfig:
 
 # TTS services that are mutually exclusive (same ports)
 TTS_SERVICES = ("tts-kokoro", "tts-piper")
-_WHISPER_BACKEND_EXTRAS = {
-    "faster-whisper",
-    "mlx-whisper",
-    "whisper-transformers",
-    "nemo-whisper",
-}
 _WHISPER_EXTRA_BY_BACKEND = {
     "faster-whisper": "faster-whisper",
     "mlx": "mlx-whisper",
     "nemo": "nemo-whisper",
     "transformers": "whisper-transformers",
 }
+_WHISPER_BACKEND_EXTRAS = frozenset(_WHISPER_EXTRA_BY_BACKEND.values())
 
 
 def detect_preferred_tts() -> str:

@@ -51,7 +51,6 @@ class TestServiceConfig:
     def test_services_defined(self) -> None:
         """Test that expected services are defined."""
         assert "whisper" in SERVICES
-        assert "whisper-qwen3" not in SERVICES
         assert "tts-kokoro" in SERVICES
         assert "tts-piper" in SERVICES
         assert "transcription-proxy" in SERVICES
@@ -65,29 +64,6 @@ class TestServiceConfig:
         assert whisper.display_name == "Whisper ASR"
         assert whisper.extra
         assert isinstance(whisper.command_args, list)
-
-    def test_build_service_command_uses_transformers_extra_for_qwen3(self, tmp_path: Path) -> None:
-        """Transformers daemon args should install the Qwen3 backend extra."""
-        command = build_service_command(
-            SERVICES["whisper"],
-            tmp_path / "uv",
-            use_macos_extra=True,
-            extra_command_args=[
-                "--backend",
-                "transformers",
-                "--model",
-                "Qwen/Qwen3-ASR-1.7B-hf",
-            ],
-        )
-
-        assert "agent-cli[server,whisper-transformers,wyoming]" in command
-        assert command[-5:] == [
-            "whisper",
-            "--backend",
-            "transformers",
-            "--model",
-            "Qwen/Qwen3-ASR-1.7B-hf",
-        ]
 
     @pytest.mark.parametrize(
         ("backend", "backend_extra"),
