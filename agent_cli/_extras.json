@@ -84,6 +84,7 @@
   "whisper-transformers": [
     "Whisper ASR via HuggingFace transformers",
     [
+      "librosa",
       "transformers",
       "torch"
     ]
