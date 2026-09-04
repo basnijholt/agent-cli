@@ -36,7 +36,7 @@ FROM nvcr.io/nvidia/cuda:12.9.1-cudnn-runtime-ubuntu24.04 AS cuda
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends ffmpeg && \
+    apt-get install -y --no-install-recommends ffmpeg git && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 ENV UV_PYTHON_INSTALL_DIR=/opt/python
@@ -95,8 +95,11 @@ WORKDIR /app
 # Keep the environment writable so agent-cli can auto-install backend extras.
 COPY --chown=whisper:whisper --from=builder /app/.venv /app/.venv
 
-# Install imageio-ffmpeg for bundled static ffmpeg binary (77MB vs 420MB for Debian package)
-RUN uv pip install --python /app/.venv/bin/python imageio-ffmpeg && \
+# Install git for runtime extras and imageio-ffmpeg for a bundled static ffmpeg binary.
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends git && \
+    apt-get clean && rm -rf /var/lib/apt/lists/* && \
+    uv pip install --python /app/.venv/bin/python imageio-ffmpeg && \
     ln -s $(/app/.venv/bin/python -c "import imageio_ffmpeg; print(imageio_ffmpeg.get_ffmpeg_exe())") /usr/local/bin/ffmpeg && \
     ln -s /app/.venv/bin/agent-cli /usr/local/bin/agent-cli && \
     mkdir -p /home/whisper/.cache && chown -R whisper:whisper /home/whisper
