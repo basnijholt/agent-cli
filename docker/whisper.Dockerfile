@@ -49,7 +49,8 @@ RUN userdel -r ubuntu && \
 
 WORKDIR /app
 
-COPY --from=builder /app/.venv /app/.venv
+# Keep the environment writable so agent-cli can auto-install backend extras.
+COPY --chown=whisper:whisper --from=builder /app/.venv /app/.venv
 
 RUN ln -sf $(uv python find 3.13) /app/.venv/bin/python && \
     ln -s /app/.venv/bin/agent-cli /usr/local/bin/agent-cli && \
@@ -91,7 +92,8 @@ RUN groupadd -g 1000 whisper && useradd -m -u 1000 -g 1000 whisper
 
 WORKDIR /app
 
-COPY --from=builder /app/.venv /app/.venv
+# Keep the environment writable so agent-cli can auto-install backend extras.
+COPY --chown=whisper:whisper --from=builder /app/.venv /app/.venv
 
 # Install imageio-ffmpeg for bundled static ffmpeg binary (77MB vs 420MB for Debian package)
 RUN uv pip install --python /app/.venv/bin/python imageio-ffmpeg && \
