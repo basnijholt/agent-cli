@@ -1,9 +1,8 @@
 name: Publish Docker Images
 
 on:
-  workflow_run:
-    workflows: ["Upload Python Package"]
-    types: [completed]
+  release:
+    types: [published]
   workflow_dispatch:
 
 env:
@@ -13,7 +12,6 @@ jobs:
   # Images with cuda/cpu targets (whisper, tts)
   build-multi-target:
     runs-on: ubuntu-latest
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     permissions:
       contents: read
       packages: write
@@ -62,11 +60,12 @@ jobs:
 
       - name: Get version from trigger
         id: version
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
         run: |
-          if [[ "${{ github.event_name }}" == "workflow_run" ]]; then
+          if [[ "$GITHUB_EVENT_NAME" == "release" ]]; then
             # Extract version from release tag (v0.61.3 -> 0.61.3)
-            TAG="${{ github.event.workflow_run.head_branch }}"
-            echo "version=${TAG#v}" >> $GITHUB_OUTPUT
+            echo "version=${RELEASE_TAG#v}" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Extract metadata
@@ -94,7 +93,6 @@ jobs:
   # Single-target images (transcribe-proxy)
   build-single-target:
     runs-on: ubuntu-latest
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     permissions:
       contents: read
       packages: write
@@ -127,11 +125,12 @@ jobs:
 
       - name: Get version from trigger
         id: version
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
         run: |
-          if [[ "${{ github.event_name }}" == "workflow_run" ]]; then
+          if [[ "$GITHUB_EVENT_NAME" == "release" ]]; then
             # Extract version from release tag (v0.61.3 -> 0.61.3)
-            TAG="${{ github.event.workflow_run.head_branch }}"
-            echo "version=${TAG#v}" >> $GITHUB_OUTPUT
+            echo "version=${RELEASE_TAG#v}" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Extract metadata
