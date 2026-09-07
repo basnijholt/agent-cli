@@ -59,11 +59,14 @@ The Docker setup provides:
 | ----------------------- | --------------------------------- | ----------- | ------------------------------ |
 | **whisper**             | agent-cli-whisper (custom)        | 10300/10301 | Speech-to-text (Faster Whisper)|
 | **tts**                 | agent-cli-tts (custom)            | 10200/10201 | Text-to-speech (Kokoro/Piper)  |
+| **diarization**        | agent-cli-diarization (local build) | 61337       | Speaker timing and labeled transcripts (optional) |
 | **transcribe-proxy**    | agent-cli-transcribe-proxy        | 61337       | ASR proxy for iOS/external apps|
 | **rag-proxy**           | agent-cli-rag-proxy               | 8000        | Document-aware chat (RAG)      |
 | **memory-proxy**        | agent-cli-memory-proxy            | 8100        | Long-term memory chat          |
 | **ollama**              | ollama/ollama                     | 11434       | LLM server                     |
 | **openwakeword**        | rhasspy/wyoming-openwakeword      | 10400       | Wake word detection            |
+
+For speaker diarization, see [Docker with diarization](../commands/server/transcribe-proxy.md#docker-with-diarization). This optional service reuses the transcription proxy and adds local pyannote inference.
 
 ## Configuration
 

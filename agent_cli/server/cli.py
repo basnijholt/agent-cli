@@ -702,7 +702,11 @@ def transcribe_proxy_cmd(
     The server exposes:
 
     - `POST /transcribe` - Accepts audio files, returns `{raw_transcript, cleaned_transcript}`
+    - `POST /diarize` - Speaker timestamps (requires the `diarization` extra and `HF_TOKEN`)
     - `GET /health` - Health check endpoint
+
+    Pass `diarize=true` and `cleanup=false` to `/transcribe` for speaker-labeled segments.
+    Add `align_words=true` for forced word alignment. Docker: `docker/diarization.Dockerfile`.
 
     **When to use this vs `server whisper`:**
 

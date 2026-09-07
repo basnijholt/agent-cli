@@ -239,6 +239,33 @@ services:
       # - OPENAI_API_KEY=your-api-key
     restart: unless-stopped
 
+  # Optional transcription proxy with local diarization. Start explicitly with:
+  # docker compose -f docker/docker-compose.yml up --build diarization
+  # Shares port 61337 with transcribe-proxy; run one of them at a time.
+  diarization:
+    image: agent-cli-diarization
+    build:
+      context: ..
+      dockerfile: docker/diarization.Dockerfile
+    profiles: [diarization]
+    ports:
+      - "${DIARIZATION_PORT:-61337}:61337"
+    volumes:
+      - diarization-cache:/home/transcribe/.cache
+    environment:
+      - HF_TOKEN=${HF_TOKEN:-}
+      - DIARIZATION_DEVICE=${DIARIZATION_DEVICE:-auto}
+      - ASR_PROVIDER=${ASR_PROVIDER:-wyoming}
+      - ASR_WYOMING_IP=${ASR_WYOMING_IP:-whisper-cpu}
+      - ASR_WYOMING_PORT=${ASR_WYOMING_PORT:-10300}
+      - ASR_OPENAI_BASE_URL=${ASR_OPENAI_BASE_URL:-}
+      - ASR_OPENAI_MODEL=${ASR_OPENAI_MODEL:-whisper-1}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+    # For NVIDIA inference, set DIARIZATION_DEVICE=cuda and uncomment:
+    # gpus: all
+    restart: unless-stopped
+
   # ===========================================================================
   # RAG Proxy
   # ===========================================================================
@@ -305,6 +332,8 @@ services:
     restart: unless-stopped
 
 volumes:
+  diarization-cache:
+    name: agent-cli-diarization-cache
   ollama-data:
     name: agent-cli-ollama-data
   openwakeword-data:
