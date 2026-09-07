@@ -56,7 +56,8 @@ agent-cli server transcribe-proxy --reload
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/transcribe` | POST | Transcribe audio file |
+| `/transcribe` | POST | Transcribe audio file, optionally with speaker labels |
+| `/diarize` | POST | Identify speaker timestamps without transcription |
 | `/health` | GET | Health check |
 | `/docs` | GET | Interactive API documentation |
 
@@ -70,6 +71,11 @@ Transcribe an audio file with optional LLM post-processing.
 |-----------|------|---------|-------------|
 | `audio` | file | required | Audio file (wav, mp3, m4a, ogg, flac, aac, webm) |
 | `cleanup` | boolean | `true` | Whether to apply LLM post-processing to clean up the transcript |
+| `diarize` | boolean | `false` | Return speaker-labeled `segments`; requires `cleanup=false` |
+| `min_speakers` | integer | - | Optional minimum number of speakers, at least 1 |
+| `max_speakers` | integer | - | Optional maximum number of speakers, at least the minimum |
+| `align_words` | boolean | `false` | Use forced word alignment; requires `diarize=true` |
+| `align_language` | string | `en` | Forced alignment language: `en`, `fr`, `de`, `es`, `it` |
 | `extra_instructions` | string | - | Additional instructions for the LLM cleanup (appended to any config file instructions) |
 
 **Disabling LLM Post-Processing:**
@@ -91,7 +97,8 @@ This skips the LLM step entirely, reducing latency and removing the LLM dependen
   "raw_transcript": "the original transcription",
   "cleaned_transcript": "The cleaned transcription.",
   "success": true,
-  "error": null
+  "error": null,
+  "segments": null
 }
 ```
 
@@ -101,6 +108,54 @@ This skips the LLM step entirely, reducing latency and removing the LLM dependen
 | `cleaned_transcript` | string or null | The LLM-cleaned transcript, or `null` if `cleanup=false` |
 | `success` | boolean | Whether the transcription succeeded |
 | `error` | string or null | Error message if something went wrong |
+| `segments` | array or null | Speaker segments (`speaker`, `start`, `end`, `text`), or `null` without diarization |
+
+## Speaker Diarization
+
+Install the optional dependencies and set `HF_TOKEN` on the server:
+
+```bash
+uv sync --extra server --extra wyoming --extra llm --extra diarization
+export HF_TOKEN=your-huggingface-token
+agent-cli server transcribe-proxy
+```
+
+Accept the model access conditions for [speaker-diarization-3.1](https://huggingface.co/pyannote/speaker-diarization-3.1), [segmentation-3.0](https://huggingface.co/pyannote/segmentation-3.0), and [wespeaker-voxceleb-resnet34-LM](https://huggingface.co/pyannote/wespeaker-voxceleb-resnet34-LM). Use a token with read access to these models. The first request downloads the models; later requests reuse them.
+
+For a speaker-labeled transcript, configure your usual ASR backend and send:
+
+```bash
+curl http://localhost:61337/transcribe \
+  -F "audio=@interview.wav" \
+  -F "cleanup=false" -F "diarize=true" \
+  -F "min_speakers=2" -F "max_speakers=2" \
+  -F "align_words=true" -F "align_language=en"
+```
+
+`raw_transcript` contains the original ASR text. The additional `segments` field contains:
+
+```json
+[
+  {"speaker": "SPEAKER_00", "start": 0.4, "end": 2.1, "text": "Hello there."},
+  {"speaker": "SPEAKER_01", "start": 2.3, "end": 4.0, "text": "Welcome back."}
+]
+```
+
+`align_words=true` uses the existing wav2vec2 alignment and downloads an additional language model. Without it, sentence timing is estimated from transcript length, so speaker assignment is approximate. Word alignment also falls back to this estimate if it cannot align any words. Speaker labels are local to each upload; this API does not enroll or identify persistent voice profiles.
+
+### POST /diarize
+
+Return speaker labels and timestamps without using an ASR provider:
+
+```bash
+curl http://localhost:61337/diarize \
+  -F "audio=@interview.wav" \
+  -F "min_speakers=2" -F "max_speakers=2"
+```
+
+Accepts the same `audio` upload and optional `min_speakers` / `max_speakers` hints as `/transcribe`. Returns `{"segments": [{"speaker": "SPEAKER_00", "start": 0.4, "end": 2.1, "text": ""}]}`. Times are seconds from the start of the file. Overlapping speech can produce overlapping segments; silence returns an empty list.
+
+Both endpoints delete temporary audio after processing. The model loads lazily and remains in memory until the process exits; concurrent diarization requests run sequentially while health checks remain responsive. Use one server worker to avoid loading extra model copies. `/health` checks the HTTP service; it does not verify model access or readiness. Missing token or dependencies return HTTP 503, invalid options return 422, empty uploads return 400, and inference failures return 500.
 
 ## How It Works
 
@@ -154,12 +209,38 @@ docker run -p 61337:61337 ghcr.io/basnijholt/agent-cli-transcribe-proxy:latest
 docker compose -f docker/docker-compose.yml --profile cpu up transcribe-proxy
 ```
 
+### Docker with diarization
+
+Build the image that includes pyannote, PyTorch, and FFmpeg:
+
+```bash
+docker build -f docker/diarization.Dockerfile -t agent-cli-diarization .
+
+docker run --rm -p 61337:61337 \
+  -e HF_TOKEN \
+  -v agent-cli-diarization-cache:/home/transcribe/.cache \
+  agent-cli-diarization
+```
+
+This runs `/diarize` on CPU. For NVIDIA GPU inference, add `--gpus all -e DIARIZATION_DEVICE=cuda` to `docker run`. For `/transcribe`, also provide your ASR environment variables, for example `-e ASR_PROVIDER=openai -e ASR_OPENAI_BASE_URL=http://your-whisper-host:10301/v1 -e OPENAI_API_KEY=dummy`.
+
+The optional Compose service can run beside the existing Whisper server:
+
+```bash
+# HF_TOKEN must be exported in the shell or set in docker/.env.
+docker compose -f docker/docker-compose.yml --profile cpu up --build whisper-cpu diarization
+```
+
+Use `diarization` in place of `transcribe-proxy`, since both default to port 61337. Set `DIARIZATION_PORT` to use a different host port. The model cache persists in `agent-cli-diarization-cache`. GPU instructions are included beside the service in the Compose file.
+
 ### Environment Variables
 
 Configure the proxy using environment variables (priority: env var > config file > default):
 
 | Variable | Default | Description |
 |----------|---------|-------------|
+| `HF_TOKEN` | - | Hugging Face read token for diarization models |
+| `DIARIZATION_DEVICE` | `auto` | PyTorch device, e.g. `cpu`, `cuda`, `cuda:0`, `mps` |
 | `ASR_PROVIDER` | `wyoming` | ASR provider: `wyoming`, `openai`, `gemini` |
 | `ASR_WYOMING_IP` | `localhost` | Wyoming ASR server hostname/IP |
 | `ASR_WYOMING_PORT` | `10300` | Wyoming ASR server port |
