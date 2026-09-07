@@ -5,6 +5,25 @@
         <link>https://github.com/basnijholt/agent-cli</link>
         <description>Signed Agent CLI macOS app updates.</description>
         <item>
+            <title>0.104.0</title>
+            <pubDate>Mon, 07 Sep 2026 21:38:19 +0000</pubDate>
+            <link>https://github.com/basnijholt/agent-cli</link>
+            <sparkle:version>203</sparkle:version>
+            <sparkle:shortVersionString>0.104.0</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[## What’s Changed
+
+* Add speaker diarization API and Docker image (#639) @basnijholt
+* Fix Docker image publishing and runtime extras (#638) @basnijholt
+* ⬆️ Update actions/deploy-pages action to v5.0.1 (#637) [@renovate[bot]](https://github.com/apps/renovate)
+* ⬆️ Update docker/setup-buildx-action action to v4.3.0 (#635) [@renovate[bot]](https://github.com/apps/renovate)
+
+
+]]></description>
+            <enclosure url="https://github.com/basnijholt/agent-cli/releases/download/v0.104.0/AgentCLI.zip" length="18454336" type="application/octet-stream" sparkle:edSignature="p7BVeR6YS/LBGO61o0xR8GE9beHf+4uaz0c28HrHX4oyWjVZSBgwI6jIjR2Mn23HNLS65CfECbp2NSJoIc+ABw=="/>
+        </item>
+        <item>
             <title>0.103.0</title>
             <pubDate>Tue, 01 Sep 2026 19:34:50 +0000</pubDate>
             <link>https://github.com/basnijholt/agent-cli</link>
@@ -188,22 +207,6 @@
 
 ]]></description>
             <enclosure url="https://github.com/basnijholt/agent-cli/releases/download/v0.99.0/AgentCLI.zip" length="22924494" type="application/octet-stream" sparkle:edSignature="COI8nqDd0cBtOO9jw/QRmsucsxE0SPiSgNF/o+s/nv3FCjSXy0C+gZX/bIFtCYyz/DYkff+IaHaLzhw8Z5aEBQ=="/>
-        </item>
-        <item>
-            <title>0.98.5</title>
-            <pubDate>Fri, 05 Jun 2026 20:33:00 +0000</pubDate>
-            <link>https://github.com/basnijholt/agent-cli</link>
-            <sparkle:version>193</sparkle:version>
-            <sparkle:shortVersionString>0.98.5</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[## What’s Changed
-
-* Fix macOS F1 shortcut recorder crash (#584) @basnijholt
-* Retry Fn hotkeys after Accessibility approval (#583) @basnijholt
-
-]]></description>
-            <enclosure url="https://github.com/basnijholt/agent-cli/releases/download/v0.98.5/AgentCLI.zip" length="22904207" type="application/octet-stream" sparkle:edSignature="ZUCHwTaFNGvFW3w/cq1Wf5OzB0e/1mjUQjCksmNaDJy9muTY1r5dRcDuIk15hp7iB4ELNAUUDqqa+PMi/tyiAA=="/>
         </item>
     </channel>
 </rss>
