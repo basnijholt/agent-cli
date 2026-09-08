@@ -65,6 +65,7 @@ class TranscriptResult(TypedDict, total=False):
     transcript: str | None
     saved_recording_path: Path | None
     llm_enabled: bool
+    error: str | None
 
 
 SYSTEM_PROMPT = """
@@ -343,6 +344,14 @@ def _option_default(value: Any) -> Any:
     return getattr(value, "default", value)
 
 
+def _transcript_result_error(result: object) -> str | None:
+    """Return a structured transcript error when one is present."""
+    if not isinstance(result, dict):
+        return None
+    error = result.get("error")
+    return error if isinstance(error, str) and error else None
+
+
 async def _async_main(  # noqa: PLR0912, PLR0915, C901
     *,
     extra_instructions: str | None,
@@ -465,17 +474,27 @@ async def _async_main(  # noqa: PLR0912, PLR0915, C901
                     and provider_cfg.asr_provider == "wyoming"
                     else None
                 )
-                transcript = await live_transcriber(
-                    logger=LOGGER,
-                    stop_event=stop_event,
-                    quiet=general_cfg.quiet,
-                    live=live,
-                    save_recording=save_recording,
-                    extra_instructions=extra_instructions,
-                    recording_path_callback=_set_saved_recording_path,
-                    audio_level_callback=audio_level_callback,
-                    live_preview_config=live_preview_config,
-                )
+                try:
+                    transcript = await live_transcriber(
+                        logger=LOGGER,
+                        stop_event=stop_event,
+                        quiet=general_cfg.quiet,
+                        live=live,
+                        save_recording=save_recording,
+                        extra_instructions=extra_instructions,
+                        recording_path_callback=_set_saved_recording_path,
+                        audio_level_callback=audio_level_callback,
+                        live_preview_config=live_preview_config,
+                    )
+                except asr.SilentAudioCaptureError as exc:
+                    message = str(exc)
+                    LOGGER.warning(message)
+                    return TranscriptResult(
+                        raw_transcript=None,
+                        transcript=None,
+                        llm_enabled=False,
+                        error=message,
+                    )
 
         elapsed = time.monotonic() - start_time
 
@@ -898,6 +917,10 @@ def transcribe(  # noqa: PLR0912, PLR0911, PLR0915, C901
             raise typer.Exit(1) from None
         if json_output:
             print(json.dumps(result))
+        if error := _transcript_result_error(result):
+            if not json_output:
+                print(error)
+            raise typer.Exit(1)
         return
 
     # Normal recording mode
@@ -994,3 +1017,7 @@ def transcribe(  # noqa: PLR0912, PLR0911, PLR0915, C901
         raise typer.Exit(1) from None
     if json_output:
         print(json.dumps(result))
+    if error := _transcript_result_error(result):
+        if not json_output:
+            print(error)
+        raise typer.Exit(1)

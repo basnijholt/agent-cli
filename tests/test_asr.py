@@ -274,6 +274,60 @@ async def test_send_audio() -> None:
 
 
 @pytest.mark.asyncio
+async def test_send_audio_returns_capture_stats() -> None:
+    """Send path should report whether any non-silent samples were captured."""
+    client = AsyncMock()
+    stream = MagicMock()
+    stop_event = MagicMock()
+    stop_event.is_set.side_effect = [False, True]
+    stop_event.ctrl_c_pressed = False
+    mock_data = MagicMock()
+    mock_data.tobytes.return_value = b"\x00\x00\x05\x00"
+    stream.read.return_value = (mock_data, False)
+
+    stats = await asr._send_audio(
+        client,
+        stream,
+        stop_event,
+        MagicMock(),
+        live=MagicMock(),
+        quiet=True,
+        save_recording=False,
+    )
+
+    assert stats == asr.AudioCaptureStats(byte_count=4, peak_sample=5)
+
+
+@pytest.mark.asyncio
+async def test_transcribe_live_audio_wyoming_errors_on_silent_empty_capture() -> None:
+    """All-zero captured audio plus empty ASR output should surface mic capture failure."""
+    with (
+        patch("agent_cli.services.asr.wyoming_client_context") as mock_context,
+        patch("agent_cli.services.asr.open_audio_stream"),
+        patch("agent_cli.services.asr.setup_input_stream"),
+        patch("agent_cli.services.asr._send_audio", new_callable=AsyncMock) as mock_send,
+        patch("agent_cli.services.asr._receive_transcript", new_callable=AsyncMock) as mock_receive,
+    ):
+        mock_context.return_value.__aenter__.return_value = AsyncMock()
+        mock_send.return_value = asr.AudioCaptureStats(byte_count=32_000, peak_sample=0)
+        mock_receive.return_value = ""
+
+        with pytest.raises(asr.SilentAudioCaptureError):
+            await asr._transcribe_live_audio_wyoming(
+                audio_input_cfg=config.AudioInput(input_device_index=None),
+                wyoming_asr_cfg=config.WyomingASR(
+                    asr_wyoming_ip="localhost",
+                    asr_wyoming_port=10300,
+                ),
+                logger=MagicMock(),
+                stop_event=MagicMock(),
+                live=MagicMock(),
+                quiet=True,
+                save_recording=True,
+            )
+
+
+@pytest.mark.asyncio
 async def test_send_audio_does_not_wait_for_audio_level_callback() -> None:
     """Test that level callbacks cannot block audio delivery to Wyoming."""
     client = AsyncMock()
