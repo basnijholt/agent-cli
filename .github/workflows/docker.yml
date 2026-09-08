@@ -165,6 +165,7 @@ jobs:
   smoke-diarization:
     needs: build-single-target
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       contents: read
       packages: read
@@ -185,14 +186,8 @@ jobs:
 
       - name: Resolve image reference
         id: image
-        env:
-          RELEASE_TAG: ${{ github.event.release.tag_name }}
         run: |
-          if [[ "$GITHUB_EVENT_NAME" == "release" ]]; then
-            tag="${RELEASE_TAG#v}"
-          else
-            tag="latest"
-          fi
+          tag="sha-${GITHUB_SHA::7}"
           echo "ref=${REGISTRY}/${GITHUB_REPOSITORY}-diarization:${tag}" >> "$GITHUB_OUTPUT"
 
       - name: Pull published image
@@ -225,7 +220,8 @@ jobs:
 
           ready=false
           for _ in {1..30}; do
-            if curl --fail --silent http://localhost:61337/health >/dev/null; then
+            if curl --fail --silent --connect-timeout 1 --max-time 2 \
+              http://localhost:61337/health | jq --exit-status '.status == "healthy"' >/dev/null; then
               ready=true
               break
             fi
@@ -236,7 +232,10 @@ jobs:
             exit 1
           fi
 
-          curl --fail --silent http://localhost:61337/openapi.json > openapi.json
-          for route in /health /transcribe /diarize; do
-            jq --exit-status --arg route "$route" '.paths[$route]' openapi.json >/dev/null
-          done
+          if ! curl --fail --silent --show-error --connect-timeout 1 --max-time 2 \
+            http://localhost:61337/openapi.json | jq --exit-status \
+              '.paths["/health"].get and .paths["/transcribe"].post and .paths["/diarize"].post' \
+              >/dev/null; then
+            docker logs "$container_id"
+            exit 1
+          fi
