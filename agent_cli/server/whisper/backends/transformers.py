@@ -6,6 +6,7 @@ import asyncio
 import logging
 import tempfile
 import time
+import traceback
 import wave
 from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass
@@ -428,8 +429,8 @@ def _transcribe_with_generate(
     )
 
 
-def _transcribe_in_subprocess(kwargs: dict[str, Any]) -> dict[str, Any]:
-    """Run transcription in subprocess. Reuses model from _state."""
+def _transcribe_with_loaded_model(kwargs: dict[str, Any]) -> dict[str, Any]:
+    """Dispatch transcription using the model retained in this worker."""
     if _state.model is None or _state.processor is None:
         msg = "Model not loaded in subprocess. Call _load_model_in_subprocess first."
         raise RuntimeError(msg)
@@ -477,6 +478,44 @@ def _transcribe_in_subprocess(kwargs: dict[str, Any]) -> dict[str, Any]:
         beam_size=kwargs.get("beam_size", 5),
         duration=duration,
     )
+
+
+def _clear_exception_frames(exc: BaseException) -> None:
+    """Release helper locals retained by an exception and its chained failures."""
+    pending = [exc]
+    seen: set[int] = set()
+    while pending:
+        current = pending.pop()
+        if id(current) in seen:
+            continue
+        seen.add(id(current))
+        traceback.clear_frames(current.__traceback__)
+        pending.extend(
+            error for error in (current.__cause__, current.__context__) if error is not None
+        )
+        if isinstance(current, BaseExceptionGroup):
+            pending.extend(current.exceptions)
+
+
+def _transcribe_in_subprocess(kwargs: dict[str, Any]) -> dict[str, Any]:
+    """Transcribe and return unused CUDA memory while keeping model weights loaded."""
+    if not _state.device or not _state.device.startswith("cuda"):
+        return _transcribe_with_loaded_model(kwargs)
+
+    import torch  # noqa: PLC0415
+
+    try:
+        return _transcribe_with_loaded_model(kwargs)
+    except BaseException as exc:
+        # Failed helper frames otherwise keep temporary tensors live until the
+        # executor serializes the exception, which happens after our finally.
+        # Clear locals without losing the traceback's function names and lines.
+        _clear_exception_frames(exc)
+        raise
+    finally:
+        # Helper frames have returned, so their temporary tensors are now free.
+        # Only unused allocator blocks are released; model weights stay resident.
+        torch.cuda.empty_cache()
 
 
 class TransformersWhisperBackend:

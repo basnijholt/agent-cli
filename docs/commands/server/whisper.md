@@ -55,6 +55,7 @@ Run a local ASR server with automatic backend selection based on your platform:
 - **OpenAI-compatible API** at `/v1/audio/transcriptions` - drop-in replacement for OpenAI's Whisper API
 - **Wyoming protocol** for [Home Assistant](https://www.home-assistant.io/) voice integration (Wyoming is the standard protocol for local voice services)
 - **TTL-based memory management** - models unload after idle period, freeing RAM/VRAM
+- **CUDA cache cleanup** - the transformers backend releases unused GPU cache after each transcription while keeping model weights loaded
 - **Multiple models** - run different model sizes with independent TTLs
 - **Background preloading** - downloads start at startup without blocking; use `--preload` to wait
 - **Multi-platform support** - automatically uses the optimal backend for your hardware (`auto` switches to `nemo` for Parakeet models)
