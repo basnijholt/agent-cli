@@ -5,6 +5,22 @@
         <link>https://github.com/basnijholt/agent-cli</link>
         <description>Signed Agent CLI macOS app updates.</description>
         <item>
+            <title>0.105.0</title>
+            <pubDate>Tue, 08 Sep 2026 10:29:52 +0000</pubDate>
+            <link>https://github.com/basnijholt/agent-cli</link>
+            <sparkle:version>204</sparkle:version>
+            <sparkle:shortVersionString>0.105.0</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[## What’s Changed
+
+* Prevent Qwen long-audio truncation (#641) @basnijholt
+* Publish diarization Docker image (#640) @basnijholt
+
+]]></description>
+            <enclosure url="https://github.com/basnijholt/agent-cli/releases/download/v0.105.0/AgentCLI.zip" length="18454913" type="application/octet-stream" sparkle:edSignature="Z3253GuNAV6GC2V4Qib0Bm7m8bSdlWHPiXeHIZNa06qAJaY+qRXzrSPRyT8iZW5GnkZOJHciIbqvkkoJ9/DoCw=="/>
+        </item>
+        <item>
             <title>0.104.0</title>
             <pubDate>Mon, 07 Sep 2026 21:38:19 +0000</pubDate>
             <link>https://github.com/basnijholt/agent-cli</link>
@@ -192,21 +208,6 @@
 
 ]]></description>
             <enclosure url="https://github.com/basnijholt/agent-cli/releases/download/v0.100.0/AgentCLI.zip" length="22908645" type="application/octet-stream" sparkle:edSignature="2xn/3yQOqyqwCQ5871EAgFra/D/z6UrDl1B+ZxUh7PnOxJpL4Oe44UzQgjFB+LJXzqrY6Kmqvu9GBmk+3aZ1Ag=="/>
-        </item>
-        <item>
-            <title>0.99.0</title>
-            <pubDate>Fri, 05 Jun 2026 22:57:28 +0000</pubDate>
-            <link>https://github.com/basnijholt/agent-cli</link>
-            <sparkle:version>194</sparkle:version>
-            <sparkle:shortVersionString>0.99.0</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[## What’s Changed
-
-* Add live transcription preview (#571) @basnijholt
-
-]]></description>
-            <enclosure url="https://github.com/basnijholt/agent-cli/releases/download/v0.99.0/AgentCLI.zip" length="22924494" type="application/octet-stream" sparkle:edSignature="COI8nqDd0cBtOO9jw/QRmsucsxE0SPiSgNF/o+s/nv3FCjSXy0C+gZX/bIFtCYyz/DYkff+IaHaLzhw8Z5aEBQ=="/>
         </item>
     </channel>
 </rss>
