@@ -47,6 +47,10 @@ _MODEL_MAP: dict[str, str] = {
 _REMOTE_CODE_MODEL_PREFIXES = ("CohereLabs/cohere-transcribe",)
 
 
+class TranscriptionTruncatedError(RuntimeError):
+    """Raised when an autoregressive ASR model exhausts its output budget."""
+
+
 def _resolve_model_name(model_name: str) -> str:
     """Resolve a model name to a HuggingFace repo."""
     if "/" in model_name:
@@ -276,6 +280,7 @@ def _transcribe_qwen3_asr(
     task: str,
     initial_prompt: str | None,
     duration: float,
+    max_new_tokens: int,
 ) -> dict[str, Any]:
     """Transcribe with Qwen3-ASR's native transformers interface."""
     if task != "transcribe":
@@ -294,11 +299,19 @@ def _transcribe_qwen3_asr(
     with torch.inference_mode():
         output_ids = _state.model.generate(
             **inputs,
-            max_new_tokens=256,
+            max_new_tokens=max_new_tokens,
             do_sample=False,
         )
 
     generated_ids = output_ids[:, inputs["input_ids"].shape[1] :]
+    if generated_ids.shape[1] >= max_new_tokens:
+        msg = (
+            "Qwen3-ASR transcription reached "
+            f"max_new_tokens={max_new_tokens} before completion. "
+            "Restart the server with a higher --max-new-tokens value "
+            "or split the audio into shorter chunks."
+        )
+        raise TranscriptionTruncatedError(msg)
     parsed = _state.processor.decode(generated_ids, return_format="parsed")[0]
     language = parsed["language"] or effective_language or "unknown"
 
@@ -416,6 +429,7 @@ def _transcribe_in_subprocess(kwargs: dict[str, Any]) -> dict[str, Any]:
             task=task,
             initial_prompt=kwargs.get("initial_prompt"),
             duration=_read_wav_duration(wav_path),
+            max_new_tokens=kwargs.get("max_new_tokens", 4096),
         )
 
     audio_array, sample_rate, duration = _read_wav_audio(wav_path)
@@ -548,6 +562,7 @@ class TransformersWhisperBackend:
             "default_language": self._config.default_language,
             "task": task,
             "initial_prompt": initial_prompt,
+            "max_new_tokens": self._config.max_new_tokens,
         }
 
         try:
