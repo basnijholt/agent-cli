@@ -245,7 +245,10 @@ def test_transcribe_qwen3_asr_returns_parsed_transcription(
             return [{"language": "English", "transcription": "Agent CLI"}]
 
     class Model:
-        def generate(self, **_inputs: Tensor) -> Tensor:
+        generation_config = SimpleNamespace(eos_token_id=[42, 99])
+
+        def generate(self, **inputs: Tensor | int | bool) -> Tensor:
+            assert inputs["max_new_tokens"] == 2
             return Tensor([[1, 2, 3, 41, 42]])
 
     monkeypatch.setitem(
@@ -271,6 +274,7 @@ def test_transcribe_qwen3_asr_returns_parsed_transcription(
         task="transcribe",
         initial_prompt="Vocabulary: Agent CLI",
         duration=1.5,
+        max_new_tokens=2,
     )
 
     assert result == {
@@ -281,6 +285,61 @@ def test_transcribe_qwen3_asr_returns_parsed_transcription(
         "segments": [],
         "supports_segments": False,
     }
+
+
+def test_transcribe_qwen3_asr_rejects_truncated_generation(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Qwen3-ASR must not return partial text when generation exhausts its limit."""
+
+    class Tensor:
+        def __init__(self, values: list[list[int]]) -> None:
+            self.values = values
+            self.shape = (len(values), len(values[0]))
+
+        def to(self, *_args: object, **_kwargs: object) -> Tensor:
+            return self
+
+        def __getitem__(self, key: tuple[slice, slice]) -> Tensor:
+            rows, columns = key
+            return Tensor([row[columns] for row in self.values[rows]])
+
+        def tolist(self) -> list[list[int]]:
+            return self.values
+
+    class Processor:
+        def apply_transcription_request(self, **_kwargs: object) -> dict[str, Tensor]:
+            return {"input_ids": Tensor([[1, 2, 3]])}
+
+        def decode(self, *_args: object, **_kwargs: object) -> list[dict[str, str]]:
+            raise AssertionError
+
+    class Model:
+        def generate(self, **_kwargs: object) -> Tensor:
+            return Tensor([[1, 2, 3, 41, 42]])
+
+    monkeypatch.setitem(sys.modules, "torch", SimpleNamespace(inference_mode=nullcontext))
+    monkeypatch.setattr(
+        backend,
+        "_state",
+        backend._SubprocessState(
+            model=Model(),
+            processor=Processor(),
+            dtype="float32",
+            device="cpu",
+            is_qwen3_asr=True,
+        ),
+    )
+
+    with pytest.raises(backend.TranscriptionTruncatedError, match="max_new_tokens=2"):
+        backend._transcribe_qwen3_asr(
+            audio_array=object(),
+            effective_language=None,
+            task="transcribe",
+            initial_prompt=None,
+            duration=180.0,
+            max_new_tokens=2,
+        )
 
 
 def test_transcribe_qwen3_asr_rejects_translation(
@@ -310,6 +369,7 @@ def test_transcribe_qwen3_asr_rejects_translation(
             task="translate",
             initial_prompt=None,
             duration=1.0,
+            max_new_tokens=4096,
         )
 
 
@@ -353,7 +413,11 @@ def test_transcribe_dispatches_qwen3_asr_to_native_adapter(
     )
 
     def transcribe_qwen3_asr(**kwargs: object) -> dict[str, object]:
-        if kwargs["audio_array"] is not qwen_audio or kwargs["duration"] != 0.5:
+        if (
+            kwargs["audio_array"] is not qwen_audio
+            or kwargs["duration"] != 0.5
+            or kwargs["max_new_tokens"] != 2048
+        ):
             return {**expected, "text": "wrong Qwen input"}
         return expected
 
@@ -364,6 +428,7 @@ def test_transcribe_dispatches_qwen3_asr_to_native_adapter(
             "wav_path": str(wav_path),
             "task": "transcribe",
             "initial_prompt": "Agent CLI",
+            "max_new_tokens": 2048,
         },
     )
 

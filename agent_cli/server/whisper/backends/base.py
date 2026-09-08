@@ -32,6 +32,7 @@ class BackendConfig:
     cache_dir: Path | None = None
     default_language: str | None = None
     trust_remote_code: bool = False
+    max_new_tokens: int = 4096
 
 
 class InvalidAudioError(ValueError):

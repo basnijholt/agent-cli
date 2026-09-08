@@ -129,7 +129,45 @@ def test_server_whisper_command_in_cli() -> None:
     assert "--model" in clean_output
     assert "--ttl" in clean_output
     assert "--wyoming-port" in clean_output
+    assert "--max-new-tokens" in clean_output
     assert "nemo" in clean_output
+
+
+@patch("uvicorn.run")
+def test_server_whisper_propagates_max_new_tokens(mock_uvicorn_run: MagicMock) -> None:
+    """Whisper server should propagate the generation limit to model config."""
+    runner = CliRunner()
+    registry = MagicMock()
+    registry.default_model = "Qwen/Qwen3-ASR-1.7B-hf"
+
+    with (
+        patch("agent_cli.core.deps._check_and_install_extras", return_value=[]),
+        patch("agent_cli.server.cli._check_whisper_deps"),
+        patch("agent_cli.server.cli._check_transformers_audio_model_deps"),
+        patch(
+            "agent_cli.server.whisper.model_registry.create_whisper_registry",
+            return_value=registry,
+        ),
+    ):
+        result = runner.invoke(
+            cli_app,
+            [
+                "server",
+                "whisper",
+                "--model",
+                "Qwen/Qwen3-ASR-1.7B-hf",
+                "--backend",
+                "transformers",
+                "--no-wyoming",
+                "--max-new-tokens",
+                "2048",
+            ],
+        )
+
+    assert result.exit_code == 0
+    registered_config = registry.register.call_args.args[0]
+    assert registered_config.max_new_tokens == 2048
+    mock_uvicorn_run.assert_called_once()
 
 
 @patch("uvicorn.run")

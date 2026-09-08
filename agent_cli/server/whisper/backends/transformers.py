@@ -47,6 +47,10 @@ _MODEL_MAP: dict[str, str] = {
 _REMOTE_CODE_MODEL_PREFIXES = ("CohereLabs/cohere-transcribe",)
 
 
+class TranscriptionTruncatedError(RuntimeError):
+    """Raised when an autoregressive ASR model exhausts its output budget."""
+
+
 def _resolve_model_name(model_name: str) -> str:
     """Resolve a model name to a HuggingFace repo."""
     if "/" in model_name:
@@ -220,6 +224,22 @@ def _move_inputs_to_device(inputs: Any) -> Any:
     return {k: v.to(_state.device) if hasattr(v, "to") else v for k, v in inputs.items()}
 
 
+def _qwen_generation_was_truncated(generated_ids: Any, max_new_tokens: int) -> bool:
+    """Return whether Qwen exhausted its token budget without emitting EOS."""
+    if generated_ids.shape[1] < max_new_tokens:
+        return False
+
+    generation_config = getattr(_state.model, "generation_config", None)
+    eos_token_ids = getattr(generation_config, "eos_token_id", None)
+    if eos_token_ids is None:
+        return True
+    if isinstance(eos_token_ids, int):
+        eos_token_ids = [eos_token_ids]
+
+    last_token_id = generated_ids[:, -1:].tolist()[0][0]
+    return last_token_id not in eos_token_ids
+
+
 def _transcribe_cohere_asr(
     *,
     audio_array: Any,
@@ -276,6 +296,7 @@ def _transcribe_qwen3_asr(
     task: str,
     initial_prompt: str | None,
     duration: float,
+    max_new_tokens: int,
 ) -> dict[str, Any]:
     """Transcribe with Qwen3-ASR's native transformers interface."""
     if task != "transcribe":
@@ -294,11 +315,19 @@ def _transcribe_qwen3_asr(
     with torch.inference_mode():
         output_ids = _state.model.generate(
             **inputs,
-            max_new_tokens=256,
+            max_new_tokens=max_new_tokens,
             do_sample=False,
         )
 
     generated_ids = output_ids[:, inputs["input_ids"].shape[1] :]
+    if _qwen_generation_was_truncated(generated_ids, max_new_tokens):
+        msg = (
+            "Qwen3-ASR transcription reached "
+            f"max_new_tokens={max_new_tokens} before completion. "
+            "Restart the server with a higher --max-new-tokens value "
+            "or split the audio into shorter chunks."
+        )
+        raise TranscriptionTruncatedError(msg)
     parsed = _state.processor.decode(generated_ids, return_format="parsed")[0]
     language = parsed["language"] or effective_language or "unknown"
 
@@ -416,6 +445,7 @@ def _transcribe_in_subprocess(kwargs: dict[str, Any]) -> dict[str, Any]:
             task=task,
             initial_prompt=kwargs.get("initial_prompt"),
             duration=_read_wav_duration(wav_path),
+            max_new_tokens=kwargs.get("max_new_tokens", 4096),
         )
 
     audio_array, sample_rate, duration = _read_wav_audio(wav_path)
@@ -548,6 +578,7 @@ class TransformersWhisperBackend:
             "default_language": self._config.default_language,
             "task": task,
             "initial_prompt": initial_prompt,
+            "max_new_tokens": self._config.max_new_tokens,
         }
 
         try:

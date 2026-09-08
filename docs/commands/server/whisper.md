@@ -130,6 +130,7 @@ agent-cli server whisper \
 | `--cache-dir` | - | Custom directory for downloaded models (default: HuggingFace cache) |
 | `--default-language` | - | Fallback language code for requests that omit `language`. Required for models that do not support language auto-detection (for example Cohere Transcribe). |
 | `--trust-remote-code` | `false` | Allow Hugging Face model repositories to execute custom Python code. Known supported remote-code ASR models are trusted automatically. |
+| `--max-new-tokens` | `4096` | Maximum output tokens for autoregressive transformers ASR models. Increase for unusually long audio |
 | `--ttl` | `300` | Seconds of inactivity before unloading model from memory. Set to 0 to keep loaded indefinitely |
 | `--preload` | `false` | Load model(s) immediately at startup instead of on first request. Useful for reducing first-request latency |
 | `--host` | `0.0.0.0` | Network interface to bind. Use `0.0.0.0` for all interfaces |
@@ -310,6 +311,8 @@ agent-cli server whisper \
 ```
 
 Qwen3-ASR supports transcription, automatic language detection, and context or hotwords through the OpenAI-compatible `prompt` field. Translation and timestamped subtitle output are not currently supported.
+
+The default output budget is 4096 tokens, which accommodates long recordings. For unusually long or dense speech, increase it with `--max-new-tokens`. If Qwen3-ASR exhausts the configured budget, the request fails with a clear error instead of returning a silently truncated transcript.
 
 To install it as the standard `whisper` background daemon:
 

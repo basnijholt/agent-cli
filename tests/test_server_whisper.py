@@ -52,6 +52,7 @@ class TestModelConfig:
         assert config.backend_type == "auto"
         assert config.default_language is None
         assert config.trust_remote_code is False
+        assert config.max_new_tokens == 4096
 
     def test_custom_values(self) -> None:
         """Test custom configuration values."""
@@ -64,6 +65,7 @@ class TestModelConfig:
             cpu_threads=8,
             default_language="en",
             trust_remote_code=True,
+            max_new_tokens=2048,
         )
         assert config.model_name == "small"
         assert config.device == "cuda:0"
@@ -73,6 +75,7 @@ class TestModelConfig:
         assert config.cpu_threads == 8
         assert config.default_language == "en"
         assert config.trust_remote_code is True
+        assert config.max_new_tokens == 2048
 
     def test_zero_ttl_disables_auto_unload(self) -> None:
         """TTL 0 should be accepted as keep-loaded mode."""
