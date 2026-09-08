@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import sys
+import traceback
 import wave
+import weakref
 from contextlib import nullcontext
 from types import SimpleNamespace
 from typing import TYPE_CHECKING
@@ -433,3 +435,103 @@ def test_transcribe_dispatches_qwen3_asr_to_native_adapter(
     )
 
     assert result == expected
+
+
+@pytest.mark.parametrize("device", ["cuda", "cuda:0", "cpu", "mps"])
+@pytest.mark.parametrize(
+    "failure", [None, "direct", "interrupt", "cause", "context", "group", "cycle"]
+)
+def test_transcription_releases_unused_cuda_buffers(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    device: str,
+    failure: str | None,
+) -> None:
+    """A completed or failed request must not retain CUDA's peak working set.
+
+    PyTorch's caching allocator keeps freed tensor storage reserved until
+    empty_cache(), which releases unused storage without unloading live tensors:
+    https://docs.pytorch.org/docs/stable/notes/cuda.html#memory-management
+    The small allocator double models that external boundary without a GPU.
+    """
+
+    class Buffer:
+        def __init__(self, size: int) -> None:
+            self.size = size
+
+    class Allocator:
+        def __init__(self) -> None:
+            self.live: weakref.WeakSet[Buffer] = weakref.WeakSet()
+            self.reserved = 0
+
+        def allocate(self, size: int) -> Buffer:
+            buffer = Buffer(size)
+            self.live.add(buffer)
+            self.reserved += size
+            return buffer
+
+        def empty_cache(self) -> None:
+            if not device.startswith("cuda"):
+                pytest.fail("CPU/MPS transcription must not initialize CUDA")
+            self.reserved = sum(buffer.size for buffer in self.live)
+
+    allocator = Allocator()
+    weights = allocator.allocate(100)
+    monkeypatch.setitem(sys.modules, "torch", SimpleNamespace(cuda=allocator))
+    monkeypatch.setattr(
+        backend,
+        "_state",
+        backend._SubprocessState(
+            model=weights,
+            processor=object(),
+            device=device,
+            is_qwen3_asr=True,
+        ),
+    )
+    wav_path = tmp_path / "request.wav"
+    with wave.open(str(wav_path), "wb") as wav_file:
+        wav_file.setnchannels(1)
+        wav_file.setsampwidth(2)
+        wav_file.setframerate(16000)
+        wav_file.writeframes(b"\x00\x00")
+    monkeypatch.setattr(backend, "_load_qwen_audio", lambda _: object())
+
+    def infer_inner() -> dict[str, object]:
+        temporary = allocator.allocate(900)
+        if failure:
+            # Its traceback holds `temporary` until the worker clears frame locals.
+            message = "inference failed"
+            error_type = KeyboardInterrupt if failure == "interrupt" else RuntimeError
+            raise error_type(message)
+        return {"text": "transcribed", "working_set": temporary.size}
+
+    def infer(**_kwargs: object) -> dict[str, object]:
+        try:
+            return infer_inner()
+        except RuntimeError as exc:
+            message = "inference failed"
+            if failure == "cause":
+                raise ValueError(message) from exc
+            if failure == "context":
+                raise ValueError(message) from None
+            if failure == "group":
+                raise ExceptionGroup(message, [exc]) from None
+            if failure == "cycle":
+                wrapped = ValueError(message)
+                exc.__cause__ = wrapped
+                raise wrapped from exc
+            raise
+
+    monkeypatch.setattr(backend, "_transcribe_qwen3_asr", infer)
+    if failure:
+        with pytest.raises(BaseException, match="inference failed") as error:
+            backend._transcribe_in_subprocess({"wav_path": str(wav_path)})
+        assert "infer" in [frame.name for frame in traceback.extract_tb(error.value.__traceback__)]
+    else:
+        assert backend._transcribe_in_subprocess({"wav_path": str(wav_path)}) == {
+            "text": "transcribed",
+            "working_set": 900,
+        }
+
+    assert allocator.reserved == (100 if device.startswith("cuda") else 1000)
+    assert backend._state.model is weights
