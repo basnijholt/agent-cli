@@ -245,8 +245,10 @@ def test_transcribe_qwen3_asr_returns_parsed_transcription(
             return [{"language": "English", "transcription": "Agent CLI"}]
 
     class Model:
+        generation_config = SimpleNamespace(eos_token_id=[42, 99])
+
         def generate(self, **inputs: Tensor | int | bool) -> Tensor:
-            assert inputs["max_new_tokens"] == 1024
+            assert inputs["max_new_tokens"] == 2
             return Tensor([[1, 2, 3, 41, 42]])
 
     monkeypatch.setitem(
@@ -272,7 +274,7 @@ def test_transcribe_qwen3_asr_returns_parsed_transcription(
         task="transcribe",
         initial_prompt="Vocabulary: Agent CLI",
         duration=1.5,
-        max_new_tokens=1024,
+        max_new_tokens=2,
     )
 
     assert result == {
@@ -301,6 +303,9 @@ def test_transcribe_qwen3_asr_rejects_truncated_generation(
         def __getitem__(self, key: tuple[slice, slice]) -> Tensor:
             rows, columns = key
             return Tensor([row[columns] for row in self.values[rows]])
+
+        def tolist(self) -> list[list[int]]:
+            return self.values
 
     class Processor:
         def apply_transcription_request(self, **_kwargs: object) -> dict[str, Tensor]:

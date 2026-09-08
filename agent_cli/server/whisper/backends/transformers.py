@@ -224,6 +224,22 @@ def _move_inputs_to_device(inputs: Any) -> Any:
     return {k: v.to(_state.device) if hasattr(v, "to") else v for k, v in inputs.items()}
 
 
+def _qwen_generation_was_truncated(generated_ids: Any, max_new_tokens: int) -> bool:
+    """Return whether Qwen exhausted its token budget without emitting EOS."""
+    if generated_ids.shape[1] < max_new_tokens:
+        return False
+
+    generation_config = getattr(_state.model, "generation_config", None)
+    eos_token_ids = getattr(generation_config, "eos_token_id", None)
+    if eos_token_ids is None:
+        return True
+    if isinstance(eos_token_ids, int):
+        eos_token_ids = [eos_token_ids]
+
+    last_token_id = generated_ids[:, -1:].tolist()[0][0]
+    return last_token_id not in eos_token_ids
+
+
 def _transcribe_cohere_asr(
     *,
     audio_array: Any,
@@ -304,7 +320,7 @@ def _transcribe_qwen3_asr(
         )
 
     generated_ids = output_ids[:, inputs["input_ids"].shape[1] :]
-    if generated_ids.shape[1] >= max_new_tokens:
+    if _qwen_generation_was_truncated(generated_ids, max_new_tokens):
         msg = (
             "Qwen3-ASR transcription reached "
             f"max_new_tokens={max_new_tokens} before completion. "
