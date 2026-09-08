@@ -211,15 +211,13 @@ docker compose -f docker/docker-compose.yml --profile cpu up transcribe-proxy
 
 ### Docker with diarization
 
-Build the image that includes pyannote, PyTorch, and FFmpeg:
+Run the published image, which includes pyannote, PyTorch, and FFmpeg:
 
 ```bash
-docker build -f docker/diarization.Dockerfile -t agent-cli-diarization .
-
 docker run --rm -p 61337:61337 \
   -e HF_TOKEN \
   -v agent-cli-diarization-cache:/home/transcribe/.cache \
-  agent-cli-diarization
+  ghcr.io/basnijholt/agent-cli-diarization:latest
 ```
 
 This runs `/diarize` on CPU. For NVIDIA GPU inference, add `--gpus all -e DIARIZATION_DEVICE=cuda` to `docker run`. For `/transcribe`, also provide your ASR environment variables, for example `-e ASR_PROVIDER=openai -e ASR_OPENAI_BASE_URL=http://your-whisper-host:10301/v1 -e OPENAI_API_KEY=dummy`.
@@ -228,10 +226,16 @@ The optional Compose service can run beside the existing Whisper server:
 
 ```bash
 # HF_TOKEN must be exported in the shell or set in docker/.env.
-docker compose -f docker/docker-compose.yml --profile cpu up --build whisper-cpu diarization
+docker compose -f docker/docker-compose.yml --profile cpu up whisper-cpu diarization
 ```
 
 Use `diarization` in place of `transcribe-proxy`, since both default to port 61337. Set `DIARIZATION_PORT` to use a different host port. The model cache persists in `agent-cli-diarization-cache`. GPU instructions are included beside the service in the Compose file.
+
+To build from source instead, add `--build` to the Compose command or run:
+
+```bash
+docker build -f docker/diarization.Dockerfile -t agent-cli-diarization .
+```
 
 ### Environment Variables
 

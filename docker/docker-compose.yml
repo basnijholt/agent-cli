@@ -240,10 +240,10 @@ services:
     restart: unless-stopped
 
   # Optional transcription proxy with local diarization. Start explicitly with:
-  # docker compose -f docker/docker-compose.yml up --build diarization
+  # docker compose -f docker/docker-compose.yml up diarization
   # Shares port 61337 with transcribe-proxy; run one of them at a time.
   diarization:
-    image: agent-cli-diarization
+    image: ghcr.io/basnijholt/agent-cli-diarization:latest
     build:
       context: ..
       dockerfile: docker/diarization.Dockerfile

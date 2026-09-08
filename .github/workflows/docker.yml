@@ -90,7 +90,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  # Single-target images (transcribe-proxy)
+  # Single-target images (proxies and diarization)
   build-single-target:
     runs-on: ubuntu-latest
     permissions:
@@ -106,8 +106,16 @@ jobs:
             dockerfile: docker/rag-proxy.Dockerfile
           - image: memory-proxy
             dockerfile: docker/memory-proxy.Dockerfile
+          - image: diarization
+            dockerfile: docker/diarization.Dockerfile
 
     steps:
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /usr/local/lib/android
+          df -h
+
       - name: Checkout repository
         uses: actions/checkout@v7.0.1
         with:
@@ -153,3 +161,82 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  smoke-diarization:
+    needs: build-single-target
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+
+    steps:
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /usr/local/lib/android
+          df -h
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v4.5.1
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Resolve image reference
+        id: image
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          if [[ "$GITHUB_EVENT_NAME" == "release" ]]; then
+            tag="${RELEASE_TAG#v}"
+          else
+            tag="latest"
+          fi
+          echo "ref=${REGISTRY}/${GITHUB_REPOSITORY}-diarization:${tag}" >> "$GITHUB_OUTPUT"
+
+      - name: Pull published image
+        run: docker pull "${{ steps.image.outputs.ref }}"
+
+      - name: Verify package version
+        env:
+          IMAGE_REF: ${{ steps.image.outputs.ref }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          actual_version=$(
+            docker run --rm --entrypoint /app/.venv/bin/python "$IMAGE_REF" \
+              -c 'import importlib.metadata; print(importlib.metadata.version("agent-cli"))'
+          )
+          if [[ "$GITHUB_EVENT_NAME" == "release" ]]; then
+            expected_version="${RELEASE_TAG#v}"
+            if [[ "${actual_version%%+*}" != "$expected_version" ]]; then
+              echo "Expected agent-cli $expected_version, got $actual_version" >&2
+              exit 1
+            fi
+          fi
+          echo "Verified agent-cli $actual_version"
+
+      - name: Verify health and API routes
+        env:
+          IMAGE_REF: ${{ steps.image.outputs.ref }}
+        run: |
+          container_id=$(docker run --detach --publish 61337:61337 "$IMAGE_REF")
+          trap 'docker rm --force "$container_id" >/dev/null 2>&1 || true' EXIT
+
+          ready=false
+          for _ in {1..30}; do
+            if curl --fail --silent http://localhost:61337/health >/dev/null; then
+              ready=true
+              break
+            fi
+            sleep 2
+          done
+          if [[ "$ready" != "true" ]]; then
+            docker logs "$container_id"
+            exit 1
+          fi
+
+          curl --fail --silent http://localhost:61337/openapi.json > openapi.json
+          for route in /health /transcribe /diarize; do
+            jq --exit-status --arg route "$route" '.paths[$route]' openapi.json >/dev/null
+          done
