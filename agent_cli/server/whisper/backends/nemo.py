@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import asyncio
 import inspect
-import io
 import logging
 import os
 import sys
@@ -18,12 +17,11 @@ from multiprocessing import get_context
 from pathlib import Path
 from typing import Any, Literal
 
-from agent_cli.core.audio_format import convert_audio_to_wav_format
 from agent_cli.core.process import set_process_title
 from agent_cli.server.whisper.backends.base import (
     BackendConfig,
-    InvalidAudioError,
     TranscriptionResult,
+    ensure_wav_container,
 )
 
 logger = logging.getLogger(__name__)
@@ -180,26 +178,6 @@ def _audio_duration_seconds(wav_path: str) -> float:
             return wav_file.getnframes() / sample_rate
     except (wave.Error, EOFError):
         return 0.0
-
-
-def _prepare_audio_for_nemo(audio_bytes: bytes, source_filename: str | None) -> bytes:
-    """Return a WAV container suitable for NeMo file-path transcription."""
-    try:
-        with wave.open(io.BytesIO(audio_bytes), "rb"):
-            return audio_bytes
-    except (wave.Error, EOFError):
-        pass
-
-    filename = source_filename or "audio"
-    try:
-        return convert_audio_to_wav_format(audio_bytes, filename)
-    except RuntimeError as exc:
-        logger.warning("FFmpeg conversion failed for NeMo Whisper: %s", exc)
-        msg = (
-            "Unsupported audio format for NeMo Whisper. "
-            "Provide a WAV file or install ffmpeg to convert uploads."
-        )
-        raise InvalidAudioError(msg) from exc
 
 
 def _build_transcribe_kwargs(
@@ -433,7 +411,12 @@ class NemoWhisperBackend:
             )
             self._warned_initial_prompt_ignored = True
 
-        audio = await asyncio.to_thread(_prepare_audio_for_nemo, audio, source_filename)
+        audio = await asyncio.to_thread(
+            ensure_wav_container,
+            audio,
+            source_filename,
+            backend_label="NeMo Whisper",
+        )
 
         kwargs: dict[str, Any] = {
             "language": language,

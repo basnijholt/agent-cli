@@ -2,20 +2,25 @@
 
 from __future__ import annotations
 
+import io
 import sys
 import traceback
 import wave
 import weakref
 from contextlib import nullcontext
+from pathlib import Path
 from types import SimpleNamespace
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, cast
+from unittest.mock import patch
 
 import pytest
 
 if TYPE_CHECKING:
-    from pathlib import Path
+    from concurrent.futures import ProcessPoolExecutor
 
+from agent_cli.server.whisper.backends import base
 from agent_cli.server.whisper.backends import transformers as backend
+from agent_cli.server.whisper.backends.base import BackendConfig, InvalidAudioError
 
 
 class _FakeLoadedModel:
@@ -535,3 +540,97 @@ def test_transcription_releases_unused_cuda_buffers(
 
     assert allocator.reserved == (100 if device.startswith("cuda") else 1000)
     assert backend._state.model is weights
+
+
+def _create_test_wav() -> bytes:
+    """Create a tiny valid 16kHz mono 16-bit WAV file."""
+    buffer = io.BytesIO()
+    with wave.open(buffer, "wb") as wav_file:
+        wav_file.setnchannels(1)
+        wav_file.setsampwidth(2)
+        wav_file.setframerate(16000)
+        wav_file.writeframes(b"\x00\x00" * 160)
+    return buffer.getvalue()
+
+
+async def _transcribe_capturing_wav(audio: bytes, source_filename: str | None) -> bytes:
+    """Run the backend against a stub executor and return the bytes it wrote to disk."""
+    whisper_backend = backend.TransformersWhisperBackend(BackendConfig(model_name="tiny"))
+    whisper_backend._executor = cast("ProcessPoolExecutor", object())
+    written: dict[str, bytes] = {}
+
+    async def mock_run_in_executor(
+        _executor: object,
+        _func: object,
+        kwargs: dict[str, Any],
+    ) -> dict[str, Any]:
+        # Reading synchronously is deliberate: this double stands in for the
+        # process pool, and the backend deletes the temp file once it returns.
+        written["wav"] = Path(kwargs["wav_path"]).read_bytes()  # noqa: ASYNC240
+        return {
+            "text": "hello",
+            "language": "en",
+            "language_probability": 1.0,
+            "duration": 0.01,
+            "segments": [],
+            "supports_segments": False,
+        }
+
+    with patch("asyncio.get_running_loop") as mock_loop:
+        mock_loop.return_value.run_in_executor = mock_run_in_executor
+        result = await whisper_backend.transcribe(audio, source_filename=source_filename)
+
+    assert result.text == "hello"
+    return written["wav"]
+
+
+@pytest.mark.asyncio
+async def test_transcribe_converts_non_wav_upload(monkeypatch: pytest.MonkeyPatch) -> None:
+    """An m4a upload must reach the WAV-only subprocess parser as a WAV container."""
+    converted = _create_test_wav()
+    calls: dict[str, object] = {}
+
+    def fake_convert(audio: bytes, source_filename: str) -> bytes:
+        calls["audio"] = audio
+        calls["source_filename"] = source_filename
+        return converted
+
+    monkeypatch.setattr(base, "convert_audio_to_wav_format", fake_convert)
+
+    written = await _transcribe_capturing_wav(b"\x00\x00\x00 ftypM4A ", "voice.m4a")
+
+    assert written == converted
+    assert calls == {"audio": b"\x00\x00\x00 ftypM4A ", "source_filename": "voice.m4a"}
+
+
+@pytest.mark.asyncio
+async def test_transcribe_passes_wav_through_without_ffmpeg(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A real WAV upload must not pay for a pointless FFmpeg round-trip."""
+    audio = _create_test_wav()
+    monkeypatch.setattr(
+        base,
+        "convert_audio_to_wav_format",
+        lambda *_args, **_kwargs: pytest.fail("unexpected conversion"),
+    )
+
+    assert await _transcribe_capturing_wav(audio, "voice.wav") == audio
+
+
+@pytest.mark.asyncio
+async def test_transcribe_reports_conversion_failure_as_invalid_audio(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A failed conversion surfaces a typed error instead of a raw WAV parser traceback."""
+
+    def fake_convert(audio: bytes, source_filename: str) -> bytes:  # noqa: ARG001
+        msg = "FFmpeg not found in PATH."
+        raise RuntimeError(msg)
+
+    monkeypatch.setattr(base, "convert_audio_to_wav_format", fake_convert)
+    whisper_backend = backend.TransformersWhisperBackend(BackendConfig(model_name="tiny"))
+    whisper_backend._executor = cast("ProcessPoolExecutor", object())
+
+    with pytest.raises(InvalidAudioError, match="Unsupported audio format for transformers ASR"):
+        await whisper_backend.transcribe(b"OggS\x00\x02", source_filename="voice.ogg")

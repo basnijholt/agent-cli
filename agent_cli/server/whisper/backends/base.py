@@ -2,11 +2,18 @@
 
 from __future__ import annotations
 
+import io
+import logging
+import wave
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Literal, Protocol, runtime_checkable
 
+from agent_cli.core.audio_format import convert_audio_to_wav_format
+
 if TYPE_CHECKING:
     from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -41,6 +48,36 @@ class InvalidAudioError(ValueError):
 
 class UnsupportedRequestError(ValueError):
     """Raised when the backend cannot satisfy the requested transcription behavior."""
+
+
+def ensure_wav_container(
+    audio: bytes,
+    source_filename: str | None,
+    *,
+    backend_label: str,
+) -> bytes:
+    """Return a WAV container for backends that hand a file path to a WAV-only parser.
+
+    Uploads that already parse as WAV are returned untouched; anything else is
+    transcoded with FFmpeg, using ``source_filename`` as the demuxer hint. Call this
+    on the async side before dispatching to a model subprocess.
+    """
+    try:
+        with wave.open(io.BytesIO(audio), "rb"):
+            return audio
+    except (wave.Error, EOFError):
+        pass
+
+    filename = source_filename or "audio"
+    try:
+        return convert_audio_to_wav_format(audio, filename)
+    except RuntimeError as exc:
+        logger.warning("FFmpeg conversion failed for %s: %s", backend_label, exc)
+        msg = (
+            f"Unsupported audio format for {backend_label}. "
+            "Provide a WAV file or install ffmpeg to convert uploads."
+        )
+        raise InvalidAudioError(msg) from exc
 
 
 @runtime_checkable

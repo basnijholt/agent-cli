@@ -19,6 +19,7 @@ from agent_cli.server.whisper.backends.base import (
     BackendConfig,
     TranscriptionResult,
     UnsupportedRequestError,
+    ensure_wav_container,
 )
 
 logger = logging.getLogger(__name__)
@@ -593,7 +594,7 @@ class TransformersWhisperBackend:
         self,
         audio: bytes,
         *,
-        source_filename: str | None = None,  # noqa: ARG002
+        source_filename: str | None = None,
         language: str | None = None,
         task: Literal["transcribe", "translate"] = "transcribe",
         initial_prompt: str | None = None,
@@ -605,6 +606,14 @@ class TransformersWhisperBackend:
         if self._executor is None:
             msg = "Model not loaded. Call load() first."
             raise RuntimeError(msg)
+
+        # Convert here, not in the worker, so FFmpeg never runs in the model process.
+        audio = await asyncio.to_thread(
+            ensure_wav_container,
+            audio,
+            source_filename,
+            backend_label="transformers ASR",
+        )
 
         # Write audio to temp file for wave parsing in subprocess
         with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
