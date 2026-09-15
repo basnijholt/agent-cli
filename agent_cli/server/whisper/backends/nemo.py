@@ -18,10 +18,10 @@ from pathlib import Path
 from typing import Any, Literal
 
 from agent_cli.core.process import set_process_title
+from agent_cli.server.whisper.backends.audio import prepare_wav_audio
 from agent_cli.server.whisper.backends.base import (
     BackendConfig,
     TranscriptionResult,
-    ensure_wav_container,
 )
 
 logger = logging.getLogger(__name__)
@@ -411,8 +411,7 @@ class NemoWhisperBackend:
             )
             self._warned_initial_prompt_ignored = True
 
-        audio = await asyncio.to_thread(
-            ensure_wav_container,
+        audio = await prepare_wav_audio(
             audio,
             source_filename,
             backend_label="NeMo Whisper",

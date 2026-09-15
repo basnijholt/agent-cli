@@ -18,7 +18,7 @@ import pytest
 if TYPE_CHECKING:
     from concurrent.futures import ProcessPoolExecutor
 
-from agent_cli.server.whisper.backends import base
+from agent_cli.server.whisper.backends import audio as audio_preparation
 from agent_cli.server.whisper.backends import transformers as backend
 from agent_cli.server.whisper.backends.base import BackendConfig, InvalidAudioError
 
@@ -590,12 +590,12 @@ async def test_transcribe_converts_non_wav_upload(monkeypatch: pytest.MonkeyPatc
     converted = _create_test_wav()
     calls: dict[str, object] = {}
 
-    def fake_convert(audio: bytes, source_filename: str) -> bytes:
+    async def fake_convert(audio: bytes, source_filename: str) -> bytes:
         calls["audio"] = audio
         calls["source_filename"] = source_filename
         return converted
 
-    monkeypatch.setattr(base, "convert_audio_to_wav_format", fake_convert)
+    monkeypatch.setattr(audio_preparation, "convert_audio_to_wav_format", fake_convert)
 
     written = await _transcribe_capturing_wav(b"\x00\x00\x00 ftypM4A ", "voice.m4a")
 
@@ -610,7 +610,7 @@ async def test_transcribe_passes_wav_through_without_ffmpeg(
     """A real WAV upload must not pay for a pointless FFmpeg round-trip."""
     audio = _create_test_wav()
     monkeypatch.setattr(
-        base,
+        audio_preparation,
         "convert_audio_to_wav_format",
         lambda *_args, **_kwargs: pytest.fail("unexpected conversion"),
     )
@@ -624,11 +624,11 @@ async def test_transcribe_reports_conversion_failure_as_invalid_audio(
 ) -> None:
     """A failed conversion surfaces a typed error instead of a raw WAV parser traceback."""
 
-    def fake_convert(audio: bytes, source_filename: str) -> bytes:  # noqa: ARG001
+    async def fake_convert(audio: bytes, source_filename: str) -> bytes:  # noqa: ARG001
         msg = "FFmpeg not found in PATH."
         raise RuntimeError(msg)
 
-    monkeypatch.setattr(base, "convert_audio_to_wav_format", fake_convert)
+    monkeypatch.setattr(audio_preparation, "convert_audio_to_wav_format", fake_convert)
     whisper_backend = backend.TransformersWhisperBackend(BackendConfig(model_name="tiny"))
     whisper_backend._executor = cast("ProcessPoolExecutor", object())
 

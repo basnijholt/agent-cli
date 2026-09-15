@@ -15,11 +15,11 @@ from pathlib import Path
 from typing import Any, Literal
 
 from agent_cli.core.process import set_process_title
+from agent_cli.server.whisper.backends.audio import prepare_wav_audio
 from agent_cli.server.whisper.backends.base import (
     BackendConfig,
     TranscriptionResult,
     UnsupportedRequestError,
-    ensure_wav_container,
 )
 
 logger = logging.getLogger(__name__)
@@ -607,9 +607,7 @@ class TransformersWhisperBackend:
             msg = "Model not loaded. Call load() first."
             raise RuntimeError(msg)
 
-        # Convert here, not in the worker, so FFmpeg never runs in the model process.
-        audio = await asyncio.to_thread(
-            ensure_wav_container,
+        audio = await prepare_wav_audio(
             audio,
             source_filename,
             backend_label="transformers ASR",

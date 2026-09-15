@@ -10,8 +10,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from agent_cli.server.whisper.backends import base
-from agent_cli.server.whisper.backends.base import BackendConfig, InvalidAudioError
+from agent_cli.server.whisper.backends.base import BackendConfig
 from agent_cli.server.whisper.backends.faster_whisper import FasterWhisperBackend
 
 if TYPE_CHECKING:
@@ -109,51 +108,17 @@ async def _transcribe_capturing_audio(audio: bytes, source_filename: str | None)
     return dispatched["audio"]
 
 
+@pytest.mark.parametrize(
+    ("audio", "filename"),
+    [(b"OggS\x00\x02", "voice.ogg"), (b"\x00\x00\x00 ftypM4A ", "voice.m4a")],
+)
 @pytest.mark.asyncio
-async def test_transcribe_converts_non_wav_upload(monkeypatch: pytest.MonkeyPatch) -> None:
-    """An ogg upload must be transcoded before the worker writes its `.wav` temp file."""
-    converted = _create_test_wav()
-    calls: dict[str, object] = {}
-
-    def fake_convert(audio: bytes, source_filename: str) -> bytes:
-        calls["audio"] = audio
-        calls["source_filename"] = source_filename
-        return converted
-
-    monkeypatch.setattr(base, "convert_audio_to_wav_format", fake_convert)
-
-    assert await _transcribe_capturing_audio(b"OggS\x00\x02", "voice.ogg") == converted
-    assert calls == {"audio": b"OggS\x00\x02", "source_filename": "voice.ogg"}
-
-
-@pytest.mark.asyncio
-async def test_transcribe_passes_wav_through_without_ffmpeg(
-    monkeypatch: pytest.MonkeyPatch,
+async def test_transcribe_preserves_native_decoder_input_without_ffmpeg(
+    monkeypatch: pytest.MonkeyPatch, audio: bytes, filename: str
 ) -> None:
-    """A real WAV upload must not pay for a pointless FFmpeg round-trip."""
-    audio = _create_test_wav()
-    monkeypatch.setattr(
-        base,
-        "convert_audio_to_wav_format",
-        lambda *_args, **_kwargs: pytest.fail("unexpected conversion"),
-    )
+    """PyAV owns decoding; pre-conversion would add an unnecessary system dependency.
 
-    assert await _transcribe_capturing_audio(audio, "voice.wav") == audio
-
-
-@pytest.mark.asyncio
-async def test_transcribe_reports_conversion_failure_as_invalid_audio(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """A failed conversion surfaces a typed error instead of a raw WAV parser traceback."""
-
-    def fake_convert(audio: bytes, source_filename: str) -> bytes:  # noqa: ARG001
-        msg = "FFmpeg not found in PATH."
-        raise RuntimeError(msg)
-
-    monkeypatch.setattr(base, "convert_audio_to_wav_format", fake_convert)
-    backend = FasterWhisperBackend(BackendConfig(model_name="tiny"))
-    backend._executor = cast("ProcessPoolExecutor", object())
-
-    with pytest.raises(InvalidAudioError, match="Unsupported audio format for faster-whisper"):
-        await backend.transcribe(b"\x00\x00\x00 ftypM4A ", source_filename="voice.m4a")
+    https://github.com/SYSTRAN/faster-whisper/blob/master/faster_whisper/audio.py
+    """
+    monkeypatch.setattr("shutil.which", lambda _name: None)
+    assert await _transcribe_capturing_audio(audio, filename) == audio

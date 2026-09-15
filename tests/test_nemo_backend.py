@@ -15,7 +15,7 @@ from unittest.mock import patch
 import pytest
 
 from agent_cli.server.cli import _is_parakeet_model
-from agent_cli.server.whisper.backends import base
+from agent_cli.server.whisper.backends import audio as audio_preparation
 from agent_cli.server.whisper.backends import nemo as backend
 from agent_cli.server.whisper.backends.base import BackendConfig, InvalidAudioError
 
@@ -317,12 +317,12 @@ async def test_transcribe_converts_non_wav_upload(monkeypatch: pytest.MonkeyPatc
     converted = _create_test_wav()
     calls: dict[str, object] = {}
 
-    def fake_convert(audio: bytes, source_filename: str) -> bytes:
+    async def fake_convert(audio: bytes, source_filename: str) -> bytes:
         calls["audio"] = audio
         calls["source_filename"] = source_filename
         return converted
 
-    monkeypatch.setattr(base, "convert_audio_to_wav_format", fake_convert)
+    monkeypatch.setattr(audio_preparation, "convert_audio_to_wav_format", fake_convert)
     nemo_backend = backend.NemoWhisperBackend(BackendConfig(model_name="parakeet-tdt-0.6b-v2"))
     nemo_backend._executor = cast("ProcessPoolExecutor", object())
     dispatched: dict[str, bytes] = {}
@@ -355,11 +355,11 @@ async def test_transcribe_converts_non_wav_upload(monkeypatch: pytest.MonkeyPatc
 async def test_transcribe_raises_invalid_audio_error(monkeypatch: pytest.MonkeyPatch) -> None:
     """Conversion failures should become API-visible invalid-audio errors."""
 
-    def fake_convert(audio: bytes, source_filename: str) -> bytes:  # noqa: ARG001
+    async def fake_convert(audio: bytes, source_filename: str) -> bytes:  # noqa: ARG001
         msg = "ffmpeg failed"
         raise RuntimeError(msg)
 
-    monkeypatch.setattr(base, "convert_audio_to_wav_format", fake_convert)
+    monkeypatch.setattr(audio_preparation, "convert_audio_to_wav_format", fake_convert)
     nemo_backend = backend.NemoWhisperBackend(BackendConfig(model_name="parakeet-tdt-0.6b-v2"))
     nemo_backend._executor = cast("ProcessPoolExecutor", object())
 
