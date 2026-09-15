@@ -5,6 +5,25 @@
         <link>https://github.com/basnijholt/agent-cli</link>
         <description>Signed Agent CLI macOS app updates.</description>
         <item>
+            <title>0.105.2</title>
+            <pubDate>Tue, 15 Sep 2026 07:58:55 +0000</pubDate>
+            <link>https://github.com/basnijholt/agent-cli</link>
+            <sparkle:version>206</sparkle:version>
+            <sparkle:shortVersionString>0.105.2</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[## Bug fixes
+
+- Accept M4A, OGG, MP3, and other FFmpeg-supported uploads in the Transformers ASR backend. Transformers and NeMo now share audio preparation, with invalid input reported as HTTP 400. (#644)
+- Normalize stereo, non-16-bit, and non-16 kHz WAV uploads before WAV-only ASR backends read them, preventing incorrect sample interpretation. Standard 16 kHz mono 16-bit WAV uploads pass through unchanged. (#644)
+- Stop FFmpeg conversions when requests are cancelled or conversion times out, then clean up temporary files. Faster-whisper retains native compressed-audio decoding without a system FFmpeg dependency. (#644)
+
+**Full changelog:** https://github.com/basnijholt/agent-cli/compare/v0.105.1...v0.105.2
+
+]]></description>
+            <enclosure url="https://github.com/basnijholt/agent-cli/releases/download/v0.105.2/AgentCLI.zip" length="18490908" type="application/octet-stream" sparkle:edSignature="DQiGmgOiPGeI4S/4tQdoA7mgsAlgN3qHh2Z4SyLpN70Tv/qr7MjBNM1r+FPn6gYdRYhaaK/XcKfWaX01H8F0Bw=="/>
+        </item>
+        <item>
             <title>0.105.1</title>
             <pubDate>Tue, 08 Sep 2026 13:10:30 +0000</pubDate>
             <link>https://github.com/basnijholt/agent-cli</link>
@@ -192,21 +211,6 @@
 
 ]]></description>
             <enclosure url="https://github.com/basnijholt/agent-cli/releases/download/v0.102.0/AgentCLI.zip" length="24388215" type="application/octet-stream" sparkle:edSignature="1b3tpgDf/VolJ9MLr0R5N9gPmOkYG7Uf6ZyXQTNLPTfiMeo2malwMj5kzTFcCp7xQr/jijUB7/nRNoSzZiBnCg=="/>
-        </item>
-        <item>
-            <title>0.101.0</title>
-            <pubDate>Wed, 10 Jun 2026 18:21:45 +0000</pubDate>
-            <link>https://github.com/basnijholt/agent-cli</link>
-            <sparkle:version>196</sparkle:version>
-            <sparkle:shortVersionString>0.101.0</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[## What’s Changed
-
-* Add zellij multiplexer support to agent-cli dev (#590) @basnijholt
-
-]]></description>
-            <enclosure url="https://github.com/basnijholt/agent-cli/releases/download/v0.101.0/AgentCLI.zip" length="22912290" type="application/octet-stream" sparkle:edSignature="9re7kqubAoQgSpsmDvAT/LCWy8/tI1RzR2uGkb+BCwGJbtfvuzDU2ETm/JD+lpQt3Ayik6ULAOv+/5S6JSmdBA=="/>
         </item>
     </channel>
 </rss>
