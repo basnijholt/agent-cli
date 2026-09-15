@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Any, Literal
 
 from agent_cli.core.process import set_process_title
+from agent_cli.server.whisper.backends.audio import prepare_wav_audio
 from agent_cli.server.whisper.backends.base import (
     BackendConfig,
     TranscriptionResult,
@@ -593,7 +594,7 @@ class TransformersWhisperBackend:
         self,
         audio: bytes,
         *,
-        source_filename: str | None = None,  # noqa: ARG002
+        source_filename: str | None = None,
         language: str | None = None,
         task: Literal["transcribe", "translate"] = "transcribe",
         initial_prompt: str | None = None,
@@ -605,6 +606,12 @@ class TransformersWhisperBackend:
         if self._executor is None:
             msg = "Model not loaded. Call load() first."
             raise RuntimeError(msg)
+
+        audio = await prepare_wav_audio(
+            audio,
+            source_filename,
+            backend_label="transformers ASR",
+        )
 
         # Write audio to temp file for wave parsing in subprocess
         with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:

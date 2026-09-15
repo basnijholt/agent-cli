@@ -89,7 +89,7 @@ class WhisperBackend(Protocol):
         """Transcribe audio data.
 
         Args:
-            audio: Audio data as bytes (WAV format, 16kHz, 16-bit, mono)
+            audio: Encoded audio bytes (16kHz mono 16-bit PCM WAV preferred).
             source_filename: Optional filename to help detect audio format.
             language: Language code or None for auto-detection
             task: "transcribe" or "translate" (to English)
