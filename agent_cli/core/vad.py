@@ -37,7 +37,7 @@ def _get_model_path() -> Path:
     SILERO_VAD_CACHE.parent.mkdir(parents=True, exist_ok=True)
 
     # Download with progress
-    urllib.request.urlretrieve(SILERO_VAD_URL, SILERO_VAD_CACHE)
+    urllib.request.urlretrieve(SILERO_VAD_URL, SILERO_VAD_CACHE)  # noqa: S310
     LOGGER.info("Silero VAD model downloaded to %s", SILERO_VAD_CACHE)
     return SILERO_VAD_CACHE
 
