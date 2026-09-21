@@ -36,6 +36,7 @@ async def test_transcribe_main_llm_enabled(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
     """Test the main function of the transcribe agent with LLM enabled."""
+    mock_process_and_update_clipboard.return_value = "Hello world."
     # Mock audio stream
     mock_stream = MagicMock()
     mock_stream.read.return_value = (MagicMock(tobytes=lambda: b"\0" * 1024), False)
@@ -515,6 +516,7 @@ async def test_transcribe_includes_clipboard_context(
     mock_signal_handling_context: MagicMock,
 ) -> None:
     """Ensure clipboard content is forwarded to the LLM context."""
+    mock_process_and_update_clipboard.return_value = "Hello world."
     # Mock audio stream
     mock_stream = MagicMock()
     mock_stream.read.return_value = (MagicMock(tobytes=lambda: b"\0" * 1024), False)

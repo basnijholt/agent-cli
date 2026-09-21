@@ -213,3 +213,64 @@ def test_transcribe_stop_json_cleans_stale_pid(
     assert payload["was_running"] is False
     assert payload["stale_cleaned"] is True
     assert not pid_file.exists()
+
+
+def test_quiet_empty_transcription_fails_without_touching_clipboard() -> None:
+    """An empty ASR result must not look like successful dictation to the app."""
+    with (
+        patch("agent_cli.agents.transcribe.asr.create_transcriber") as create_transcriber,
+        patch("agent_cli.agents.transcribe.process.pid_file_context"),
+        patch("agent_cli.agents.transcribe.setup_devices", return_value=(0, "mic", None)),
+        patch("pyperclip.copy") as copy,
+    ):
+        create_transcriber.return_value = AsyncMock(return_value=None)
+        result = runner.invoke(app, ["transcribe", "--quiet", "--no-llm", "--no-clipboard"])
+    assert result.exit_code != 0
+    assert "No transcript" in result.output
+    copy.assert_not_called()
+
+
+def test_quiet_whitespace_transcription_preserves_clipboard() -> None:
+    """Whitespace from ASR is not dictation and must not erase clipboard text."""
+    with (
+        patch("agent_cli.agents.transcribe.asr.create_transcriber") as create_transcriber,
+        patch("agent_cli.agents.transcribe.process.pid_file_context"),
+        patch("agent_cli.agents.transcribe.setup_devices", return_value=(0, "mic", None)),
+        patch("pyperclip.copy") as copy,
+    ):
+        create_transcriber.return_value = AsyncMock(return_value=" \n\t")
+        result = runner.invoke(app, ["transcribe", "--quiet", "--no-llm", "--clipboard"])
+    assert result.exit_code != 0
+    assert "No transcript" in result.output
+    copy.assert_not_called()
+
+
+def test_empty_file_transcription_fails(tmp_path: Path) -> None:
+    """Recovery must fail visibly too when a saved recording yields no text."""
+    recording = tmp_path / "recording.wav"
+    recording.touch()
+    with patch("agent_cli.agents.transcribe._async_main", new_callable=AsyncMock) as transcribe:
+        transcribe.return_value = {"raw_transcript": None, "transcript": None, "llm_enabled": False}
+        result = runner.invoke(app, ["transcribe", "--from-file", str(recording), "--quiet"])
+    assert result.exit_code != 0
+    assert "No transcript" in result.output
+
+
+def test_empty_llm_cleanup_retains_raw_transcript() -> None:
+    """Failed cleanup must leave recoverable speech, not blank the clipboard."""
+    clipboard = ["previous clipboard"]
+    agent = MagicMock()
+    agent.run = AsyncMock(return_value=MagicMock(output=" \n"))
+    with (
+        patch("agent_cli.agents.transcribe.asr.create_transcriber") as create_transcriber,
+        patch("agent_cli.agents.transcribe.process.pid_file_context"),
+        patch("agent_cli.agents.transcribe.setup_devices", return_value=(0, "mic", None)),
+        patch("agent_cli.services.llm.create_llm_agent", return_value=agent),
+        patch("pyperclip.paste", side_effect=lambda: clipboard[0]),
+        patch("pyperclip.copy", side_effect=lambda text: clipboard.__setitem__(0, text)),
+    ):
+        create_transcriber.return_value = AsyncMock(return_value="recognized speech")
+        result = runner.invoke(app, ["transcribe", "--quiet", "--llm", "--clipboard"])
+    assert result.exit_code != 0
+    assert "LLM" in result.output
+    assert clipboard[0] == "recognized speech"
