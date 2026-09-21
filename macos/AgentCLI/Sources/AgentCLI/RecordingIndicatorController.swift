@@ -48,7 +48,7 @@ final class RecordingIndicatorController {
         recordingCommandCount = max(0, recordingCommandCount - 1)
         if wasRecording && !isRecording {
             play(.finishedRecording)
-            VoiceLevelOverlayController.shared.hide()
+            VoiceLevelOverlayController.shared.endRecording()
         }
         if command.supportsLivePreviewOverlay {
             LiveTranscriptionPreview.shared.stop()
