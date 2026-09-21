@@ -265,12 +265,12 @@ final class AgentCommandRunner: ObservableObject {
             Task { @MainActor in
                 if shouldStartRecording {
                     self.clearHoldTranscriptionState(for: command)
-                    let shouldPaste = self.shouldPasteAfterRecording(for: command) && result.exitCode == 0
+                    let shouldPaste = self.shouldPasteAfterRecording(for: command)
                     let pasteTarget = self.holdToTranscribePasteTarget
                     self.endRecordingIndicator(for: command)
                     self.clearStopRequested(for: command)
-                    if shouldPaste {
-                        self.pasteController.pasteTranscriptIntoFocusedField(result.output, target: pasteTarget) { message in
+                    if shouldPaste, let pasteText = result.pasteText {
+                        self.pasteController.pasteTranscriptIntoFocusedField(pasteText, target: pasteTarget) { message in
                             self.statusMessage = message
                         }
                     }

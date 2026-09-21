@@ -53,6 +53,22 @@ private final class LoginShellPATHCache {
 typealias AgentProcessRunner = (URL, [String], [String: String]) -> CommandResult
 typealias LocalhostConnector = (UInt16) -> Bool
 
+private final class ProcessDiagnosticCapture: @unchecked Sendable {
+    private let lock = NSLock()
+    private var text = ""
+
+    func read(from handle: FileHandle) {
+        let data = handle.readDataToEndOfFile()
+        lock.withLock {
+            text = String(decoding: data, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+    }
+
+    var output: String {
+        lock.withLock { text }
+    }
+}
+
 struct AgentRuntime {
     static let shared = AgentRuntime()
 
@@ -747,7 +763,7 @@ struct AgentRuntime {
         )
         guard result.exitCode == 0 else { return nil }
 
-        return result.output
+        return (result.standardOutput ?? result.output)
             .split(separator: "\n")
             .last
             .map(String.init)
@@ -799,20 +815,35 @@ struct AgentRuntime {
     ) -> CommandResult {
         let task = Process()
         let pipe = Pipe()
+        let errorPipe = Pipe()
 
         task.executableURL = executableURL
         task.arguments = arguments
         task.environment = environment
         task.standardOutput = pipe
-        task.standardError = pipe
+        task.standardError = errorPipe
 
         do {
             try task.run()
+            // Drain both streams concurrently so verbose diagnostics cannot fill
+            // stderr's pipe and block the child before it finishes stdout.
+            let diagnostics = ProcessDiagnosticCapture()
+            let readers = DispatchGroup()
+            readers.enter()
+            DispatchQueue.global(qos: .userInitiated).async {
+                diagnostics.read(from: errorPipe.fileHandleForReading)
+                readers.leave()
+            }
             let data = pipe.fileHandleForReading.readDataToEndOfFile()
             task.waitUntilExit()
+            readers.wait()
+            let stdout = String(decoding: data, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)
+            let output = [stdout, diagnostics.output].filter { !$0.isEmpty }.joined(separator: "\n")
             return CommandResult(
                 exitCode: task.terminationStatus,
-                output: String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                output: output,
+                standardOutput: stdout,
+                standardError: diagnostics.output
             )
         } catch {
             return CommandResult(exitCode: 127, output: error.localizedDescription)
