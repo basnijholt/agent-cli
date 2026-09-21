@@ -1,9 +1,25 @@
 #if canImport(XCTest)
 import Foundation
+import AppKit
+import SwiftUI
 import XCTest
 @testable import AgentCLI
 
 final class VoiceLevelMeterTests: XCTestCase {
+    func testTranscribingCompactsPreviewAndFailedStopRestoresIt() throws {
+        let overlay = VoiceLevelOverlayController.shared
+        defer { overlay.hide() }
+        overlay.show(showsPreviewSpace: true)
+        let panel = try XCTUnwrap(NSApplication.shared.windows.first {
+            $0.contentView is NSHostingView<VoiceLevelOverlayView>
+        })
+        XCTAssertEqual(panel.frame.width, 446)
+        overlay.showTranscribing()
+        XCTAssertEqual(panel.frame.width, 216)
+        overlay.finishTranscribing()
+        XCTAssertEqual(panel.frame.width, 446)
+    }
+
     func testTranscriptionTimerStartsAtReleaseAndResetsForNextRequest() {
         let logURL = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         var now = Date()

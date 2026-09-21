@@ -183,6 +183,7 @@ final class VoiceLevelOverlayController {
 
     private var panel: NSPanel?
     private var showsPreviewSpace = false
+    private var recordingShowsPreviewSpace = false
     private var isRecording = false
     private var isTranscribing = false
 
@@ -190,14 +191,10 @@ final class VoiceLevelOverlayController {
 
     func show(showsPreviewSpace: Bool = false) {
         isRecording = true
+        recordingShowsPreviewSpace = showsPreviewSpace
         let panel = panel ?? makePanel()
         self.panel = panel
-        if self.showsPreviewSpace != showsPreviewSpace {
-            self.showsPreviewSpace = showsPreviewSpace
-            updatePanelContent(panel)
-        }
-        panel.setContentSize(VoiceLevelOverlayLayout.panelSize(showsPreviewSpace: showsPreviewSpace))
-        position(panel)
+        setPreviewSpace(showsPreviewSpace, for: panel)
         VoiceLevelMeter.shared.start()
         panel.orderFrontRegardless()
     }
@@ -214,7 +211,7 @@ final class VoiceLevelOverlayController {
         let panel = panel ?? makePanel()
         self.panel = panel
         VoiceLevelMeter.shared.beginTranscribing()
-        position(panel)
+        setPreviewSpace(false, for: panel)
         panel.orderFrontRegardless()
     }
 
@@ -222,6 +219,9 @@ final class VoiceLevelOverlayController {
         guard isTranscribing else { return }
         isTranscribing = false
         if isRecording {
+            if let panel {
+                setPreviewSpace(recordingShowsPreviewSpace, for: panel)
+            }
             VoiceLevelMeter.shared.resumeRecording()
         } else {
             hide()
@@ -232,6 +232,9 @@ final class VoiceLevelOverlayController {
         isRecording = false
         if isTranscribing {
             VoiceLevelMeter.shared.beginTranscribing()
+            if let panel {
+                setPreviewSpace(false, for: panel)
+            }
         } else {
             hide()
         }
@@ -256,6 +259,15 @@ final class VoiceLevelOverlayController {
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .ignoresCycle]
         updatePanelContent(panel)
         return panel
+    }
+
+    private func setPreviewSpace(_ showsPreviewSpace: Bool, for panel: NSPanel) {
+        if self.showsPreviewSpace != showsPreviewSpace {
+            self.showsPreviewSpace = showsPreviewSpace
+            updatePanelContent(panel)
+        }
+        panel.setContentSize(VoiceLevelOverlayLayout.panelSize(showsPreviewSpace: showsPreviewSpace))
+        position(panel)
     }
 
     private func updatePanelContent(_ panel: NSPanel) {
