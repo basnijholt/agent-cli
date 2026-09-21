@@ -11,8 +11,10 @@ import pytest
 from agent_cli.core.diarization import DiarizedSegment
 from agent_cli.core.speaker_identity import (
     DEFAULT_SPEAKER_MATCH_THRESHOLD,
+    MAX_PROFILE_EMBEDDINGS,
     SpeakerMatch,
     _normalize_embedding,
+    _speaker_waveforms,
     add_speaker_embedding_to_profile,
     apply_speaker_label_map,
     create_speaker_profile_from_embedding,
@@ -106,6 +108,31 @@ def test_normalize_embedding_rejects_non_finite_values() -> None:
         _normalize_embedding([float("nan"), 1.0])
 
 
+def test_speaker_waveforms_uses_clean_non_overlapping_segments(tmp_path: Path) -> None:
+    torch = pytest.importorskip("torch")
+    audio_file = tmp_path / "audio.wav"
+    audio_file.write_bytes(b"audio")
+    sample_rate = 10
+    waveform = torch.arange(120, dtype=torch.float32).unsqueeze(0)
+
+    with patch(
+        "agent_cli.core.speaker_identity._load_audio_for_diarization",
+        return_value=(waveform, sample_rate),
+    ):
+        waveforms, returned_sample_rate = _speaker_waveforms(
+            audio_file,
+            [
+                DiarizedSegment("SPEAKER_00", 0.0, 5.0),
+                DiarizedSegment("SPEAKER_01", 2.0, 3.0),
+                DiarizedSegment("SPEAKER_00", 8.0, 10.0),
+            ],
+        )
+
+    assert returned_sample_rate == sample_rate
+    assert set(waveforms) == {"SPEAKER_00"}
+    assert waveforms["SPEAKER_00"].tolist() == [list(range(80, 100))]
+
+
 def test_resolve_speaker_identities_enrolls_named_profile(tmp_path: Path) -> None:
     profiles_file = tmp_path / "speaker-profiles.json"
     segments = [DiarizedSegment(speaker="SPEAKER_00", start=0.0, end=2.0)]
@@ -195,7 +222,7 @@ def test_resolve_speaker_identities_merges_unknown_enrollment_into_existing_name
     store = load_speaker_profile_store(profiles_file)
     assert [profile["name"] for profile in store["profiles"]] == ["Alice"]
     assert store["profiles"][0]["id"] == "alice"
-    assert store["profiles"][0]["embeddings"] == [[1.0, 0.0], [0.0, 1.0], [0.0, 1.0]]
+    assert store["profiles"][0]["embeddings"] == [[1.0, 0.0], [0.0, 1.0]]
 
 
 def test_resolve_speaker_identities_enrolls_before_remembering_unknowns(
@@ -303,7 +330,7 @@ def test_resolve_speaker_identities_refreshes_matched_profile_when_remembering(
     assert label_map == {"SPEAKER_00": "Alice"}
     store = load_speaker_profile_store(profiles_file)
     assert len(store["profiles"]) == 1
-    assert store["profiles"][0]["embeddings"] == [[1.0, 0.0], [0.99, 0.01]]
+    assert store["profiles"][0]["embeddings"] == [[1.0, 0.0]]
 
 
 def test_resolve_speaker_identities_remembers_unknown_profile(tmp_path: Path) -> None:
@@ -382,7 +409,7 @@ def test_merge_speaker_profiles_moves_embeddings_and_removes_source() -> None:
 
     assert profile["id"] == "john"
     assert profile["name"] == "John"
-    assert profile["embeddings"] == [[1.0, 0.0], [0.99, 0.01]]
+    assert profile["embeddings"] == [[1.0, 0.0]]
     assert [stored_profile["id"] for stored_profile in store["profiles"]] == ["john"]
 
 
@@ -397,7 +424,7 @@ def test_merge_speaker_profiles_rejects_self_merge() -> None:
         merge_speaker_profiles(store, "john", "John")
 
 
-def test_add_speaker_embedding_to_profile_appends_embedding() -> None:
+def test_add_speaker_embedding_to_profile_skips_near_duplicate_embedding() -> None:
     store = {
         "profiles": [
             {
@@ -412,7 +439,45 @@ def test_add_speaker_embedding_to_profile_appends_embedding() -> None:
     profile = add_speaker_embedding_to_profile(store, "John", [0.99, 0.01])
 
     assert profile["id"] == "john"
-    assert profile["embeddings"] == [[1.0, 0.0], [0.99, 0.01]]
+    assert profile["embeddings"] == [[1.0, 0.0]]
+
+
+def test_add_speaker_embedding_to_profile_appends_diverse_embedding() -> None:
+    store = {
+        "profiles": [
+            {
+                "id": "john",
+                "name": "John",
+                "anonymous": False,
+                "embeddings": [[1.0, 0.0]],
+            },
+        ],
+    }
+
+    profile = add_speaker_embedding_to_profile(store, "John", [0.7, 0.7])
+
+    assert profile["id"] == "john"
+    assert profile["embeddings"] == [[1.0, 0.0], [0.7, 0.7]]
+
+
+def test_add_speaker_embedding_to_profile_keeps_bounded_diverse_embeddings() -> None:
+    embeddings = [[1.0, 0.0] for _ in range(MAX_PROFILE_EMBEDDINGS)]
+    store = {
+        "profiles": [
+            {
+                "id": "john",
+                "name": "John",
+                "anonymous": False,
+                "embeddings": embeddings,
+            },
+        ],
+    }
+
+    profile = add_speaker_embedding_to_profile(store, "John", [0.0, 1.0])
+
+    assert len(profile["embeddings"]) == MAX_PROFILE_EMBEDDINGS
+    assert [0.0, 1.0] in profile["embeddings"]
+    assert profile["embeddings"].count([1.0, 0.0]) == MAX_PROFILE_EMBEDDINGS - 1
 
 
 def test_create_speaker_profile_from_embedding_rejects_duplicate_name() -> None:

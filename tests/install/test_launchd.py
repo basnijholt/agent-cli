@@ -25,6 +25,7 @@ def test_generate_plist_sets_path_for_homebrew_bins() -> None:
     assert "/opt/homebrew/bin" in path.split(":")
     assert "/usr/local/bin" in path.split(":")
     assert path.endswith("/usr/bin:/bin:/usr/sbin:/sbin")
+    assert plist["EnvironmentVariables"]["AGENTCLI_UV_PATH"] == "/opt/homebrew/bin/uv"
 
 
 def test_generate_plist_preserves_app_private_uv_environment(

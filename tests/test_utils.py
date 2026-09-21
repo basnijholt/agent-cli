@@ -7,8 +7,10 @@ from datetime import timedelta
 from unittest.mock import Mock, patch
 
 import pytest
+from rich.console import ColorSystem
 
 from agent_cli.core import process, utils
+from tests.conftest import force_plain_console
 
 
 @pytest.mark.parametrize(
@@ -208,3 +210,43 @@ async def test_signal_handling_context_uses_sync_handlers_on_windows(
     assert signal.getsignal(signal.SIGINT) is prev_sigint
     assert signal.getsignal(signal.SIGTERM) is prev_sigterm
     logger.debug.assert_called()
+
+
+def test_shared_consoles_render_without_ansi(capsys: pytest.CaptureFixture[str]) -> None:
+    """Rich honours FORCE_COLOR even into captured output, breaking substring asserts.
+
+    The autouse `reset_rich_console_state` fixture must keep both shared consoles
+    colourless so the suite passes regardless of the developer's shell.
+    """
+    assert utils.console.color_system is None
+    assert utils.err_console.color_system is None
+
+    utils.console.print("[bold red]stdout text[/bold red]")
+    utils.err_console.print("[dim]stderr text[/dim]")
+
+    captured = capsys.readouterr()
+    assert captured.out == "stdout text\n"
+    assert captured.err == "stderr text\n"
+
+
+@pytest.mark.parametrize("stream", ["console", "err_console"])
+def test_force_plain_console_strips_forced_colour(
+    stream: str,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Reproduce a FORCE_COLOR shell rather than trusting the ambient environment.
+
+    Without this the coverage above is vacuous wherever Rich already detects a
+    colourless stream, which is every CI runner. Mutating the shared console is
+    safe: the autouse fixture restores it before the next test.
+    """
+    console = getattr(utils, stream)
+    console.no_color = False
+    console._color_system = ColorSystem.TRUECOLOR
+    assert console.color_system == "truecolor"
+
+    force_plain_console(console)
+
+    console.print("[bold red]coloured[/bold red]")
+    captured = capsys.readouterr()
+    assert (captured.err if stream == "err_console" else captured.out) == "coloured\n"

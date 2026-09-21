@@ -87,12 +87,12 @@ def _extract_options_from_click(cmd: TyperCommand | TyperGroup) -> list[dict[str
             long_opts = [n for n in param.opts if n.startswith("--")]
             short_opts = [n for n in param.opts if n.startswith("-") and not n.startswith("--")]
 
-            # Build display name: prefer long form, include short if available
+            # Build display name: include visible aliases in Click order.
             if long_opts:
-                primary_name = max(long_opts, key=len)
-                # Include short flag if available (e.g., "--from", "-f" -> "--from, -f")
+                names = [*long_opts]
                 if short_opts:
-                    primary_name = f"{primary_name}, {short_opts[0]}"
+                    names.append(short_opts[0])
+                primary_name = ", ".join(names)
             elif short_opts:
                 primary_name = short_opts[0]
             else:
@@ -373,7 +373,8 @@ def config_example(command_path: str | None = None) -> str:
             continue
 
         # Convert flag name to config key
-        key = opt["name"].lstrip("-").replace("-", "_").split("/")[0]
+        primary_name = opt["name"].split(",", maxsplit=1)[0]
+        key = primary_name.lstrip("-").replace("-", "_").split("/")[0]
         default = opt["default"]
         help_text = opt["help"]
 

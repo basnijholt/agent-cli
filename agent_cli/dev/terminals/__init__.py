@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from .base import Terminal, TerminalHandle
+from .base import Multiplexer, Terminal, TerminalHandle
 from .registry import (
     detect_current_terminal,
     get_all_terminals,
@@ -11,6 +11,7 @@ from .registry import (
 )
 
 __all__ = [
+    "Multiplexer",
     "Terminal",
     "TerminalHandle",
     "detect_current_terminal",

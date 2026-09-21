@@ -12,16 +12,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
 
         NSApp.setActivationPolicy(.accessory)
         UNUserNotificationCenter.current().delegate = self
+        StatusMenuController.shared.start()
         configureNotifications()
         ShortcutDefaultsMigrator.migrate()
         LoginItemController.shared.refresh()
         ConfigurableHotkeyController.shared.registerDefaultHotkeys(runner: AgentCommandRunner.shared)
         ShortcutSummaryState.shared.refresh()
+        AgentCommandRunner.shared.warmUpTranscription()
     }
 
     func applicationWillTerminate(_ notification: Notification) {
         VoiceLevelOverlayController.shared.hide()
+        StatusMenuController.shared.stop()
         releaseInstanceLock()
+    }
+
+    func applicationDidBecomeActive(_ notification: Notification) {
+        ConfigurableHotkeyController.shared.retryFunctionAwareHotkeysIfTrusted(runner: AgentCommandRunner.shared)
+    }
+
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
+        false
     }
 
     private func terminateIfAnotherInstanceIsRunning() -> Bool {

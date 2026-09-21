@@ -5,10 +5,7 @@ import KeyboardShortcuts
 import SwiftUI
 
 extension KeyboardShortcuts.Name {
-    static let toggleTranscription = Self(
-        "toggleTranscription",
-        default: KeyboardShortcuts.Shortcut(carbonKeyCode: kVK_Space, carbonModifiers: kEventKeyModifierFnMask)
-    )
+    static let toggleTranscription = Self("toggleTranscription")
     static let holdToTranscribe = Self(
         "holdToTranscribe",
         default: KeyboardShortcuts.Shortcut(.function)
@@ -21,6 +18,95 @@ extension KeyboardShortcuts.Name {
         "voiceEdit",
         default: KeyboardShortcuts.Shortcut(.v, modifiers: [.command, .shift])
     )
+}
+
+enum ToggleTranscriptionDefault {
+    static let shortcut = FunctionShortcutPersistence.rawShortcut(
+        carbonKeyCode: kVK_Space,
+        carbonModifiers: kEventKeyModifierFnMask
+    )
+
+    static func set() {
+        FunctionShortcutPersistence.set(shortcut, for: .toggleTranscription)
+    }
+
+    static func seedIfNeeded() {
+        guard !userDefaultsContainsShortcut else {
+            return
+        }
+        set()
+    }
+
+    private static var userDefaultsContainsShortcut: Bool {
+        UserDefaults.standard.object(forKey: userDefaultsKey) != nil
+    }
+
+    private static var userDefaultsKey: String {
+        "KeyboardShortcuts_\(KeyboardShortcuts.Name.toggleTranscription.rawValue)"
+    }
+}
+
+enum FunctionShortcutPersistence {
+    static func rawShortcut(carbonKeyCode: Int, carbonModifiers: Int) -> KeyboardShortcuts.Shortcut {
+        // KeyboardShortcuts' public initializer normalizes away Fn, but Codable preserves raw Carbon modifiers.
+        let shortcutJSON = """
+        {"carbonKeyCode":\(carbonKeyCode),"carbonModifiers":\(carbonModifiers)}
+        """
+        guard let data = shortcutJSON.data(using: .utf8),
+              let shortcut = try? JSONDecoder().decode(KeyboardShortcuts.Shortcut.self, from: data) else {
+            return KeyboardShortcuts.Shortcut(
+                carbonKeyCode: carbonKeyCode,
+                carbonModifiers: carbonModifiers
+            )
+        }
+        return shortcut
+    }
+
+    static func set(_ shortcut: KeyboardShortcuts.Shortcut, for name: KeyboardShortcuts.Name) {
+        KeyboardShortcuts.setShortcut(nil, for: name)
+        guard let encoded = try? JSONEncoder().encode(shortcut),
+              let encodedString = String(data: encoded, encoding: .utf8) else {
+            return
+        }
+        UserDefaults.standard.set(encodedString, forKey: userDefaultsKey(for: name))
+    }
+
+    private static func userDefaultsKey(for name: KeyboardShortcuts.Name) -> String {
+        "KeyboardShortcuts_\(name.rawValue)"
+    }
+}
+
+private extension KeyboardShortcuts.Shortcut {
+    var usesFunctionModifier: Bool {
+        carbonModifiers & kEventKeyModifierFnMask != 0
+    }
+}
+
+final class ShortcutRecordingState {
+    static let shared = ShortcutRecordingState()
+
+    private let lock = NSLock()
+    private var activeRecorderCount = 0
+
+    var isRecording: Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        return activeRecorderCount > 0
+    }
+
+    private init() {}
+
+    func beginRecording() {
+        lock.lock()
+        activeRecorderCount += 1
+        lock.unlock()
+    }
+
+    func endRecording() {
+        lock.lock()
+        activeRecorderCount = max(0, activeRecorderCount - 1)
+        lock.unlock()
+    }
 }
 
 final class ShortcutSummaryState: ObservableObject {
@@ -37,8 +123,8 @@ final class ShortcutSummaryState: ObservableObject {
     }
 
     func resetDefaults() {
+        ToggleTranscriptionDefault.set()
         KeyboardShortcuts.reset(
-            .toggleTranscription,
             .holdToTranscribe,
             .autocorrect,
             .voiceEdit
@@ -88,13 +174,54 @@ private enum ShortcutDisplay {
         }
 
         var carbonModifiers = shortcut.carbonModifiers
-        if event.modifierFlags.contains(.function) {
+        if event.modifierFlags.contains(.function),
+           shouldTreatFunctionFlagAsModifier(for: shortcut.carbonKeyCode) {
             carbonModifiers |= kEventKeyModifierFnMask
         }
-        return KeyboardShortcuts.Shortcut(
+
+        guard carbonModifiers & kEventKeyModifierFnMask != 0 else {
+            return KeyboardShortcuts.Shortcut(
+                carbonKeyCode: shortcut.carbonKeyCode,
+                carbonModifiers: carbonModifiers
+            )
+        }
+
+        return FunctionShortcutPersistence.rawShortcut(
             carbonKeyCode: shortcut.carbonKeyCode,
             carbonModifiers: carbonModifiers
         )
+    }
+
+    private static func shouldTreatFunctionFlagAsModifier(for carbonKeyCode: Int) -> Bool {
+        !isFunctionRowKey(carbonKeyCode)
+    }
+
+    private static func isFunctionRowKey(_ carbonKeyCode: Int) -> Bool {
+        switch carbonKeyCode {
+        case kVK_F1,
+             kVK_F2,
+             kVK_F3,
+             kVK_F4,
+             kVK_F5,
+             kVK_F6,
+             kVK_F7,
+             kVK_F8,
+             kVK_F9,
+             kVK_F10,
+             kVK_F11,
+             kVK_F12,
+             kVK_F13,
+             kVK_F14,
+             kVK_F15,
+             kVK_F16,
+             kVK_F17,
+             kVK_F18,
+             kVK_F19,
+             kVK_F20:
+            return true
+        default:
+            return false
+        }
     }
 
     private static func label(for shortcut: KeyboardShortcuts.Shortcut, fallback: String) -> String {
@@ -127,13 +254,19 @@ enum ShortcutDefaultsMigrator {
         migrateDefault(
             name: .toggleTranscription,
             from: KeyboardShortcuts.Shortcut(.r, modifiers: [.command, .shift]),
-            to: KeyboardShortcuts.Shortcut(carbonKeyCode: kVK_Space, carbonModifiers: kEventKeyModifierFnMask)
+            to: ToggleTranscriptionDefault.shortcut
+        )
+        migrateDefault(
+            name: .toggleTranscription,
+            from: KeyboardShortcuts.Shortcut(.space),
+            to: ToggleTranscriptionDefault.shortcut
         )
         migrateDefault(
             name: .holdToTranscribe,
             from: KeyboardShortcuts.Shortcut(.space, modifiers: [.control, .option]),
             to: KeyboardShortcuts.Shortcut(.function)
         )
+        ToggleTranscriptionDefault.seedIfNeeded()
     }
 
     private static func migrateDefault(
@@ -144,13 +277,44 @@ enum ShortcutDefaultsMigrator {
         guard KeyboardShortcuts.getShortcut(for: name) == oldShortcut else {
             return
         }
-        KeyboardShortcuts.setShortcut(newShortcut, for: name)
+        setShortcut(newShortcut, for: name)
+    }
+
+    private static func setShortcut(
+        _ shortcut: KeyboardShortcuts.Shortcut,
+        for name: KeyboardShortcuts.Name
+    ) {
+        guard name == .toggleTranscription,
+              shortcut == ToggleTranscriptionDefault.shortcut else {
+            KeyboardShortcuts.setShortcut(shortcut, for: name)
+            return
+        }
+        ToggleTranscriptionDefault.set()
     }
 }
 
 struct SettingsView: View {
     @ObservedObject private var loginItemController = LoginItemController.shared
+    @ObservedObject private var appUpdater = AppUpdater.shared
+    @AppStorage(RuntimeSettings.useUserInstalledAgentCLIKey)
+    private var useUserInstalledAgentCLI = false
+    @AppStorage(RecordingSoundSettings.enabledKey)
+    private var recordingSoundsEnabled = false
+    @AppStorage(TranscriptionSettings.livePreviewOverlayEnabledKey)
+    private var livePreviewOverlayEnabled = false
+    @AppStorage(TranscriptionSettings.transcriptionBackendKey)
+    private var transcriptionBackend = TranscriptionBackend.whisper.rawValue
+    @AppStorage(TranscriptionSettings.transcriptionModelKey)
+    private var transcriptionModel = TranscriptionBackend.whisper.defaultModelName
+    @AppStorage(TranscriptionSettings.transcriptionModelTTLSecondsKey)
+    private var transcriptionModelTTLSeconds = TranscriptionSettings.defaultModelTTLSeconds
+    @AppStorage(TranscriptionSettings.transcriptionExtraInstructionsKey)
+    private var transcriptionExtraInstructions = ""
     @State private var shortcutRevision = 0
+
+    private var selectedTranscriptionBackend: TranscriptionBackend {
+        TranscriptionBackend(rawValue: transcriptionBackend) ?? .whisper
+    }
 
     var body: some View {
         Form {
@@ -169,8 +333,95 @@ struct SettingsView: View {
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
+
+                Toggle("Use User-Installed agent-cli", isOn: $useUserInstalledAgentCLI)
+                Toggle("Play Recording Sounds", isOn: $recordingSoundsEnabled)
+                Toggle("Show Live Transcription Preview", isOn: $livePreviewOverlayEnabled)
             } header: {
                 Text("General")
+            } footer: {
+                Text("Runs the agent-cli found on PATH with your normal config instead of the app's private bundled-uv runtime. Live preview shows provisional transcription text above the recording meter.")
+            }
+
+            Section {
+                Picker("Backend", selection: $transcriptionBackend) {
+                    ForEach(TranscriptionBackend.allCases) { backend in
+                        Text(backend.title).tag(backend.rawValue)
+                    }
+                }
+                .pickerStyle(.menu)
+                .disabled(useUserInstalledAgentCLI)
+
+                Picker("Model", selection: $transcriptionModel) {
+                    ForEach(selectedTranscriptionBackend.modelOptions) { model in
+                        Text(model.title).tag(model.id)
+                    }
+                }
+                .pickerStyle(.menu)
+                .disabled(useUserInstalledAgentCLI)
+
+                Stepper(
+                    value: Binding(
+                        get: { max(0, transcriptionModelTTLSeconds) },
+                        set: { transcriptionModelTTLSeconds = max(0, $0) }
+                    ),
+                    in: 0...86_400,
+                    step: 60
+                ) {
+                    HStack {
+                        Text("Model TTL")
+                        Spacer()
+                        Text(Self.formatTTLSeconds(transcriptionModelTTLSeconds))
+                            .foregroundStyle(.secondary)
+                            .monospacedDigit()
+                    }
+                }
+                .disabled(useUserInstalledAgentCLI)
+            } header: {
+                Text("Voice Service")
+            } footer: {
+                Text(
+                    useUserInstalledAgentCLI
+                        ? "Disabled while User-Installed agent-cli is active."
+                        : "TTL is how long the selected model lives in memory after the last transcription. Set to 0 to keep it loaded until the voice service restarts."
+                )
+            }
+
+            Section {
+                TextEditor(text: $transcriptionExtraInstructions)
+                    .font(.body)
+                    .frame(minHeight: 96)
+                    .scrollContentBackground(.hidden)
+            } header: {
+                Text("Transcription Instructions")
+            } footer: {
+                Text(
+                    selectedTranscriptionBackend == .nemo && !useUserInstalledAgentCLI
+                        ? "Parakeet does not support names or vocabulary as text prompt context, so this field has no effect for bundled NeMo transcription."
+                        : "Names, vocabulary, and guidance to pass as initial transcription context."
+                )
+            }
+
+            Section {
+                HStack {
+                    Text("Version")
+                    Spacer()
+                    Text(AppMetadata.versionDisplayString)
+                        .foregroundStyle(.secondary)
+                }
+
+                Button("Check for Updates...") {
+                    appUpdater.checkForUpdates()
+                }
+                .disabled(!appUpdater.canCheckForUpdates)
+            } header: {
+                Text("Updates")
+            } footer: {
+                Text(
+                    appUpdater.canCheckForUpdates
+                        ? "Uses Sparkle to install signed Agent CLI app updates."
+                        : "App updates are not configured for this build."
+                )
             }
 
             Section {
@@ -207,9 +458,39 @@ struct SettingsView: View {
         }
         .formStyle(.grouped)
         .padding()
+        .onChange(of: transcriptionBackend) { _ in
+            normalizeTranscriptionModel()
+        }
         .onAppear {
             loginItemController.refresh()
+            normalizeTranscriptionModel()
         }
+    }
+
+    private func normalizeTranscriptionModel() {
+        let backend = selectedTranscriptionBackend
+        guard backend.modelOption(named: transcriptionModel) == nil else { return }
+        transcriptionModel = backend.defaultModelName
+    }
+
+    private static func formatTTLSeconds(_ seconds: Int) -> String {
+        let clampedSeconds = max(0, seconds)
+        if clampedSeconds == 0 {
+            return "Never"
+        }
+        if clampedSeconds < 60 {
+            return "\(clampedSeconds)s"
+        }
+        if clampedSeconds < 3_600 {
+            return "\(clampedSeconds / 60)m"
+        }
+
+        let hours = clampedSeconds / 3_600
+        let minutes = (clampedSeconds % 3_600) / 60
+        if minutes == 0 {
+            return "\(hours)h"
+        }
+        return "\(hours)h \(minutes)m"
     }
 }
 
@@ -252,6 +533,7 @@ final class ShortcutRecorderButton: NSButton {
 
     private var isRecording = false
     private var eventMonitor: Any?
+    private var pendingFunctionShortcut = false
 
     init(name: KeyboardShortcuts.Name) {
         self.shortcutName = name
@@ -291,6 +573,7 @@ final class ShortcutRecorderButton: NSButton {
         }
 
         isRecording = true
+        ShortcutRecordingState.shared.beginRecording()
         title = "Press shortcut"
         window?.makeFirstResponder(self)
 
@@ -306,18 +589,56 @@ final class ShortcutRecorderButton: NSButton {
     private func capture(_ event: NSEvent) {
         switch Int(event.keyCode) {
         case kVK_Escape:
+            pendingFunctionShortcut = false
             stopRecording()
         case kVK_Delete, kVK_ForwardDelete:
+            pendingFunctionShortcut = false
             KeyboardShortcuts.setShortcut(nil, for: shortcutName)
             stopRecording()
+        case kVK_Function:
+            handleFunctionKeyChange(event)
         default:
+            pendingFunctionShortcut = false
             guard let shortcut = ShortcutDisplay.shortcut(from: event) else {
                 NSSound.beep()
                 return
             }
-            KeyboardShortcuts.setShortcut(shortcut, for: shortcutName)
+            if shortcut.usesFunctionModifier {
+                guard supportsFunctionChord(shortcutName) else {
+                    NSSound.beep()
+                    return
+                }
+                FunctionShortcutPersistence.set(shortcut, for: shortcutName)
+            } else {
+                KeyboardShortcuts.setShortcut(shortcut, for: shortcutName)
+            }
             stopRecording()
         }
+    }
+
+    private func handleFunctionKeyChange(_ event: NSEvent) {
+        guard event.type == .flagsChanged else {
+            return
+        }
+
+        if event.modifierFlags.contains(.function) {
+            pendingFunctionShortcut = true
+            return
+        }
+
+        if pendingFunctionShortcut {
+            captureBareFunctionShortcut()
+        }
+    }
+
+    private func captureBareFunctionShortcut() {
+        pendingFunctionShortcut = false
+        KeyboardShortcuts.setShortcut(KeyboardShortcuts.Shortcut(.function), for: shortcutName)
+        stopRecording()
+    }
+
+    private func supportsFunctionChord(_ name: KeyboardShortcuts.Name) -> Bool {
+        name == .toggleTranscription || name == .holdToTranscribe
     }
 
     private func stopRecording() {
@@ -325,7 +646,12 @@ final class ShortcutRecorderButton: NSButton {
             NSEvent.removeMonitor(eventMonitor)
             self.eventMonitor = nil
         }
+        pendingFunctionShortcut = false
+        let wasRecording = isRecording
         isRecording = false
+        if wasRecording {
+            ShortcutRecordingState.shared.endRecording()
+        }
         updateTitle()
         ShortcutSummaryState.shared.refresh()
     }

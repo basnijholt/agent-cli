@@ -18,6 +18,7 @@ nav = [
   { "Installation" = [
     { "Overview" = "installation/index.md" },
     { "macOS" = "installation/macos.md" },
+    { "macOS App" = "installation/macos-app.md" },
     { "Linux" = "installation/linux.md" },
     { "NixOS" = "installation/nixos.md" },
     { "Windows" = "installation/windows.md" },
@@ -118,7 +119,7 @@ text = "Inter"
 code = "JetBrains Mono"
 
 [project.theme.icon]
-repo = "lucide/github"
+repo = "octicons/mark-github-24"
 
 [project.extra]
 generator = false

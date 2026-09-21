@@ -20,6 +20,13 @@ Options:
 
 Environment:
   CODESIGN_IDENTITY  Codesign identity to use. Defaults to ad-hoc signing (-).
+  APP_VERSION        CFBundleShortVersionString to stamp into the app.
+                     Defaults to the built wheel version.
+  BUILD_VERSION      CFBundleVersion to stamp into the app. Defaults to
+                     GITHUB_RUN_NUMBER, then the git commit count.
+  SPARKLE_PUBLIC_ED_KEY
+                     Public EdDSA key for Sparkle updates. If unset, the app
+                     builds without enabling Sparkle update checks.
   UV_BINARY          uv binary to bundle. Defaults to the uv found on PATH.
   INSTALL_DIR        Install destination. Defaults to /Applications.
   AGENTCLI_SKIP_OPEN Set to 1 to skip opening the app after --install.
@@ -74,11 +81,14 @@ ICON_SOURCE_PNG="$DIST_DIR/logo-avatar-source.png"
 NOTIFICATION_LOGO_PNG="$DIST_DIR/logo-avatar.png"
 APP_ICON_ICNS="$DIST_DIR/AgentCLI.icns"
 CODESIGN_IDENTITY=${CODESIGN_IDENTITY:--}
+APP_VERSION=${APP_VERSION:-}
+BUILD_VERSION=${BUILD_VERSION:-${GITHUB_RUN_NUMBER:-}}
 UV_BINARY=${UV_BINARY:-$(command -v uv || true)}
 INSTALL_DIR=${INSTALL_DIR:-/Applications}
 NOTARIZE=${NOTARIZE:-0}
 NOTARY_TIMEOUT_SECONDS=${NOTARY_TIMEOUT_SECONDS:-1800}
 NOTARY_POLL_INTERVAL_SECONDS=${NOTARY_POLL_INTERVAL_SECONDS:-30}
+SPARKLE_PUBLIC_ED_KEY=${SPARKLE_PUBLIC_ED_KEY:-}
 
 if [[ "$(uname -s)" != "Darwin" ]]; then
     echo "This script builds a macOS .app bundle and must run on macOS." >&2
@@ -160,6 +170,70 @@ sign_dmg_if_needed() {
     fi
 
     codesign --force --sign "$CODESIGN_IDENTITY" --timestamp "$dmg_path"
+}
+
+resolve_app_version() {
+    local wheel_filename="$1"
+    local raw_version="$APP_VERSION"
+    local major
+    local minor
+    local patch
+
+    if [[ -z "$raw_version" ]]; then
+        raw_version="${wheel_filename#agent_cli-}"
+        raw_version="${raw_version%%-*}"
+    fi
+
+    if [[ "$raw_version" =~ ^v?([0-9]+)(\.([0-9]+))?(\.([0-9]+))? ]]; then
+        major="${BASH_REMATCH[1]}"
+        minor="${BASH_REMATCH[3]:-0}"
+        patch="${BASH_REMATCH[5]:-0}"
+        printf '%s.%s.%s\n' "$major" "$minor" "$patch"
+        return
+    fi
+
+    echo "Could not derive a macOS app version from: $raw_version" >&2
+    exit 1
+}
+
+resolve_build_version() {
+    local build_version="$BUILD_VERSION"
+
+    if [[ -z "$build_version" ]]; then
+        build_version=$(git -C "$ROOT_DIR" rev-list --count HEAD 2>/dev/null || true)
+    fi
+    if [[ -z "$build_version" ]]; then
+        build_version=$(date +%Y%m%d%H%M%S)
+    fi
+
+    build_version=$(printf '%s' "$build_version" | tr -cd '0-9.')
+    if [[ -z "$build_version" || ! "$build_version" =~ ^[0-9]+([.][0-9]+)*$ ]]; then
+        echo "Could not derive a numeric macOS app build version from: ${BUILD_VERSION:-unset}" >&2
+        exit 1
+    fi
+
+    printf '%s\n' "$build_version"
+}
+
+stamp_info_plist() {
+    local wheel_filename="$1"
+    local app_version
+    local build_version
+
+    app_version=$(resolve_app_version "$wheel_filename")
+    build_version=$(resolve_build_version)
+
+    /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $app_version" \
+        "$APP_DIR/Contents/Info.plist"
+    /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $build_version" \
+        "$APP_DIR/Contents/Info.plist"
+    if [[ -n "$SPARKLE_PUBLIC_ED_KEY" ]]; then
+        /usr/libexec/PlistBuddy -c "Delete :SUPublicEDKey" \
+            "$APP_DIR/Contents/Info.plist" >/dev/null 2>&1 || true
+        /usr/libexec/PlistBuddy -c "Add :SUPublicEDKey string $SPARKLE_PUBLIC_ED_KEY" \
+            "$APP_DIR/Contents/Info.plist"
+    fi
+    echo "Stamped app bundle version $app_version ($build_version)"
 }
 
 require_notarization_env() {
@@ -349,6 +423,8 @@ APPLESCRIPT
 create_drag_install_dmg() {
     local dmg_path="$1"
     local attach_output
+    local image_size_mb
+    local staging_size_kb
     local volume_path
 
     hdiutil detach "/Volumes/$DISPLAY_NAME" >/dev/null 2>&1 || true
@@ -360,11 +436,13 @@ create_drag_install_dmg() {
     render_dmg_background || return
     cp "$DMG_BACKGROUND_PNG" "$DMG_STAGING_DIR/.background/dmg-background.png" || return
 
+    staging_size_kb=$(du -sk "$DMG_STAGING_DIR" | awk '{ print $1 }')
+    image_size_mb=$((staging_size_kb / 1024 + 64))
     hdiutil create "$DMG_RW_PATH" \
         -volname "$DISPLAY_NAME" \
-        -srcfolder "$DMG_STAGING_DIR" \
-        -ov \
-        -format UDRW || return
+        -size "${image_size_mb}m" \
+        -fs HFS+ \
+        -ov || return
     attach_output=$(hdiutil attach "$DMG_RW_PATH" \
         -nobrowse \
         -noautoopen) || return
@@ -374,11 +452,15 @@ create_drag_install_dmg() {
         printf '%s\n' "$attach_output" >&2
         return 1
     fi
-    if ! set_dmg_finder_layout "$volume_path"; then
+    ditto "$DMG_STAGING_DIR" "$volume_path" || {
         hdiutil detach "$volume_path" >/dev/null 2>&1 || true
         return 1
+    }
+    if ! set_dmg_finder_layout "$volume_path"; then
+        hdiutil detach "$volume_path" -force >/dev/null 2>&1 || true
+        return 1
     fi
-    hdiutil detach "$volume_path" >/dev/null || return
+    hdiutil detach "$volume_path" -force >/dev/null || return
     hdiutil convert "$DMG_RW_PATH" \
         -format UDZO \
         -imagekey zlib-level=9 \
@@ -437,11 +519,19 @@ build_app_icon
 rm -rf "$APP_DIR"
 mkdir -p \
     "$APP_DIR/Contents/MacOS" \
+    "$APP_DIR/Contents/Frameworks" \
     "$APP_DIR/Contents/Resources/bin" \
     "$APP_DIR/Contents/Resources/wheels"
 
+SPARKLE_FRAMEWORK="$BIN_DIR/Sparkle.framework"
+if [[ ! -d "$SPARKLE_FRAMEWORK" ]]; then
+    echo "Built Sparkle framework not found: $SPARKLE_FRAMEWORK" >&2
+    exit 1
+fi
+
 cp "$BINARY" "$APP_DIR/Contents/MacOS/$APP_NAME"
 cp "$INFO_PLIST" "$APP_DIR/Contents/Info.plist"
+ditto "$SPARKLE_FRAMEWORK" "$APP_DIR/Contents/Frameworks/Sparkle.framework"
 cp "$UV_BINARY" "$APP_DIR/Contents/Resources/bin/uv"
 cp "$WHEEL_PATH" "$APP_DIR/Contents/Resources/wheels/"
 cp "$MENU_BAR_LOGO_SVG" "$APP_DIR/Contents/Resources/logo-avatar.svg"
@@ -449,9 +539,19 @@ cp "$NOTIFICATION_LOGO_PNG" "$APP_DIR/Contents/Resources/logo-avatar.png"
 cp "$APP_ICON_ICNS" "$APP_DIR/Contents/Resources/AgentCLI.icns"
 chmod 755 "$APP_DIR/Contents/MacOS/$APP_NAME"
 chmod 755 "$APP_DIR/Contents/Resources/bin/uv"
+if ! otool -l "$APP_DIR/Contents/MacOS/$APP_NAME" |
+    grep -q '@executable_path/../Frameworks'; then
+    install_name_tool -add_rpath "@executable_path/../Frameworks" \
+        "$APP_DIR/Contents/MacOS/$APP_NAME"
+fi
 
 test -x "$APP_DIR/Contents/Resources/bin/uv" || {
     echo "Bundled uv is missing or not executable: $APP_DIR/Contents/Resources/bin/uv" >&2
+    exit 1
+}
+
+test -d "$APP_DIR/Contents/Frameworks/Sparkle.framework" || {
+    echo "Bundled Sparkle framework is missing: $APP_DIR/Contents/Frameworks/Sparkle.framework" >&2
     exit 1
 }
 
@@ -475,6 +575,7 @@ test -f "$APP_DIR/Contents/Resources/AgentCLI.icns" || {
     exit 1
 }
 
+stamp_info_plist "$(basename "$WHEEL_PATH")"
 sign_bundled_executables
 sign_app "$APP_DIR"
 

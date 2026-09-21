@@ -720,8 +720,56 @@ direnv = false
 
         assert result.exit_code == 0
         assert mock_launch.call_args.kwargs["multiplexer_name"] == "tmux"
-        assert mock_launch.call_args.kwargs["tmux_session"] == "my_session name"
+        assert mock_launch.call_args.kwargs["multiplexer_session"] == "my_session name"
         assert "tmux attach -t 'my_session name'" in result.output
+
+    def test_new_zellij_session_implies_zellij_and_normalizes(self, tmp_path: Path) -> None:
+        """`--zellij-session` trims whitespace and forces zellij."""
+        wt_path = tmp_path / "repo-worktrees" / "feature"
+        wt_path.mkdir(parents=True)
+
+        with (
+            patch("agent_cli.dev.cli._ensure_git_repo", return_value=Path("/repo")),
+            patch(
+                "agent_cli.dev.worktree.create_worktree",
+                return_value=CreateWorktreeResult(
+                    success=True,
+                    path=wt_path,
+                    branch="feature",
+                ),
+            ),
+            patch("agent_cli.dev.cli.resolve_editor", return_value=None),
+            patch("agent_cli.dev.cli.resolve_agent") as mock_resolve_agent,
+            patch("agent_cli.dev.cli.prepare_agent_launch"),
+            patch("agent_cli.dev.cli.merge_agent_args", return_value=None),
+            patch("agent_cli.dev.cli.get_agent_env", return_value={}),
+            patch(
+                "agent_cli.dev.cli.launch_agent",
+                return_value=TerminalHandle("zellij", "3", "my session"),
+            ) as mock_launch,
+        ):
+            mock_agent = mock_resolve_agent.return_value
+            mock_agent.is_available.return_value = True
+            result = runner.invoke(
+                app,
+                [
+                    "dev",
+                    "new",
+                    "feature",
+                    "--start-agent",
+                    "--zellij-session",
+                    "  my session  ",
+                    "--no-setup",
+                    "--no-copy-env",
+                    "--no-fetch",
+                    "--no-direnv",
+                ],
+            )
+
+        assert result.exit_code == 0
+        assert mock_launch.call_args.kwargs["multiplexer_name"] == "zellij"
+        assert mock_launch.call_args.kwargs["multiplexer_session"] == "my session"
+        assert "zellij attach 'my session'" in result.output
 
     def test_new_tmux_session_does_not_imply_start_agent(self, tmp_path: Path) -> None:
         """`--tmux-session` is only a placement flag for `dev new`."""
@@ -956,6 +1004,39 @@ direnv = false
         assert "tmux session names cannot contain '.' or ':'" in result.output
         mock_ensure_repo.assert_not_called()
 
+    def test_new_rejects_empty_zellij_session(self) -> None:
+        """Empty zellij session names should fail before repo/worktree work starts."""
+        with patch("agent_cli.dev.cli._ensure_git_repo") as mock_ensure_repo:
+            result = runner.invoke(app, ["dev", "new", "my-feature", "--zellij-session", "  "])
+
+        assert result.exit_code == 1
+        assert "--zellij-session cannot be empty" in result.output
+        mock_ensure_repo.assert_not_called()
+
+    def test_new_rejects_conflicting_session_flags(self) -> None:
+        """`--tmux-session` and `--zellij-session` are mutually exclusive."""
+        with patch("agent_cli.dev.cli._ensure_git_repo") as mock_ensure_repo:
+            result = runner.invoke(
+                app,
+                ["dev", "new", "my-feature", "--tmux-session", "a", "--zellij-session", "b"],
+            )
+
+        assert result.exit_code == 1
+        assert "Cannot use --tmux-session and --zellij-session together" in result.output
+        mock_ensure_repo.assert_not_called()
+
+    def test_new_rejects_session_flag_for_other_multiplexer(self) -> None:
+        """A session flag for one multiplexer cannot combine with the other multiplexer."""
+        with patch("agent_cli.dev.cli._ensure_git_repo") as mock_ensure_repo:
+            result = runner.invoke(
+                app,
+                ["dev", "new", "my-feature", "--multiplexer", "zellij", "--tmux-session", "a"],
+            )
+
+        assert result.exit_code == 1
+        assert "--tmux-session cannot be combined with --multiplexer zellij" in result.output
+        mock_ensure_repo.assert_not_called()
+
     def test_new_skips_launch_preparation_when_hooks_are_disabled(self, tmp_path: Path) -> None:
         """`--no-hooks` should bypass built-in preparation and configured hooks."""
         wt_path = tmp_path / "repo-worktrees" / "feature"
@@ -1137,7 +1218,7 @@ class TestDevAgent:
 
         assert result.exit_code == 0
         assert mock_launch.call_args.kwargs["multiplexer_name"] == "tmux"
-        assert mock_launch.call_args.kwargs["tmux_session"] == "my_session name"
+        assert mock_launch.call_args.kwargs["multiplexer_session"] == "my_session name"
         assert "tmux attach -t 'my_session name'" in result.output
 
     def test_agent_quotes_tmux_attach_hint(self) -> None:

@@ -241,6 +241,7 @@ Add to your config file so all commands use your local server:
 ```toml
 [defaults]
 asr_provider = "wyoming"
+asr_wyoming_ip = "localhost"
 asr_wyoming_port = 10300
 ```
 
@@ -259,6 +260,37 @@ Now just run `agent-cli transcribe` - it automatically uses your local server.
 > [!TIP]
 > **OpenAI SDK users:** The server also exposes an OpenAI-compatible API on port 10301.
 > See [server whisper docs](commands/server/whisper.md) for all options.
+
+### NVIDIA Parakeet via NeMo
+
+Start a Parakeet server:
+
+```bash
+agent-cli install-extras nemo-whisper wyoming
+agent-cli server whisper --backend nemo --ttl 0
+```
+
+`--backend nemo` defaults to `parakeet-unified-en-0.6b`. `--ttl 0` keeps the
+model loaded after the first request, which is useful because NeMo model loading
+is expensive.
+
+Use it from agent-cli through Wyoming:
+
+```toml
+[defaults]
+asr_provider = "wyoming"
+asr_wyoming_ip = "localhost"
+asr_wyoming_port = 10300
+```
+
+Or through the OpenAI-compatible HTTP API:
+
+```toml
+[defaults]
+asr_provider = "openai"
+asr_openai_base_url = "http://localhost:10301/v1"
+asr_openai_model = "whisper-1"
+```
 
 ## Audio Device Configuration
 

@@ -174,10 +174,32 @@ class TestTTSModelManager:
     def test_init(self, manager: TTSModelManager, config: TTSModelConfig) -> None:
         """Test manager initialization."""
         assert manager.config == config
+        assert manager.backend_type == "piper"
         assert not manager.is_loaded
         assert manager.ttl_remaining is None
         assert manager.device is None
         assert manager.stats.load_count == 0
+
+    def test_auto_backend_type_is_resolved(self) -> None:
+        """Auto detection should be retained as resolved manager metadata."""
+        config = TTSModelConfig(model_name="af_heart", backend_type="auto")
+        mock_backend = MagicMock(is_loaded=False, device=None)
+
+        with (
+            patch(
+                "agent_cli.server.tts.model_manager.detect_backend",
+                return_value="kokoro",
+            ),
+            patch(
+                "agent_cli.server.tts.model_manager.create_backend",
+                return_value=mock_backend,
+            ) as mock_create_backend,
+        ):
+            manager = TTSModelManager(config)
+
+        assert manager.backend_type == "kokoro"
+        assert config.backend_type == "auto"
+        assert mock_create_backend.call_args.kwargs["backend_type"] == "kokoro"
 
     @pytest.mark.asyncio
     async def test_start_stop(self, manager: TTSModelManager) -> None:

@@ -26,6 +26,13 @@ def test_project_uses_recent_typer_without_click_dependency() -> None:
     assert "typer>=0.26" in dependencies
 
 
+def test_faster_whisper_extra_requires_blackwell_safe_ctranslate2() -> None:
+    """RTX 50xx GPUs need CTranslate2 with the sm120 INT8 workaround."""
+    pyproject = tomllib.loads(Path("pyproject.toml").read_text())
+    dependencies = pyproject["project"]["optional-dependencies"]["faster-whisper"]
+    assert "ctranslate2>=4.6.2" in dependencies
+
+
 def test_main_no_args() -> None:
     """Test the main function with no arguments shows help (no_args_is_help=True)."""
     result = runner.invoke(app)

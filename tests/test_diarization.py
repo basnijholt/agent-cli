@@ -16,7 +16,9 @@ from agent_cli.core.diarization import (
     align_transcript_with_speakers,
     align_transcript_with_words,
     align_words_to_speakers,
+    best_clean_speaker_segment,
     format_diarized_output,
+    select_clean_speaker_segments,
 )
 
 if TYPE_CHECKING:
@@ -38,6 +40,38 @@ class TestDiarizedSegment:
         """Test that text defaults to empty string."""
         segment = DiarizedSegment(speaker="SPEAKER_01", start=1.0, end=3.0)
         assert segment.text == ""
+
+
+class TestCleanSpeakerSegments:
+    """Tests for clean speaker segment selection."""
+
+    def test_prefers_isolated_segment_over_longer_overlap(self):
+        """The representative segment prefers isolation over duration."""
+        overlapping_long = DiarizedSegment("SPEAKER_00", 0.0, 5.0)
+        other_speaker = DiarizedSegment("SPEAKER_01", 2.0, 3.0)
+        isolated_short = DiarizedSegment("SPEAKER_00", 8.0, 10.0)
+
+        segment = best_clean_speaker_segment(
+            [overlapping_long, other_speaker, isolated_short],
+            "SPEAKER_00",
+        )
+
+        assert segment == isolated_short
+
+    def test_can_reject_unclean_segments(self):
+        """Unclean segments can be rejected instead of used as fallback."""
+        segments = [
+            DiarizedSegment("SPEAKER_00", 0.0, 5.0),
+            DiarizedSegment("SPEAKER_01", 2.0, 3.0),
+        ]
+
+        selected = select_clean_speaker_segments(
+            segments,
+            "SPEAKER_00",
+            fallback_to_unclean=False,
+        )
+
+        assert selected == []
 
 
 class TestAlignTranscriptWithSpeakers:
