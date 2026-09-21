@@ -252,7 +252,12 @@ final class AgentCommandRunner: ObservableObject {
                 }
             }
 
-            let result = AgentRuntime.shared.runAgentCLI(arguments: commandArguments)
+            let commandResult = AgentRuntime.shared.runAgentCLI(arguments: commandArguments)
+            // A stop acknowledgement may be empty; a completed recording must contain text.
+            // Validate here too because user-installed CLIs can predate the CLI-side check.
+            let result = shouldStartRecording && command.identifier == AgentCommand.toggleTranscription.identifier
+                ? commandResult.requiringTranscript()
+                : commandResult
             let message = Self.statusMessage(for: command, result: result)
             let notificationTitle = Self.notificationTitle(for: command, result: result)
             let notificationBody = Self.notificationBody(for: command, result: result, statusMessage: message)
