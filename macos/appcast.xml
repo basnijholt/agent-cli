@@ -5,6 +5,33 @@
         <link>https://github.com/basnijholt/agent-cli</link>
         <description>Signed Agent CLI macOS app updates.</description>
         <item>
+            <title>0.107.1</title>
+            <pubDate>Mon, 21 Sep 2026 22:49:11 +0000</pubDate>
+            <link>https://github.com/basnijholt/agent-cli</link>
+            <sparkle:version>209</sparkle:version>
+            <sparkle:shortVersionString>0.107.1</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[## Bug fixes
+
+- **Keep diagnostics out of dictated text.** The macOS app now captures stdout and stderr separately, so audio-shutdown warnings no longer appear before a successful transcription. Nonempty stdout is pasted on its own. (#652)
+- **Keep errors available when no text is returned.** If stdout is empty, the app pastes stderr instead while preserving the failure notification. If both streams are empty, it reports the missing transcript without pasting anything. (#652)
+- Drain stderr concurrently to avoid blocking on verbose diagnostics, and keep shell startup warnings out of executable-path discovery. (#652)
+
+## Maintenance
+
+- Update Sparkle to 2.9.6. (#631)
+- Update the Whisper and TTS CUDA container bases to 12.9.2. (#485)
+- Update setup-uv to v10, docker/login-action to v4.5.2, and release-drafter to v7.7.0. (#633, #628, #629)
+
+The audio-shutdown timeout itself is unchanged; this release corrects how its diagnostic output is handled.
+
+**Full changelog:** https://github.com/basnijholt/agent-cli/compare/v0.107.0...v0.107.1
+
+]]></description>
+            <enclosure url="https://github.com/basnijholt/agent-cli/releases/download/v0.107.1/AgentCLI.zip" length="18877548" type="application/octet-stream" sparkle:edSignature="IZhh4XcF6cUkyu6LxDK3B0xYbl2k/juow6Xm4jw8aOvxU8VZcxpz60tnY22lVBjqXpv3kxhHJcy167oREmLWCA=="/>
+        </item>
+        <item>
             <title>0.107.0</title>
             <pubDate>Mon, 21 Sep 2026 18:53:01 +0000</pubDate>
             <link>https://github.com/basnijholt/agent-cli</link>
@@ -179,28 +206,6 @@
 
 ]]></description>
             <enclosure url="https://github.com/basnijholt/agent-cli/releases/download/v0.102.3/AgentCLI.zip" length="24330021" type="application/octet-stream" sparkle:edSignature="H5CMNeeXWbrvg2BgAHnoYuoOX6dzLCUJpjock6YE6xPqsJvsIrkMABiEuxRbKAGWuf17P4KOGktodhyWj1IODw=="/>
-        </item>
-        <item>
-            <title>0.102.2</title>
-            <pubDate>Sat, 25 Jul 2026 20:18:46 +0000</pubDate>
-            <link>https://github.com/basnijholt/agent-cli</link>
-            <sparkle:version>199</sparkle:version>
-            <sparkle:shortVersionString>0.102.2</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[## Bug fixes
-
-- **MLX Whisper: stop unbounded memory growth under `--ttl 0`** (#620). The long-lived transcription subprocess never released MLX's reusable Metal buffer cache, so it ratcheted up to the largest working set ever seen and eventually got pushed to swap — one deployment reached a 17.1 GB physical footprint for a 2.9 GB model, with a 5.2s clip degrading from ~2.0s to ~5.2s. The backend now calls `mx.clear_cache()` after each request, including on failure. Only the reusable cache is freed, not live arrays, so model weights stay resident and inference stays hot; measured cost is ~7.6 ms per request (~0.3%).
-
-- **Require `mlx>=0.24` for the `mlx-whisper` extra** (#620). The top-level `mx.clear_cache()` does not exist before mlx 0.24 — 0.23.2 and older only expose the deprecated `mx.metal.clear_cache()` — and `mlx-whisper` itself only requires `mlx>=0.11`. Without the floor, an environment resolving an older mlx would raise `AttributeError` on every transcription.
-
-## Internal
-
-- Pin `uv` in the `uv-lock` and `sync-requirements` pre-commit hooks so the generated `agent_cli/_requirements/*.txt` files depend on the config rather than on how fresh each contributor's hook cache is (#620).
-- Render the shared consoles without colour during tests (#625).
-- Drop the broken Homebrew tap dispatch from the release workflow (#623).
-]]></description>
-            <enclosure url="https://github.com/basnijholt/agent-cli/releases/download/v0.102.2/AgentCLI.zip" length="24329779" type="application/octet-stream" sparkle:edSignature="CeWZFIPSDJSiO8iQbm46QDRet3IYvIvgL4qSyYdDmwlTlkhV66IaXp05Wt04+xLBKTJcAv9333tA9n8BZ9IvBQ=="/>
         </item>
     </channel>
 </rss>
