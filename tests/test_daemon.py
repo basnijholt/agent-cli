@@ -65,6 +65,31 @@ class TestServiceConfig:
         assert whisper.extra
         assert isinstance(whisper.command_args, list)
 
+    @pytest.mark.parametrize(
+        ("backend", "backend_extra"),
+        [
+            ("faster-whisper", "faster-whisper"),
+            ("mlx", "mlx-whisper"),
+            ("transformers", "whisper-transformers"),
+            ("nemo", "nemo-whisper"),
+        ],
+    )
+    def test_build_service_command_selects_explicit_whisper_backend_extra(
+        self,
+        tmp_path: Path,
+        backend: str,
+        backend_extra: str,
+    ) -> None:
+        """Explicit backend args should select the matching installation extra."""
+        command = build_service_command(
+            SERVICES["whisper"],
+            tmp_path / "uv",
+            use_macos_extra=True,
+            extra_command_args=[f"--backend={backend}"],
+        )
+
+        assert f"agent-cli[server,{backend_extra},wyoming]" in command
+
     def test_build_service_command(self, tmp_path: Path) -> None:
         """Test building service command for uv tool run."""
         uv_path = tmp_path / "uv"

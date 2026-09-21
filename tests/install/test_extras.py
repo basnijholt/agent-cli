@@ -38,6 +38,11 @@ def test_extras_metadata_structure() -> None:
         assert isinstance(packages, list), f"Extra {name} packages should be list"
 
 
+def test_whisper_transformers_checks_qwen_audio_dependency() -> None:
+    """The extra detector must catch an incomplete Qwen3-ASR installation."""
+    assert "librosa" in EXTRAS_META["whisper-transformers"][1]
+
+
 def test_install_extras_dict_derives_from_metadata() -> None:
     """Ensure EXTRAS in install/extras.py derives from _extras.json."""
     for name in EXTRAS:

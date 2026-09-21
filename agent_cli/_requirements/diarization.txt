@@ -81,7 +81,7 @@ grpcio==1.80.0 ; python_full_version >= '3.13'
     # via opentelemetry-exporter-otlp-proto-grpc
 h11==0.16.0
     # via httpcore
-hf-xet==1.5.0 ; (python_full_version < '3.13' and platform_machine == 'AMD64') or platform_machine == 'aarch64' or platform_machine == 'amd64' or platform_machine == 'arm64' or platform_machine == 'x86_64'
+hf-xet==1.5.0 ; platform_machine == 'AMD64' or platform_machine == 'aarch64' or platform_machine == 'amd64' or platform_machine == 'arm64' or platform_machine == 'x86_64'
     # via huggingface-hub
 httpcore==1.0.9
     # via httpx
@@ -89,9 +89,7 @@ httpx==0.28.1
     # via
     #   agent-cli
     #   huggingface-hub
-huggingface-hub==0.36.2 ; python_full_version >= '3.13'
-    # via pyannote-audio
-huggingface-hub==1.16.1 ; python_full_version < '3.13'
+huggingface-hub==1.16.1
     # via
     #   pyannote-audio
     #   speechbrain
@@ -349,7 +347,6 @@ pyyaml==6.0.3
     #   pytorch-lightning
 requests==2.34.2
     # via
-    #   huggingface-hub
     #   opentelemetry-exporter-otlp-proto-http
     #   pyannoteai-sdk
     #   speechbrain
@@ -360,7 +357,7 @@ rich==15.0.0
     #   typer
 ruamel-yaml==0.19.1 ; python_full_version < '3.13'
     # via hyperpyyaml
-safetensors==0.7.0 ; python_full_version >= '3.13'
+safetensors==0.8.0 ; python_full_version >= '3.13'
     # via pyannote-audio
 scikit-learn==1.8.0
     # via

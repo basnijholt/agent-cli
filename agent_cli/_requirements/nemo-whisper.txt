@@ -4,7 +4,7 @@ absl-py==2.4.0 ; python_full_version < '3.14'
     # via
     #   fiddle
     #   tensorboard
-accelerate==1.13.0 ; python_full_version < '3.14'
+accelerate==1.13.0 ; python_full_version < '3.13'
     # via peft
 aiohappyeyeballs==2.6.2 ; python_full_version < '3.13'
     # via aiohttp
@@ -12,7 +12,9 @@ aiohttp==3.13.5 ; python_full_version < '3.13'
     # via fsspec
 aiosignal==1.4.0 ; python_full_version < '3.13'
     # via aiohttp
-alembic==1.18.4 ; python_full_version < '3.14'
+aistore==1.25.0 ; python_full_version == '3.13.*'
+    # via nemo-toolkit
+alembic==1.18.4 ; python_full_version < '3.13'
     # via optuna
 annotated-doc==0.0.4
     # via
@@ -29,7 +31,7 @@ anyio==4.13.0
     #   httpx
     #   starlette
     #   watchfiles
-asttokens==3.0.1 ; python_full_version < '3.14'
+asttokens==3.0.1 ; python_full_version < '3.13'
     # via stack-data
 attrs==26.1.0 ; python_full_version < '3.13'
     # via aiohttp
@@ -45,6 +47,7 @@ bitsandbytes==0.45.3 ; python_full_version < '3.13' and platform_machine == 'x86
     # via nemo-toolkit
 braceexpand==0.1.7 ; python_full_version < '3.14'
     # via
+    #   aistore
     #   nemo-toolkit
     #   webdataset
 certifi==2026.5.20
@@ -67,7 +70,9 @@ click==8.4.1
     #   uvicorn
     #   wandb
 cloudpickle==3.1.2 ; python_full_version < '3.14'
-    # via nemo-toolkit
+    # via
+    #   aistore
+    #   nemo-toolkit
 colorama==0.4.6 ; python_full_version == '3.13.*' or sys_platform == 'win32'
     # via
     #   click
@@ -78,9 +83,9 @@ colorama==0.4.6 ; python_full_version == '3.13.*' or sys_platform == 'win32'
     #   tqdm
     #   typer
     #   uvicorn
-colorlog==6.10.1 ; python_full_version < '3.14'
+colorlog==6.10.1 ; python_full_version < '3.13'
     # via optuna
-contourpy==1.3.3 ; python_full_version < '3.14'
+contourpy==1.3.3 ; python_full_version < '3.13'
     # via matplotlib
 cuda-bindings==13.3.0 ; (python_full_version < '3.14' and sys_platform == 'linux') or (python_full_version == '3.13.*' and sys_platform != 'darwin' and sys_platform != 'linux')
     # via
@@ -90,7 +95,7 @@ cuda-pathfinder==1.5.5 ; (python_full_version < '3.14' and sys_platform == 'linu
     # via cuda-bindings
 cuda-toolkit==13.0.2 ; python_full_version < '3.14' and sys_platform == 'linux'
     # via torch
-cycler==0.12.1 ; python_full_version < '3.14'
+cycler==0.12.1 ; python_full_version < '3.13'
     # via matplotlib
 cytoolz==1.1.0 ; python_full_version < '3.14'
     # via lhotse
@@ -116,7 +121,7 @@ docopt==0.6.2 ; python_full_version < '3.13'
     #   pyannote-metrics
 dotenv==0.9.9
     # via agent-cli
-editdistance==0.8.1 ; python_full_version < '3.14'
+editdistance==0.8.1 ; python_full_version < '3.13'
     # via nemo-toolkit
 einops==0.8.2 ; python_full_version < '3.14'
     # via nemo-toolkit
@@ -124,7 +129,7 @@ email-validator==2.3.0
     # via
     #   fastapi
     #   pydantic
-executing==2.2.1 ; python_full_version < '3.14'
+executing==2.2.1 ; python_full_version < '3.13'
     # via stack-data
 fastapi==0.136.3
     # via agent-cli
@@ -136,15 +141,14 @@ fastar==0.11.0
     # via
     #   fastapi
     #   fastapi-cloud-cli
-fiddle==0.3.0 ; python_full_version < '3.14'
+fiddle==0.3.0 ; python_full_version < '3.13'
     # via nemo-toolkit
 filelock==3.29.0 ; python_full_version < '3.14'
     # via
     #   datasets
     #   huggingface-hub
     #   torch
-    #   transformers
-fonttools==4.63.0 ; python_full_version < '3.14'
+fonttools==4.63.0 ; python_full_version < '3.13'
     # via matplotlib
 frozenlist==1.8.0 ; python_full_version < '3.13'
     # via
@@ -164,9 +168,9 @@ gitdb==4.0.12 ; python_full_version < '3.14'
     # via gitpython
 gitpython==3.1.50 ; python_full_version < '3.14'
     # via wandb
-graphviz==0.21 ; python_full_version < '3.14'
+graphviz==0.21 ; python_full_version < '3.13'
     # via fiddle
-greenlet==3.5.1 ; (python_full_version < '3.14' and platform_machine == 'AMD64') or (python_full_version < '3.14' and platform_machine == 'WIN32') or (python_full_version < '3.14' and platform_machine == 'aarch64') or (python_full_version < '3.14' and platform_machine == 'amd64') or (python_full_version < '3.14' and platform_machine == 'ppc64le') or (python_full_version < '3.14' and platform_machine == 'win32') or (python_full_version < '3.14' and platform_machine == 'x86_64')
+greenlet==3.5.1 ; (python_full_version < '3.13' and platform_machine == 'AMD64') or (python_full_version < '3.13' and platform_machine == 'WIN32') or (python_full_version < '3.13' and platform_machine == 'aarch64') or (python_full_version < '3.13' and platform_machine == 'amd64') or (python_full_version < '3.13' and platform_machine == 'ppc64le') or (python_full_version < '3.13' and platform_machine == 'win32') or (python_full_version < '3.13' and platform_machine == 'x86_64')
     # via sqlalchemy
 grpcio==1.80.0 ; python_full_version < '3.14'
     # via tensorboard
@@ -174,7 +178,7 @@ h11==0.16.0
     # via
     #   httpcore
     #   uvicorn
-hf-xet==1.5.0 ; (python_full_version < '3.13' and platform_machine == 'AMD64') or (python_full_version < '3.14' and platform_machine == 'aarch64') or (python_full_version < '3.14' and platform_machine == 'amd64') or (python_full_version < '3.14' and platform_machine == 'arm64') or (python_full_version < '3.14' and platform_machine == 'x86_64')
+hf-xet==1.5.0 ; (python_full_version < '3.14' and platform_machine == 'AMD64') or (python_full_version < '3.14' and platform_machine == 'aarch64') or (python_full_version < '3.14' and platform_machine == 'amd64') or (python_full_version < '3.14' and platform_machine == 'arm64') or (python_full_version < '3.14' and platform_machine == 'x86_64')
     # via huggingface-hub
 httpcore==1.0.9
     # via httpx
@@ -187,7 +191,7 @@ httpx==0.28.1
     #   fastapi
     #   fastapi-cloud-cli
     #   huggingface-hub
-huggingface-hub==0.36.2 ; python_full_version == '3.13.*'
+huggingface-hub==1.16.1 ; python_full_version < '3.14'
     # via
     #   accelerate
     #   datasets
@@ -195,14 +199,8 @@ huggingface-hub==0.36.2 ; python_full_version == '3.13.*'
     #   peft
     #   tokenizers
     #   transformers
-huggingface-hub==1.16.1 ; python_full_version < '3.13'
-    # via
-    #   accelerate
-    #   datasets
-    #   nemo-toolkit
-    #   peft
-    #   tokenizers
-    #   transformers
+humanize==4.16.0 ; python_full_version == '3.13.*'
+    # via aistore
 hydra-core==1.3.2 ; python_full_version < '3.14'
     # via nemo-toolkit
 idna==3.17
@@ -214,23 +212,23 @@ idna==3.17
     #   yarl
 indic-numtowords==1.1.0 ; python_full_version == '3.13.*'
     # via whisper-normalizer
-inflect==7.5.0 ; python_full_version < '3.14'
+inflect==7.5.0 ; python_full_version < '3.13'
     # via
     #   g2p-en
     #   nemo-toolkit
 intervaltree==3.2.1 ; python_full_version < '3.14'
     # via lhotse
-ipython==9.13.0 ; python_full_version < '3.14'
+ipython==9.13.0 ; python_full_version < '3.13'
     # via mediapy
-ipython-pygments-lexers==1.1.1 ; python_full_version < '3.14'
+ipython-pygments-lexers==1.1.1 ; python_full_version < '3.13'
     # via ipython
-jedi==0.20.0 ; python_full_version < '3.14'
+jedi==0.20.0 ; python_full_version < '3.13'
     # via ipython
 jinja2==3.1.6
     # via
     #   fastapi
     #   torch
-jiwer==3.1.0 ; python_full_version < '3.14'
+jiwer==3.1.0 ; python_full_version < '3.13'
     # via nemo-toolkit
 joblib==1.5.3 ; python_full_version < '3.14'
     # via
@@ -238,7 +236,7 @@ joblib==1.5.3 ; python_full_version < '3.14'
     #   nltk
     #   sacremoses
     #   scikit-learn
-kaldi-python-io==1.2.2 ; python_full_version < '3.14'
+kaldi-python-io==1.2.2 ; python_full_version < '3.13'
     # via nemo-toolkit
 kaldialign==0.8.0 ; python_full_version == '3.13.*' and platform_machine == 'arm64' and sys_platform == 'darwin'
     # via nemo-toolkit
@@ -246,7 +244,7 @@ kaldialign==0.9.1 ; (python_full_version == '3.13.*' and platform_machine != 'ar
     # via nemo-toolkit
 kaldiio==2.18.1 ; python_full_version < '3.13'
     # via nemo-toolkit
-kiwisolver==1.5.0 ; python_full_version < '3.14'
+kiwisolver==1.5.0 ; python_full_version < '3.13'
     # via matplotlib
 lazy-loader==0.5 ; python_full_version < '3.14'
     # via librosa
@@ -254,7 +252,7 @@ levenshtein==0.27.3 ; python_full_version < '3.13'
     # via texterrors
 lhotse==1.33.0 ; python_full_version < '3.14'
     # via nemo-toolkit
-libcst==1.8.6 ; python_full_version < '3.14'
+libcst==1.8.6 ; python_full_version < '3.13'
     # via fiddle
 librosa==0.11.0 ; python_full_version < '3.14'
     # via nemo-toolkit
@@ -275,7 +273,7 @@ loguru==0.7.3 ; python_full_version < '3.13'
     # via texterrors
 lxml==6.1.1 ; python_full_version == '3.13.*'
     # via sacrebleu
-mako==1.3.12 ; python_full_version < '3.14'
+mako==1.3.12 ; python_full_version < '3.13'
     # via alembic
 markdown==3.10.2 ; python_full_version < '3.14'
     # via tensorboard
@@ -286,17 +284,17 @@ markupsafe==3.0.3
     #   jinja2
     #   mako
     #   werkzeug
-marshmallow==4.3.0 ; python_full_version < '3.14'
+marshmallow==4.3.0 ; python_full_version < '3.13'
     # via nemo-toolkit
-matplotlib==3.10.9 ; python_full_version < '3.14'
+matplotlib==3.10.9 ; python_full_version < '3.13'
     # via
     #   mediapy
     #   pyannote-metrics
-matplotlib-inline==0.2.2 ; python_full_version < '3.14'
+matplotlib-inline==0.2.2 ; python_full_version < '3.13'
     # via ipython
 mdurl==0.1.2
     # via markdown-it-py
-mediapy==1.1.6 ; python_full_version < '3.14'
+mediapy==1.1.6 ; python_full_version < '3.13'
     # via nemo-toolkit
 ml-dtypes==0.5.4 ; python_full_version == '3.13.*'
     # via onnx
@@ -308,6 +306,8 @@ mpmath==1.3.0 ; python_full_version < '3.14'
     # via sympy
 msgpack==1.1.2 ; python_full_version < '3.14'
     # via librosa
+msgspec==0.21.1 ; python_full_version == '3.13.*'
+    # via aistore
 multidict==6.7.1 ; python_full_version < '3.13'
     # via
     #   aiohttp
@@ -316,7 +316,7 @@ multiprocess==0.70.19 ; python_full_version < '3.14'
     # via datasets
 nemo-toolkit==2.3.0 ; python_full_version < '3.13'
     # via agent-cli
-nemo-toolkit==2.7.3 ; python_full_version == '3.13.*'
+nemo-toolkit==3.0.0 ; python_full_version == '3.13.*'
     # via agent-cli
 networkx==3.6.1 ; python_full_version < '3.14'
     # via torch
@@ -333,9 +333,6 @@ numba==0.65.1 ; python_full_version == '3.13.*'
     # via
     #   librosa
     #   nemo-toolkit
-    #   resampy
-numexpr==2.13.1 ; python_full_version == '3.13.*'
-    # via nemo-toolkit
 numpy==1.26.4 ; python_full_version < '3.13'
     # via
     #   accelerate
@@ -371,31 +368,21 @@ numpy==1.26.4 ; python_full_version < '3.13'
     #   webdataset
 numpy==2.4.6 ; python_full_version == '3.13.*'
     # via
-    #   accelerate
     #   contourpy
     #   datasets
-    #   kaldi-python-io
     #   lhotse
     #   librosa
     #   matplotlib
-    #   mediapy
     #   ml-dtypes
     #   nemo-toolkit
     #   numba
-    #   numexpr
     #   onnx
     #   optuna
     #   pandas
-    #   peft
-    #   pyannote-core
-    #   pyannote-metrics
-    #   pyloudnorm
-    #   resampy
     #   sacrebleu
     #   scikit-learn
     #   scipy
     #   soundfile
-    #   sox
     #   soxr
     #   tensorboard
     #   torchmetrics
@@ -461,13 +448,16 @@ onnx==1.17.0 ; python_full_version < '3.13'
     # via nemo-toolkit
 onnx==1.21.0 ; python_full_version == '3.13.*'
     # via nemo-toolkit
-optuna==4.8.0 ; python_full_version < '3.14'
+optuna==4.8.0 ; python_full_version < '3.13'
     # via nemo-toolkit
 overrides==7.7.0 ; python_full_version == '3.13.*'
-    # via nv-one-logger-core
+    # via
+    #   aistore
+    #   nv-one-logger-core
 packaging==24.2 ; python_full_version < '3.14'
     # via
     #   accelerate
+    #   aistore
     #   datasets
     #   huggingface-hub
     #   hydra-core
@@ -489,14 +479,13 @@ pandas==3.0.3 ; python_full_version < '3.14'
     # via
     #   datasets
     #   nemo-toolkit
-    #   pyannote-core
     #   pyannote-database
     #   pyannote-metrics
-parso==0.8.7 ; python_full_version < '3.14'
+parso==0.8.7 ; python_full_version < '3.13'
     # via jedi
-peft==0.19.1 ; python_full_version < '3.14'
+peft==0.19.1 ; python_full_version < '3.13'
     # via nemo-toolkit
-pexpect==4.9.0 ; python_full_version < '3.14' and sys_platform != 'emscripten' and sys_platform != 'win32'
+pexpect==4.9.0 ; python_full_version < '3.13' and sys_platform != 'emscripten' and sys_platform != 'win32'
     # via ipython
 pillow==12.2.0 ; python_full_version < '3.14'
     # via
@@ -513,7 +502,7 @@ pooch==1.9.0 ; python_full_version < '3.14'
     # via librosa
 portalocker==3.2.0 ; python_full_version == '3.13.*'
     # via sacrebleu
-prompt-toolkit==3.0.52 ; python_full_version < '3.14'
+prompt-toolkit==3.0.52 ; python_full_version < '3.13'
     # via ipython
 propcache==0.5.2 ; python_full_version < '3.13'
     # via
@@ -527,37 +516,27 @@ protobuf==4.24.4 ; python_full_version < '3.13'
     #   wandb
 protobuf==5.29.6 ; python_full_version == '3.13.*'
     # via
-    #   nemo-toolkit
     #   onnx
     #   tensorboard
     #   wandb
-psutil==7.2.2 ; python_full_version < '3.14' or sys_platform == 'win32'
+psutil==7.2.2 ; python_full_version < '3.13' or sys_platform == 'win32'
     # via
     #   accelerate
     #   agent-cli
     #   ipython
     #   peft
-ptyprocess==0.7.0 ; python_full_version < '3.14' and sys_platform != 'emscripten' and sys_platform != 'win32'
+ptyprocess==0.7.0 ; python_full_version < '3.13' and sys_platform != 'emscripten' and sys_platform != 'win32'
     # via pexpect
-pure-eval==0.2.3 ; python_full_version < '3.14'
+pure-eval==0.2.3 ; python_full_version < '3.13'
     # via stack-data
 pyannote-core==5.0.0 ; python_full_version < '3.13'
     # via
     #   nemo-toolkit
     #   pyannote-database
     #   pyannote-metrics
-pyannote-core==6.0.1 ; python_full_version == '3.13.*'
-    # via
-    #   nemo-toolkit
-    #   pyannote-database
-    #   pyannote-metrics
 pyannote-database==5.1.3 ; python_full_version < '3.13'
     # via pyannote-metrics
-pyannote-database==6.1.1 ; python_full_version == '3.13.*'
-    # via pyannote-metrics
 pyannote-metrics==3.2.1 ; python_full_version < '3.13'
-    # via nemo-toolkit
-pyannote-metrics==4.1 ; python_full_version == '3.13.*'
     # via nemo-toolkit
 pyarrow==24.0.0 ; python_full_version < '3.14'
     # via datasets
@@ -568,6 +547,7 @@ pycparser==3.0 ; python_full_version < '3.14' and implementation_name != 'PyPy'
 pydantic==2.13.4
     # via
     #   agent-cli
+    #   aistore
     #   fastapi
     #   fastapi-cloud-cli
     #   nv-one-logger-core
@@ -580,21 +560,22 @@ pydantic-extra-types==2.11.1
     # via fastapi
 pydantic-settings==2.14.1
     # via fastapi
-pydub==0.25.1 ; python_full_version < '3.14'
+pydub==0.25.1 ; python_full_version < '3.13'
     # via nemo-toolkit
 pygments==2.20.0
     # via
     #   ipython
     #   ipython-pygments-lexers
     #   rich
-pyloudnorm==0.2.0 ; python_full_version < '3.14'
+pyloudnorm==0.2.0 ; python_full_version < '3.13'
     # via nemo-toolkit
-pyparsing==3.3.2 ; python_full_version < '3.14'
+pyparsing==3.3.2 ; python_full_version < '3.13'
     # via matplotlib
 pyperclip==1.11.0
     # via agent-cli
 python-dateutil==2.9.0.post0 ; python_full_version < '3.14'
     # via
+    #   aistore
     #   matplotlib
     #   nemo-toolkit
     #   pandas
@@ -612,6 +593,7 @@ pywin32==311 ; python_full_version == '3.13.*' and sys_platform == 'win32'
 pyyaml==6.0.3
     # via
     #   accelerate
+    #   aistore
     #   datasets
     #   huggingface-hub
     #   lhotse
@@ -626,9 +608,7 @@ pyyaml==6.0.3
     #   uvicorn
     #   wandb
     #   webdataset
-pyyaml-ft==8.0.0 ; python_full_version == '3.13.*'
-    # via libcst
-rapidfuzz==3.14.5 ; python_full_version < '3.14'
+rapidfuzz==3.14.5 ; python_full_version < '3.13'
     # via
     #   jiwer
     #   levenshtein
@@ -642,12 +622,11 @@ regex==2026.5.9 ; python_full_version < '3.14'
     #   whisper-normalizer
 requests==2.34.2 ; python_full_version < '3.14'
     # via
+    #   aistore
     #   datasets
-    #   huggingface-hub
     #   pooch
-    #   transformers
     #   wandb
-resampy==0.4.3 ; python_full_version < '3.14'
+resampy==0.4.3 ; python_full_version < '3.13'
     # via nemo-toolkit
 rich==15.0.0
     # via
@@ -660,13 +639,13 @@ rich-toolkit==0.19.10
     #   fastapi-cloud-cli
 rignore==0.7.6
     # via fastapi-cloud-cli
-ruamel-yaml==0.19.1 ; python_full_version < '3.14'
+ruamel-yaml==0.19.1 ; python_full_version < '3.13'
     # via nemo-toolkit
 sacrebleu==2.6.0 ; python_full_version == '3.13.*'
     # via nemo-toolkit
-sacremoses==0.1.1 ; python_full_version < '3.14'
+sacremoses==0.1.1 ; python_full_version < '3.13'
     # via nemo-toolkit
-safetensors==0.7.0 ; python_full_version < '3.14'
+safetensors==0.8.0 ; python_full_version < '3.14'
     # via
     #   accelerate
     #   peft
@@ -702,6 +681,8 @@ shellingham==1.5.4
     # via typer
 six==1.17.0 ; python_full_version < '3.14'
     # via python-dateutil
+smart-open==7.6.1 ; python_full_version == '3.13.*'
+    # via nemo-toolkit
 smmap==5.0.3 ; python_full_version < '3.14'
     # via gitdb
 sortedcontainers==2.4.0 ; python_full_version < '3.14'
@@ -713,15 +694,15 @@ soundfile==0.13.1 ; python_full_version < '3.14'
     #   lhotse
     #   librosa
     #   nemo-toolkit
-sox==1.5.0 ; python_full_version < '3.14'
+sox==1.5.0 ; python_full_version < '3.13'
     # via nemo-toolkit
 soxr==1.1.0 ; python_full_version < '3.14'
     # via librosa
-sqlalchemy==2.0.50 ; python_full_version < '3.14'
+sqlalchemy==2.0.50 ; python_full_version < '3.13'
     # via
     #   alembic
     #   optuna
-stack-data==0.6.3 ; python_full_version < '3.14'
+stack-data==0.6.3 ; python_full_version < '3.13'
     # via ipython
 standard-aifc==3.13.0 ; python_full_version == '3.13.*'
     # via
@@ -749,6 +730,8 @@ tabulate==0.10.0 ; python_full_version < '3.14'
     #   lhotse
     #   pyannote-metrics
     #   sacrebleu
+tenacity==9.1.4 ; python_full_version == '3.13.*'
+    # via aistore
 tensorboard==2.20.0 ; python_full_version < '3.14'
     # via nemo-toolkit
 tensorboard-data-server==0.7.2 ; python_full_version < '3.14'
@@ -761,7 +744,7 @@ texterrors==0.5.1 ; python_full_version < '3.13'
     # via nemo-toolkit
 threadpoolctl==3.6.0 ; python_full_version < '3.14'
     # via scikit-learn
-tokenizers==0.22.2 ; python_full_version < '3.14'
+tokenizers==0.23.1 ; python_full_version < '3.14'
     # via transformers
 toml==0.10.2 ; python_full_version == '3.13.*'
     # via nv-one-logger-core
@@ -795,21 +778,17 @@ tqdm==4.67.3 ; python_full_version < '3.14'
     #   pytorch-lightning
     #   sacremoses
     #   transformers
-traitlets==5.15.0 ; python_full_version < '3.14'
+traitlets==5.15.0 ; python_full_version < '3.13'
     # via
     #   ipython
     #   matplotlib-inline
-transformers==4.57.6 ; python_full_version == '3.13.*'
-    # via
-    #   nemo-toolkit
-    #   peft
-transformers==5.9.0 ; python_full_version < '3.13'
+transformers==5.16.1 ; python_full_version < '3.14'
     # via
     #   nemo-toolkit
     #   peft
 triton==3.7.0 ; python_full_version < '3.14' and sys_platform == 'linux'
     # via torch
-typeguard==4.5.2 ; python_full_version < '3.14'
+typeguard==4.5.2 ; python_full_version < '3.13'
     # via inflect
 typer==0.26.3
     # via
@@ -857,6 +836,7 @@ tzdata==2026.2 ; (python_full_version < '3.14' and sys_platform == 'emscripten')
     # via pandas
 urllib3==2.7.0
     # via
+    #   aistore
     #   requests
     #   sentry-sdk
 uvicorn==0.48.0
@@ -870,7 +850,7 @@ wandb==0.27.0 ; python_full_version < '3.14'
     # via nemo-toolkit
 watchfiles==1.2.0
     # via uvicorn
-wcwidth==0.7.0 ; python_full_version < '3.14'
+wcwidth==0.7.0 ; python_full_version < '3.13'
     # via prompt-toolkit
 webdataset==1.0.2 ; python_full_version < '3.14'
     # via nemo-toolkit
@@ -878,15 +858,19 @@ websockets==16.0
     # via uvicorn
 werkzeug==3.1.8 ; python_full_version < '3.14'
     # via tensorboard
-wget==3.2 ; python_full_version < '3.14'
+wget==3.2 ; python_full_version < '3.13'
     # via nemo-toolkit
 whisper-normalizer==0.1.12 ; python_full_version == '3.13.*'
     # via nemo-toolkit
 win32-setctime==1.2.0 ; python_full_version < '3.13' and sys_platform == 'win32'
     # via loguru
 wrapt==2.2.1 ; python_full_version < '3.14'
-    # via nemo-toolkit
+    # via
+    #   nemo-toolkit
+    #   smart-open
 xxhash==3.7.0 ; python_full_version < '3.14'
-    # via datasets
+    # via
+    #   aistore
+    #   datasets
 yarl==1.24.2 ; python_full_version < '3.13'
     # via aiohttp

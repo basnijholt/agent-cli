@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import asyncio
 import shutil
 import struct
-from unittest.mock import MagicMock, patch
+import sys
+from pathlib import Path
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -78,26 +81,71 @@ def test_convert_audio_arguments() -> None:
         assert "s16le" in cmd
 
 
-def test_convert_audio_to_wav_arguments() -> None:
+@pytest.mark.asyncio
+async def test_convert_audio_to_wav_arguments() -> None:
     """Regression test: WAV conversion should produce a PCM WAV container."""
     with (
         patch("shutil.which", return_value="/usr/bin/ffmpeg"),
-        patch("subprocess.run") as mock_run,
+        patch("asyncio.create_subprocess_exec") as mock_run,
         patch("pathlib.Path.read_bytes", return_value=b"wav_data"),
         patch("shutil.rmtree"),
     ):
-        mock_run.return_value = MagicMock(returncode=0, stdout=b"", stderr=b"")
+        mock_run.return_value = MagicMock(
+            returncode=0, communicate=AsyncMock(return_value=(None, b""))
+        )
 
-        converted = audio_format.convert_audio_to_wav_format(b"input_data", "test.mp3")
+        converted = await audio_format.convert_audio_to_wav_format(b"input_data", "test.mp3")
 
         assert converted == b"wav_data"
         args, kwargs = mock_run.call_args
-        assert kwargs.get("text") is False
-        cmd = args[0]
+        assert kwargs["stderr"] == asyncio.subprocess.PIPE
+        cmd = args
         assert cmd[0] == "ffmpeg"
         assert "-acodec" in cmd
         assert "pcm_s16le" in cmd
         assert "-f" not in cmd
+
+
+@pytest.mark.parametrize("cancel", [False, True], ids=["timeout", "cancellation"])
+@pytest.mark.asyncio
+async def test_wav_conversion_stops_process_and_removes_files(
+    monkeypatch: pytest.MonkeyPatch, cancel: bool
+) -> None:
+    """Timed-out or cancelled requests must reap FFmpeg before removing its files."""
+    spawn = asyncio.create_subprocess_exec
+    started = asyncio.Event()
+    processes: list[asyncio.subprocess.Process] = []
+    directories: list[Path] = []
+
+    async def start_process(*args: str, stdout: int, stderr: int) -> asyncio.subprocess.Process:
+        directories.append(Path(args[-1]).parent)
+        process = await spawn(
+            sys.executable, "-c", "import time; time.sleep(60)", stdout=stdout, stderr=stderr
+        )
+        processes.append(process)
+        started.set()
+        return process
+
+    monkeypatch.setattr("shutil.which", lambda _name: "ffmpeg")
+    monkeypatch.setattr(asyncio, "create_subprocess_exec", start_process)
+    task = asyncio.create_task(
+        audio_format.convert_audio_to_wav_format(b"input", "voice.m4a", timeout=1),
+    )
+    try:
+        await asyncio.wait_for(started.wait(), timeout=1)
+        assert directories[0].exists()
+        if cancel:
+            task.cancel()
+        error = asyncio.CancelledError if cancel else RuntimeError
+        with pytest.raises(error):
+            await task
+        assert processes[0].returncode is not None
+        assert not directories[0].exists()
+    finally:
+        for process in processes:
+            if process.returncode is None:
+                process.kill()
+                await process.communicate()
 
 
 def test_convert_audio_integration(sample_wav_data: bytes) -> None:

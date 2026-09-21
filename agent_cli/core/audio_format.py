@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import io
 import logging
 import shutil
@@ -152,13 +153,13 @@ def convert_audio_to_wyoming_format(
             output_path.unlink(missing_ok=True)
 
 
-def convert_audio_to_wav_format(
+async def convert_audio_to_wav_format(
     audio_data: bytes,
     source_filename: str,
     *,
-    timeout: int | None = 60,
+    timeout: int | None = 60,  # noqa: ASYNC109 - bounds and cleans up the child process
 ) -> bytes:
-    """Convert audio data to a 16kHz mono 16-bit PCM WAV container using FFmpeg."""
+    """Convert to 16kHz mono 16-bit WAV, stopping FFmpeg on cancellation or timeout."""
     if not shutil.which("ffmpeg"):
         msg = "FFmpeg not found in PATH. Please install FFmpeg to convert audio formats."
         raise RuntimeError(msg)
@@ -185,20 +186,23 @@ def convert_audio_to_wav_format(
         ]
 
         logger.debug("Running FFmpeg WAV conversion: %s", " ".join(cmd))
+        process = await asyncio.create_subprocess_exec(
+            *cmd,
+            stdout=asyncio.subprocess.DEVNULL,
+            stderr=asyncio.subprocess.PIPE,
+        )
         try:
-            result = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=False,
-                check=False,
-                timeout=timeout,
-            )
-        except subprocess.TimeoutExpired as e:
+            _, stderr = await asyncio.wait_for(process.communicate(), timeout=timeout)
+        except TimeoutError as e:
             msg = f"FFmpeg conversion timed out after {timeout} seconds"
             raise RuntimeError(msg) from e
+        finally:
+            if process.returncode is None:
+                process.kill()
+                await process.communicate()
 
-        if result.returncode != 0:
-            stderr_text = result.stderr.decode("utf-8", errors="replace")
+        if process.returncode != 0:
+            stderr_text = (stderr or b"").decode("utf-8", errors="replace")
             logger.error("FFmpeg WAV conversion failed: %s", stderr_text)
             msg = f"FFmpeg WAV conversion failed: {stderr_text}"
             raise RuntimeError(msg)

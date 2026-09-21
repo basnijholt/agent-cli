@@ -99,6 +99,11 @@ agent-cli daemon uninstall --all
 # Install whisper as a background daemon
 agent-cli daemon install whisper
 
+# Install Qwen3-ASR through the Transformers backend
+agent-cli daemon install whisper -- \
+  --backend transformers \
+  --model Qwen/Qwen3-ASR-1.7B-hf
+
 # Install whisper with custom server args
 agent-cli daemon install whisper -- --model small --port 10311
 

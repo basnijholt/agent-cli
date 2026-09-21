@@ -151,11 +151,19 @@ class SpeakerDiarizer:
         self.min_speakers = min_speakers
         self.max_speakers = max_speakers
 
-    def diarize(self, audio_path: Path) -> list[DiarizedSegment]:
+    def diarize(
+        self,
+        audio_path: Path,
+        *,
+        min_speakers: int | None = None,
+        max_speakers: int | None = None,
+    ) -> list[DiarizedSegment]:
         """Run diarization on audio file, return speaker segments.
 
         Args:
             audio_path: Path to the audio file (WAV format recommended).
+            min_speakers: Per-call hint, falling back to the constructor default.
+            max_speakers: Per-call hint, falling back to the constructor default.
 
         Returns:
             List of DiarizedSegment with speaker labels and timestamps.
@@ -163,10 +171,12 @@ class SpeakerDiarizer:
         """
         # Build kwargs for speaker count hints
         kwargs: dict[str, int] = {}
-        if self.min_speakers is not None:
-            kwargs["min_speakers"] = self.min_speakers
-        if self.max_speakers is not None:
-            kwargs["max_speakers"] = self.max_speakers
+        minimum = self.min_speakers if min_speakers is None else min_speakers
+        maximum = self.max_speakers if max_speakers is None else max_speakers
+        if minimum is not None:
+            kwargs["min_speakers"] = minimum
+        if maximum is not None:
+            kwargs["max_speakers"] = maximum
 
         # Pre-load audio to avoid torchcodec/FFmpeg issues
         waveform, sample_rate = _load_audio_for_diarization(audio_path)

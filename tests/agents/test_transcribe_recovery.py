@@ -751,7 +751,11 @@ def test_transcribe_command_last_recording_disabled(
         patch("agent_cli.agents.transcribe._async_main", new_callable=AsyncMock) as mock_async_main,
         patch("agent_cli.core.process.pid_file_context") as mock_pid_context,
     ):
-        mock_async_main.return_value = {}
+        mock_async_main.return_value = {
+            "raw_transcript": "hello",
+            "transcript": "hello",
+            "llm_enabled": False,
+        }
 
         # Call transcribe with --last-recording disabled (0)
         transcribe.transcribe(
