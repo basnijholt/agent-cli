@@ -46,7 +46,7 @@ from agent_cli.agents._voice_agent_common import (
 )
 from agent_cli.cli import app
 from agent_cli.core import process
-from agent_cli.core.audio import setup_devices
+from agent_cli.core.audio import AudioLevelLogWriter, setup_devices
 from agent_cli.core.deps import requires_extras
 from agent_cli.core.utils import (
     enable_json_mode,
@@ -106,6 +106,7 @@ async def _async_main(
     openai_tts_cfg: config.OpenAITTS,
     kokoro_tts_cfg: config.KokoroTTS,
     gemini_tts_cfg: config.GeminiTTS,
+    audio_level_log: Path | None = None,
 ) -> str | None:
     """Core asynchronous logic for the voice assistant."""
     device_info = setup_devices(general_cfg, audio_in_cfg, audio_out_cfg)
@@ -114,6 +115,7 @@ async def _async_main(
     input_device_index, _, tts_output_device_index = device_info
     audio_in_cfg.input_device_index = input_device_index
     audio_out_cfg.output_device_index = tts_output_device_index
+    audio_level_writer = AudioLevelLogWriter(audio_level_log) if audio_level_log else None
 
     original_text = get_clipboard_text()
     if original_text is None:
@@ -132,6 +134,7 @@ async def _async_main(
             LOGGER,
             live=live,
             quiet=general_cfg.quiet,
+            audio_level_callback=audio_level_writer.write_chunk if audio_level_writer else None,
         )
 
         if not audio_data:
@@ -226,6 +229,7 @@ def voice_edit(
     list_devices: bool = opts.LIST_DEVICES,
     quiet: bool = opts.QUIET,
     json_output: bool = opts.JSON_OUTPUT,
+    voice_level_log: Path | None = opts.VOICE_LEVEL_LOG,
     config_file: str | None = opts.CONFIG_FILE,
     print_args: bool = opts.PRINT_ARGS,
 ) -> None:
@@ -255,6 +259,9 @@ def voice_edit(
         enable_json_mode()
 
     setup_logging(log_level, log_file, quiet=effective_quiet)
+    voice_level_log = getattr(voice_level_log, "default", voice_level_log)
+    if voice_level_log:
+        voice_level_log = voice_level_log.expanduser()
     general_cfg = config.General(
         log_level=log_level,
         log_file=log_file,
@@ -293,6 +300,7 @@ def voice_edit(
                 openai_tts_cfg=cfgs.openai_tts,
                 kokoro_tts_cfg=cfgs.kokoro_tts,
                 gemini_tts_cfg=cfgs.gemini_tts,
+                audio_level_log=voice_level_log,
             ),
         )
         if json_output:

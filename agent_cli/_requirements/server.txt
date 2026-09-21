@@ -6,17 +6,17 @@ annotated-doc==0.0.4
     #   typer
 annotated-types==0.7.0
     # via pydantic
-anyio==4.12.1
+anyio==4.13.0
     # via
     #   httpx
     #   starlette
     #   watchfiles
-certifi==2026.1.4
+certifi==2026.5.20
     # via
     #   httpcore
     #   httpx
     #   sentry-sdk
-click==8.3.1
+click==8.4.1
     # via
     #   rich-toolkit
     #   uvicorn
@@ -25,6 +25,8 @@ colorama==0.4.6 ; sys_platform == 'win32'
     #   click
     #   typer
     #   uvicorn
+detect-installer==0.1.0
+    # via fastapi-cloud-cli
 dnspython==2.8.0
     # via email-validator
 dotenv==0.9.9
@@ -33,88 +35,90 @@ email-validator==2.3.0
     # via
     #   fastapi
     #   pydantic
-fastapi==0.128.0
+fastapi==0.136.3
     # via agent-cli
-fastapi-cli==0.0.20
+fastapi-cli==0.0.24
     # via fastapi
-fastapi-cloud-cli==0.10.1
+fastapi-cloud-cli==0.18.0
     # via fastapi-cli
-fastar==0.8.0
-    # via fastapi-cloud-cli
+fastar==0.11.0
+    # via
+    #   fastapi
+    #   fastapi-cloud-cli
 h11==0.16.0
     # via
     #   httpcore
     #   uvicorn
 httpcore==1.0.9
     # via httpx
-httptools==0.7.1
+httptools==0.8.0
     # via uvicorn
 httpx==0.28.1
     # via
     #   agent-cli
     #   fastapi
     #   fastapi-cloud-cli
-idna==3.11
+idna==3.17
     # via
     #   anyio
     #   email-validator
     #   httpx
 jinja2==3.1.6
     # via fastapi
-markdown-it-py==4.0.0
+markdown-it-py==4.2.0
     # via rich
 markupsafe==3.0.3
     # via jinja2
 mdurl==0.1.2
     # via markdown-it-py
-psutil==7.2.1 ; sys_platform == 'win32'
+psutil==7.2.2 ; sys_platform == 'win32'
     # via agent-cli
-pydantic==2.12.5
+pydantic==2.13.4
     # via
     #   agent-cli
     #   fastapi
     #   fastapi-cloud-cli
     #   pydantic-extra-types
     #   pydantic-settings
-pydantic-core==2.41.5
+pydantic-core==2.46.4
     # via pydantic
-pydantic-extra-types==2.11.0
+pydantic-extra-types==2.11.1
     # via fastapi
-pydantic-settings==2.12.0
+pydantic-settings==2.14.1
     # via fastapi
-pygments==2.19.2
+pygments==2.20.0
     # via rich
 pyperclip==1.11.0
     # via agent-cli
-python-dotenv==1.2.1
+python-dotenv==1.2.2
     # via
     #   dotenv
     #   pydantic-settings
     #   uvicorn
-python-multipart==0.0.21
+python-multipart==0.0.29
     # via fastapi
 pyyaml==6.0.3
     # via uvicorn
-rich==14.2.0
+rich==15.0.0
     # via
     #   agent-cli
     #   rich-toolkit
     #   typer
-rich-toolkit==0.17.1
+rich-toolkit==0.19.10
     # via
     #   fastapi-cli
     #   fastapi-cloud-cli
 rignore==0.7.6
     # via fastapi-cloud-cli
-sentry-sdk==2.49.0
+sentry-sdk==2.61.0
     # via fastapi-cloud-cli
 setproctitle==1.3.7
     # via agent-cli
 shellingham==1.5.4
     # via typer
-starlette==0.50.0
+starlette==1.2.0
     # via fastapi
-typer==0.26.2
+typer==0.26.3
     # via
     #   agent-cli
     #   fastapi-cli
@@ -131,18 +135,19 @@ typing-extensions==4.15.0
     #   typing-inspection
 typing-inspection==0.4.2
     # via
+    #   fastapi
     #   pydantic
     #   pydantic-settings
-urllib3==2.3.0
+urllib3==2.7.0
     # via sentry-sdk
-uvicorn==0.40.0
+uvicorn==0.48.0
     # via
     #   fastapi
     #   fastapi-cli
     #   fastapi-cloud-cli
 uvloop==0.22.1 ; platform_python_implementation != 'PyPy' and sys_platform != 'cygwin' and sys_platform != 'win32'
     # via uvicorn
-watchfiles==1.1.1
+watchfiles==1.2.0
     # via uvicorn
-websockets==15.0.1
+websockets==16.0
     # via uvicorn

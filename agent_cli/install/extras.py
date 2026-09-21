@@ -27,8 +27,8 @@ def install_extras(
         list[str] | None,
         typer.Argument(
             help="Extras to install: `audio`, `diarization`, `faster-whisper`, `kokoro`, "
-            "`llm`, `memory`, `mlx-whisper`, `piper`, `rag`, `server`, `speed`, `vad`, "
-            "`vectordb`, `whisper-transformers`, `wyoming`",
+            "`llm`, `memory`, `mlx-whisper`, `nemo-whisper`, `piper`, `rag`, `server`, `speed`, "
+            "`vad`, `vectordb`, `whisper-transformers`, `wyoming`",
         ),
     ] = None,
     list_extras: Annotated[
@@ -58,6 +58,7 @@ def install_extras(
     - `llm` - LLM framework (pydantic-ai)
     - `memory` - Long-term memory proxy
     - `mlx-whisper` - Whisper ASR for Apple Silicon
+    - `nemo-whisper` - Whisper-compatible ASR via NVIDIA NeMo (Parakeet)
     - `piper` - Piper TTS (CPU)
     - `rag` - RAG proxy (ChromaDB, embeddings)
     - `server` - FastAPI server components

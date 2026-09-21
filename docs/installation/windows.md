@@ -32,7 +32,7 @@ The fastest way to get started - no local services needed:
 powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
 
 # Install agent-cli
-uv tool install agent-cli -p 3.13
+uv tool install agent-cli
 
 # Use with cloud providers (requires API keys)
 $env:OPENAI_API_KEY = "sk-..."
@@ -93,7 +93,7 @@ If you prefer manual setup:
 3. **Install agent-cli:**
 
    ```powershell
-   uv tool install agent-cli -p 3.13
+   uv tool install agent-cli
    ```
 
 4. **Run services individually:**

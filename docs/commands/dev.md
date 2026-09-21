@@ -78,7 +78,7 @@ agent-cli dev new [BRANCH] [OPTIONS]
 | `--agent` | - | Which AI agent to start: claude, codex, gemini, aider, copilot, cn (Continue), opencode, cursor-agent, or auto. Implies starting the agent |
 | `--with-editor` | - | Which editor to open: cursor, vscode, zed, nvim, vim, emacs, sublime, idea, pycharm, etc. |
 | `--setup/--no-setup` | `true` | Run project setup after creation: npm/pnpm/yarn install, poetry/uv sync, cargo build, etc. Auto-detects project type |
-| `--copy-env/--no-copy-env` | `true` | Copy .env, .env.local, .env.example from main repo to worktree |
+| `--copy-env/--no-copy-env` | `true` | Copy env and local agent instruction files from main repo to worktree |
 | `--fetch/--no-fetch` | `true` | Run 'git fetch' before creating the worktree to ensure refs are up-to-date |
 | `--branch-name-mode` | `random` | How to auto-name branches when BRANCH is omitted: random (default), auto (AI only when --prompt/--prompt-file is set), or ai (always try AI first) |
 | `--branch-name-agent` | - | Headless agent for AI branch naming: claude, codex, or gemini. If omitted, uses --agent when supported, otherwise tries available agents in that order |
@@ -87,8 +87,9 @@ agent-cli dev new [BRANCH] [OPTIONS]
 | `--agent-args` | - | Extra CLI args for the agent. Can be repeated. Example: --agent-args='--dangerously-skip-permissions' |
 | `--prompt, -p` | - | Initial task for the AI agent. Saved to a unique file in .claude/ to avoid conflicts. Implies starting the agent. Example: --prompt='Fix the login bug' |
 | `--prompt-file, -P` | - | Read the agent prompt from a file. Useful for long prompts to avoid shell quoting. Implies starting the agent |
-| `--multiplexer, -m` | - | Launch the agent in a specific multiplexer. Currently supported: tmux. When started outside tmux, creates or reuses a detached session and reports the pane handle |
+| `--multiplexer, -m` | - | Launch the agent in a specific multiplexer. Currently supported: tmux, zellij (zellij requires >= 0.44.0). When started outside the multiplexer, creates or reuses a detached session and reports the tab/pane handle |
 | `--tmux-session` | - | Reuse or create a specific tmux session for the agent. Implies --multiplexer tmux |
+| `--zellij-session` | - | Reuse or create a specific zellij session for the agent. Implies --multiplexer zellij |
 | `--hooks/--no-hooks` | `true` | Run built-in agent preparation (like Codex auto-trust) and configured pre-launch hooks before starting the agent |
 | `--verbose, -v` | `false` | Stream output from setup commands instead of hiding it |
 
@@ -305,8 +306,9 @@ agent-cli dev agent NAME [--agent/-a AGENT] [--agent-args ARGS] [--prompt/-p PRO
 | `--agent-args` | - | Extra CLI args for the agent. Example: --agent-args='--dangerously-skip-permissions' |
 | `--prompt, -p` | - | Initial task for the agent. Saved to a unique file in .claude/ to avoid conflicts. Example: --prompt='Add unit tests for auth' |
 | `--prompt-file, -P` | - | Read the agent prompt from a file instead of command line |
-| `--multiplexer, -m` | - | Launch the agent in a specific multiplexer instead of the current terminal. Currently supported: tmux |
+| `--multiplexer, -m` | - | Launch the agent in a specific multiplexer instead of the current terminal. Currently supported: tmux, zellij (zellij requires >= 0.44.0) |
 | `--tmux-session` | - | Reuse or create a specific tmux session for the agent. Implies --multiplexer tmux |
+| `--zellij-session` | - | Reuse or create a specific zellij session for the agent. Implies --multiplexer zellij |
 | `--hooks/--no-hooks` | `true` | Run built-in agent preparation (like Codex auto-trust) and configured pre-launch hooks before starting the agent |
 
 
@@ -578,6 +580,7 @@ agent-cli dev terminals [OPTIONS]
 |----------|-----------|-----------------|
 | tmux | `TMUX` env var | `tmux new-window -c <path>` |
 | Zellij | `ZELLIJ` env var | `zellij action new-tab --cwd <path>` |
+| cmux | `CMUX_WORKSPACE_ID` env var | `cmux new-surface` in a workspace named after the repo (created on demand) |
 | Kitty | `KITTY_WINDOW_ID` | `kitten @ launch --type=tab` |
 | iTerm2 | `ITERM_SESSION_ID` | AppleScript |
 | Terminal.app | `TERM_PROGRAM=Apple_Terminal` | AppleScript + System Events * |
@@ -603,7 +606,7 @@ direnv = true          # Always generate .envrc (--direnv)
 
 # Worktree creation behavior
 setup = true           # Run project setup (npm install, etc.)
-copy_env = true        # Copy .env files from main repo
+copy_env = true        # Copy env and local agent instruction files
 fetch = true           # Git fetch before creating
 
 # Branch naming behavior when BRANCH argument is omitted
@@ -699,7 +702,7 @@ git lfs pull
 
 This ensures large files tracked by LFS are available in the worktree.
 
-### Environment Files
+### Local Setup Files
 
 The following files are automatically copied to new dev environments:
 
@@ -707,6 +710,11 @@ The following files are automatically copied to new dev environments:
 - `.env.local`
 - `.env.example`
 - `.envrc`
+- `AGENTS.local.md`
+- `CLAUDE.local.md`
+
+If the target branch already contains either local agent instruction file,
+its checked-out version is preserved.
 
 Use `--no-copy-env` to skip this.
 

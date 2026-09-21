@@ -2,15 +2,14 @@
 
 from __future__ import annotations
 
-import hashlib
 import os
-import re
+import shlex
 import shutil
 import subprocess
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from .base import Terminal, TerminalHandle
+from .base import Multiplexer, TerminalHandle, subprocess_error_text
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -44,7 +43,7 @@ class TmuxCleanupResult:
     errors: tuple[str, ...] = ()
 
 
-class Tmux(Terminal):
+class Tmux(Multiplexer):
     """tmux - Terminal multiplexer."""
 
     name = "tmux"
@@ -58,11 +57,9 @@ class Tmux(Terminal):
         """Check if tmux is available."""
         return shutil.which("tmux") is not None
 
-    def session_name_for_repo(self, repo_root: Path) -> str:
-        """Build a deterministic tmux-safe session name for a repo."""
-        repo_slug = re.sub(r"[^A-Za-z0-9_-]+", "-", repo_root.name).strip("-") or "repo"
-        repo_hash = hashlib.sha256(str(repo_root).encode()).hexdigest()[:8]
-        return f"agent-cli-{repo_slug[:24]}-{repo_hash}"
+    def attach_command(self, session_name: str) -> str:
+        """Shell command a user can run to attach to a tmux session."""
+        return f"tmux attach -t {shlex.quote(session_name)}"
 
     def current_session_name(self) -> str | None:
         """Get the current tmux session name."""
@@ -156,7 +153,7 @@ class Tmux(Terminal):
             if self._is_server_unavailable_error(e):
                 return TmuxInventory()
             return TmuxInventory(
-                error=f"Failed to inspect tmux windows for {normalized_path}: {self._error_text(e)}",
+                error=f"Failed to inspect tmux windows for {normalized_path}: {subprocess_error_text(e)}",
             )
 
         windows: list[TmuxWindow] = []
@@ -208,7 +205,7 @@ class Tmux(Terminal):
             except subprocess.CalledProcessError as e:
                 errors.append(
                     "Failed to kill tmux window "
-                    f"{window.window_id} in session {window.session_name}: {self._error_text(e)}",
+                    f"{window.window_id} in session {window.session_name}: {subprocess_error_text(e)}",
                 )
                 continue
             killed_windows.append(window)
@@ -305,13 +302,6 @@ class Tmux(Terminal):
     def _normalize_worktree_path(path: Path) -> str:
         """Normalize a worktree path for tmux window tagging and lookup."""
         return str(path.resolve(strict=False))
-
-    @staticmethod
-    def _error_text(exc: subprocess.CalledProcessError) -> str:
-        """Extract a useful stderr/stdout payload from a tmux subprocess error."""
-        stderr = exc.stderr.strip() if exc.stderr else ""
-        stdout = exc.stdout.strip() if exc.stdout else ""
-        return stderr or stdout or str(exc)
 
     @staticmethod
     def _is_server_unavailable_error(exc: subprocess.CalledProcessError) -> bool:

@@ -1,0 +1,206 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
+    <channel>
+        <title>Agent CLI Updates</title>
+        <link>https://github.com/basnijholt/agent-cli</link>
+        <description>Signed Agent CLI macOS app updates.</description>
+        <item>
+            <title>0.107.0</title>
+            <pubDate>Mon, 21 Sep 2026 18:53:01 +0000</pubDate>
+            <link>https://github.com/basnijholt/agent-cli</link>
+            <sparkle:version>208</sparkle:version>
+            <sparkle:shortVersionString>0.107.0</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[## Features
+
+- **See transcription progress after releasing the key.** The macOS overlay stays visible with a blue spinner and “Transcribing…” label until the request completes or fails. A separate MM:SS timer shows elapsed transcription time, starting from zero when processing begins. (#651)
+- **A fuller recording waveform.** The recording timer sits closer to the left edge, and wider, taller waveform bars fill the remaining pill space. (#651)
+
+## Bug fixes
+
+- Keep the transcription pill compact after live-preview recordings, and restore the preview layout if a failed toggle-stop request returns to recording. (#651)
+- Preserve overlay visibility across overlapping recording and transcription activity. Ignore duplicate recording-completion events so they cannot stop another active recording indicator. (#651)
+
+**Full changelog:** https://github.com/basnijholt/agent-cli/compare/v0.106.0...v0.107.0
+
+]]></description>
+            <enclosure url="https://github.com/basnijholt/agent-cli/releases/download/v0.107.0/AgentCLI.zip" length="18871107" type="application/octet-stream" sparkle:edSignature="NBfAeYMwnrVy3ageqaHEyepstJ6EBHI6tJgwqf3UrdOH0u8zEx0pWWuKzNgv+Tq2Uu2rn6PMeiUSfuUpHl8WCw=="/>
+        </item>
+        <item>
+            <title>0.106.0</title>
+            <pubDate>Mon, 21 Sep 2026 16:57:54 +0000</pubDate>
+            <link>https://github.com/basnijholt/agent-cli</link>
+            <sparkle:version>207</sparkle:version>
+            <sparkle:shortVersionString>0.106.0</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[## Features
+
+- **Know when recording really starts.** The macOS overlay now shows an amber “Connecting…” indicator while capture starts, then a green waveform once audio arrives. If audio samples stop arriving, it switches to “Waiting for audio…”. Silence still counts as active recording. (#650)
+- **See elapsed recording time.** A compact MM:SS timer sits beside the waveform. It starts with the first audio sample, excludes connection delay, and resets for each recording. (#650)
+
+## Fixes
+
+- **No more false success for empty transcriptions.** Empty or whitespace-only results now produce a clear error with recovery guidance instead of “Transcription Finished” and an empty paste. The macOS check also covers older user-installed CLI versions. (#649)
+- **Keep recognized speech when cleanup fails.** If LLM cleanup returns blank text, the CLI preserves the raw transcription on the clipboard and identifies cleanup as the failed step. Empty speech-recognition results leave the clipboard unchanged. (#649)
+
+## Maintenance
+
+- Update Docker build actions and Codecov integration. (#645, #646, #647, #648)
+
+**Full changelog:** https://github.com/basnijholt/agent-cli/compare/v0.105.2...v0.106.0
+
+]]></description>
+            <enclosure url="https://github.com/basnijholt/agent-cli/releases/download/v0.106.0/AgentCLI.zip" length="18866625" type="application/octet-stream" sparkle:edSignature="yrWDCZXck8LWQYTTdtjMI4rk9cqUtHaxL0zHi6nJl4MZWx6pkkU3u5PqULflm3GkMPfwisscZlX6E21H2JxHAg=="/>
+        </item>
+        <item>
+            <title>0.105.2</title>
+            <pubDate>Tue, 15 Sep 2026 07:58:55 +0000</pubDate>
+            <link>https://github.com/basnijholt/agent-cli</link>
+            <sparkle:version>206</sparkle:version>
+            <sparkle:shortVersionString>0.105.2</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[## Bug fixes
+
+- Accept M4A, OGG, MP3, and other FFmpeg-supported uploads in the Transformers ASR backend. Transformers and NeMo now share audio preparation, with invalid input reported as HTTP 400. (#644)
+- Normalize stereo, non-16-bit, and non-16 kHz WAV uploads before WAV-only ASR backends read them, preventing incorrect sample interpretation. Standard 16 kHz mono 16-bit WAV uploads pass through unchanged. (#644)
+- Stop FFmpeg conversions when requests are cancelled or conversion times out, then clean up temporary files. Faster-whisper retains native compressed-audio decoding without a system FFmpeg dependency. (#644)
+
+**Full changelog:** https://github.com/basnijholt/agent-cli/compare/v0.105.1...v0.105.2
+
+]]></description>
+            <enclosure url="https://github.com/basnijholt/agent-cli/releases/download/v0.105.2/AgentCLI.zip" length="18490908" type="application/octet-stream" sparkle:edSignature="DQiGmgOiPGeI4S/4tQdoA7mgsAlgN3qHh2Z4SyLpN70Tv/qr7MjBNM1r+FPn6gYdRYhaaK/XcKfWaX01H8F0Bw=="/>
+        </item>
+        <item>
+            <title>0.105.1</title>
+            <pubDate>Tue, 08 Sep 2026 13:10:30 +0000</pubDate>
+            <link>https://github.com/basnijholt/agent-cli</link>
+            <sparkle:version>205</sparkle:version>
+            <sparkle:shortVersionString>0.105.1</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[## Bug fixes
+
+- Release unused CUDA cache after each transcription in the transformers ASR backend, keeping model weights loaded for the next request. Long recordings no longer leave their peak temporary GPU allocation reserved throughout the idle timeout. In a Qwen3-ASR test, idle process VRAM dropped from 10.89 GiB to 4.13 GiB. (#642)
+- Clear temporary tensor references held by failed-request tracebacks, including chained and grouped exceptions, before releasing CUDA cache. CPU and MPS behavior is unchanged. (#642)
+
+**Full changelog:** https://github.com/basnijholt/agent-cli/compare/v0.105.0...v0.105.1
+
+]]></description>
+            <enclosure url="https://github.com/basnijholt/agent-cli/releases/download/v0.105.1/AgentCLI.zip" length="18455354" type="application/octet-stream" sparkle:edSignature="vZqacIut3YOxE/I4mgUeHiI9jviHLgzymE3jK8R7aLEooAPZhNqkzxTFpB95iWShRRWfR8lf9T4ztVFs0EHUDw=="/>
+        </item>
+        <item>
+            <title>0.105.0</title>
+            <pubDate>Tue, 08 Sep 2026 10:29:52 +0000</pubDate>
+            <link>https://github.com/basnijholt/agent-cli</link>
+            <sparkle:version>204</sparkle:version>
+            <sparkle:shortVersionString>0.105.0</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[## What’s Changed
+
+* Prevent Qwen long-audio truncation (#641) @basnijholt
+* Publish diarization Docker image (#640) @basnijholt
+
+]]></description>
+            <enclosure url="https://github.com/basnijholt/agent-cli/releases/download/v0.105.0/AgentCLI.zip" length="18454913" type="application/octet-stream" sparkle:edSignature="Z3253GuNAV6GC2V4Qib0Bm7m8bSdlWHPiXeHIZNa06qAJaY+qRXzrSPRyT8iZW5GnkZOJHciIbqvkkoJ9/DoCw=="/>
+        </item>
+        <item>
+            <title>0.104.0</title>
+            <pubDate>Mon, 07 Sep 2026 21:38:19 +0000</pubDate>
+            <link>https://github.com/basnijholt/agent-cli</link>
+            <sparkle:version>203</sparkle:version>
+            <sparkle:shortVersionString>0.104.0</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[## What’s Changed
+
+* Add speaker diarization API and Docker image (#639) @basnijholt
+* Fix Docker image publishing and runtime extras (#638) @basnijholt
+* ⬆️ Update actions/deploy-pages action to v5.0.1 (#637) [@renovate[bot]](https://github.com/apps/renovate)
+* ⬆️ Update docker/setup-buildx-action action to v4.3.0 (#635) [@renovate[bot]](https://github.com/apps/renovate)
+
+
+]]></description>
+            <enclosure url="https://github.com/basnijholt/agent-cli/releases/download/v0.104.0/AgentCLI.zip" length="18454336" type="application/octet-stream" sparkle:edSignature="p7BVeR6YS/LBGO61o0xR8GE9beHf+4uaz0c28HrHX4oyWjVZSBgwI6jIjR2Mn23HNLS65CfECbp2NSJoIc+ABw=="/>
+        </item>
+        <item>
+            <title>0.103.0</title>
+            <pubDate>Tue, 01 Sep 2026 19:34:50 +0000</pubDate>
+            <link>https://github.com/basnijholt/agent-cli</link>
+            <sparkle:version>202</sparkle:version>
+            <sparkle:shortVersionString>0.103.0</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[## What’s Changed
+
+* feat(whisper): add Qwen3-ASR daemon support (#636) @basnijholt
+
+]]></description>
+            <enclosure url="https://github.com/basnijholt/agent-cli/releases/download/v0.103.0/AgentCLI.zip" length="18564995" type="application/octet-stream" sparkle:edSignature="grYFD0bw+V3WZ53hL+W2KNkkeeTRjJO5HXvC3/ETUl+cGRoxG1K93xJxiUe10yzCy9msJIqlKz/JMw/y6mtSDw=="/>
+        </item>
+        <item>
+            <title>0.102.4</title>
+            <pubDate>Thu, 13 Aug 2026 21:23:13 +0000</pubDate>
+            <link>https://github.com/basnijholt/agent-cli</link>
+            <sparkle:version>201</sparkle:version>
+            <sparkle:shortVersionString>0.102.4</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[## What’s Changed
+
+* Fix quadratic Wyoming audio buffering (#634) @basnijholt, [@pre-commit-ci[bot]](https://github.com/apps/pre-commit-ci)
+* [pre-commit.ci] pre-commit autoupdate (#627) [@pre-commit-ci[bot]](https://github.com/apps/pre-commit-ci), [@github-actions[bot]](https://github.com/apps/github-actions)
+
+## What's Changed
+* [pre-commit.ci] pre-commit autoupdate by @pre-commit-ci[bot] in https://github.com/basnijholt/agent-cli/pull/627
+* Fix quadratic Wyoming audio buffering by @basnijholt in https://github.com/basnijholt/agent-cli/pull/634
+
+
+**Full Changelog**: https://github.com/basnijholt/agent-cli/compare/v0.102.3...v0.102.4
+]]></description>
+            <enclosure url="https://github.com/basnijholt/agent-cli/releases/download/v0.102.4/AgentCLI.zip" length="20511224" type="application/octet-stream" sparkle:edSignature="Sk10Ka432Bkg/joGZR0VdmhY8qBwz4PX3zXhRNYGt8sYb0S3TuT8EPBad8KAaaoJ0lUZPzqcOq+LeP30f3C6Aw=="/>
+        </item>
+        <item>
+            <title>0.102.3</title>
+            <pubDate>Mon, 27 Jul 2026 16:39:21 +0000</pubDate>
+            <link>https://github.com/basnijholt/agent-cli</link>
+            <sparkle:version>200</sparkle:version>
+            <sparkle:shortVersionString>0.102.3</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[## What’s Changed
+
+* Copy local agent instructions into dev worktrees (#626) @basnijholt
+* ⬆️ Update actions/setup-python action to v7 (#615) [@renovate[bot]](https://github.com/apps/renovate)
+* ⬆️ Update astral-sh/setup-uv action to v9 (#618) [@renovate[bot]](https://github.com/apps/renovate)
+
+]]></description>
+            <enclosure url="https://github.com/basnijholt/agent-cli/releases/download/v0.102.3/AgentCLI.zip" length="24330021" type="application/octet-stream" sparkle:edSignature="H5CMNeeXWbrvg2BgAHnoYuoOX6dzLCUJpjock6YE6xPqsJvsIrkMABiEuxRbKAGWuf17P4KOGktodhyWj1IODw=="/>
+        </item>
+        <item>
+            <title>0.102.2</title>
+            <pubDate>Sat, 25 Jul 2026 20:18:46 +0000</pubDate>
+            <link>https://github.com/basnijholt/agent-cli</link>
+            <sparkle:version>199</sparkle:version>
+            <sparkle:shortVersionString>0.102.2</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[## Bug fixes
+
+- **MLX Whisper: stop unbounded memory growth under `--ttl 0`** (#620). The long-lived transcription subprocess never released MLX's reusable Metal buffer cache, so it ratcheted up to the largest working set ever seen and eventually got pushed to swap — one deployment reached a 17.1 GB physical footprint for a 2.9 GB model, with a 5.2s clip degrading from ~2.0s to ~5.2s. The backend now calls `mx.clear_cache()` after each request, including on failure. Only the reusable cache is freed, not live arrays, so model weights stay resident and inference stays hot; measured cost is ~7.6 ms per request (~0.3%).
+
+- **Require `mlx>=0.24` for the `mlx-whisper` extra** (#620). The top-level `mx.clear_cache()` does not exist before mlx 0.24 — 0.23.2 and older only expose the deprecated `mx.metal.clear_cache()` — and `mlx-whisper` itself only requires `mlx>=0.11`. Without the floor, an environment resolving an older mlx would raise `AttributeError` on every transcription.
+
+## Internal
+
+- Pin `uv` in the `uv-lock` and `sync-requirements` pre-commit hooks so the generated `agent_cli/_requirements/*.txt` files depend on the config rather than on how fresh each contributor's hook cache is (#620).
+- Render the shared consoles without colour during tests (#625).
+- Drop the broken Homebrew tap dispatch from the release workflow (#623).
+]]></description>
+            <enclosure url="https://github.com/basnijholt/agent-cli/releases/download/v0.102.2/AgentCLI.zip" length="24329779" type="application/octet-stream" sparkle:edSignature="CeWZFIPSDJSiO8iQbm46QDRet3IYvIvgL4qSyYdDmwlTlkhV66IaXp05Wt04+xLBKTJcAv9333tA9n8BZ9IvBQ=="/>
+        </item>
+    </channel>
+</rss>

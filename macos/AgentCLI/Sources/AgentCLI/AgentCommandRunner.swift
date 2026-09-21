@@ -26,35 +26,55 @@ final class AgentCommandRunner: ObservableObject {
     @Published var lastOutput = ""
     @Published private(set) var hasLastError = false
     @Published private(set) var isRecording = false
+    @Published private(set) var bootstrapPhase: BootstrapPhase = .idle
     @Published private var activeCommandCount = 0
     private var recordingIndicator = RecordingIndicatorController()
     private let pasteController: TranscriptPasteController
+    private let bootstrap: AgentBootstrap
+    private var activityTracker = MenuActivityTracker()
     private var pendingStopRecordingCommands: Set<String> = []
     private var holdTranscriptionState: HoldTranscriptionState = .idle
     private var holdToTranscribePasteTarget: FocusedTextTarget?
     private var pasteAfterRecordingCommands: Set<String> = []
+    private var hasStartedTranscriptionWarmUp = false
 
     var isRunning: Bool {
         activeCommandCount > 0
     }
 
     var menuStatusMessage: String {
-        if isRecording {
-            return "Recording"
-        }
-        if holdTranscriptionState.isFinishing {
-            return "Transcribing..."
-        }
-        if hasLastError && statusMessage.localizedCaseInsensitiveContains("failed") {
-            return "Last command failed"
-        }
-        return Self.compactMenuStatus(statusMessage)
+        menuActivityStatus.message
     }
 
-    private init(
-        pasteController: TranscriptPasteController = TranscriptPasteController()
+    var menuActivityStatus: MenuActivityStatus {
+        menuActivityStatus(now: Date())
+    }
+
+    func menuActivityStatus(now: Date) -> MenuActivityStatus {
+        if hasLastError && statusMessage.localizedCaseInsensitiveContains("failed") {
+            return activityTracker.status(
+                now: now,
+                fallback: MenuActivityStatus.inactive(message: "Last command failed")
+            )
+        }
+        return activityTracker.status(
+            now: now,
+            fallback: MenuActivityStatus.completed(title: Self.compactMenuStatus(statusMessage))
+        )
+    }
+
+    var menuBarIconState: MenuBarIconState {
+        MenuBarIconState.current(isPreparing: bootstrapPhase.isPreparing, isRecording: isRecording)
+    }
+
+    init(
+        pasteController: TranscriptPasteController = TranscriptPasteController(),
+        bootstrap: @escaping AgentBootstrap = { requirement, force, progress in
+            AgentRuntime.shared.ensureReady(for: requirement, force: force, progress: progress)
+        }
     ) {
         self.pasteController = pasteController
+        self.bootstrap = bootstrap
         hasLastError = FileManager.default.fileExists(atPath: AgentRuntime.shared.lastErrorURL.path)
     }
 
@@ -63,27 +83,77 @@ final class AgentCommandRunner: ObservableObject {
         URL(string: "x-apple.systempreferences:com.apple.Notifications-Settings.extension")!,
         URL(string: "x-apple.systempreferences:com.apple.preference.notifications")!
     ]
-    private static let accessibilitySettingsURLs: [URL] = [
-        URL(string: "x-apple.systempreferences:com.apple.Security-Privacy.extension?Privacy_Accessibility")!,
-        URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!
-    ]
+    func warmUpTranscription() {
+        guard !hasStartedTranscriptionWarmUp else { return }
+        hasStartedTranscriptionWarmUp = true
 
-    func beginHoldToTranscribe() {
+        activeCommandCount += 1
+        reportBootstrapPhase(.checkingRuntime)
+
+        let bootstrap = self.bootstrap
+        let reportBootstrapPhase = makeBootstrapProgressReporter()
+        DispatchQueue.global(qos: .utility).async {
+            let result = bootstrap(.transcriptionModel, false, reportBootstrapPhase)
+
+            Task { @MainActor in
+                self.activeCommandCount = max(0, self.activeCommandCount - 1)
+                if !result.output.isEmpty {
+                    self.lastOutput = result.output
+                }
+
+                if result.exitCode == 0 {
+                    self.reportBootstrapPhase(.idle)
+                    return
+                }
+
+                self.reportBootstrapPhase(.failed)
+                self.recordFailure(title: "Startup Voice Service Warm-Up", result: result)
+                self.statusMessage = result.output.isEmpty
+                    ? "Voice service warm-up failed with exit code \(result.exitCode)"
+                    : "Voice service warm-up failed: \(Self.summarize(result.output))"
+            }
+        }
+    }
+
+    private func reportBootstrapPhase(_ phase: BootstrapPhase) {
+        let wasPreparing = bootstrapPhase.isPreparing
+        let phaseChanged = bootstrapPhase != phase
+        bootstrapPhase = phase
+        if phase.isPreparing {
+            if !wasPreparing || phaseChanged {
+                activityTracker.beginBootstrap(title: phase.activityTitle)
+            }
+        } else {
+            activityTracker.finishBootstrap()
+        }
+    }
+
+    private func makeBootstrapProgressReporter() -> AgentBootstrapProgress {
+        { [weak self] phase in
+            Task { @MainActor in
+                self?.reportBootstrapPhase(phase)
+            }
+        }
+    }
+
+    @discardableResult
+    func beginHoldToTranscribe() -> Bool {
         guard holdTranscriptionState == .idle else {
             if holdTranscriptionState.isFinishing {
                 statusMessage = "Finishing previous hold-to-transcribe request"
             }
-            return
+            return false
         }
         guard !recordingIndicator.isRecordingCommand(.toggleTranscription), !isStopPending(for: .toggleTranscription) else {
             statusMessage = "Transcription is already recording"
-            return
+            return false
         }
 
         holdTranscriptionState = .recording
         holdToTranscribePasteTarget = FocusedTextTarget.capture()
         pasteAfterRecordingCommands.insert(AgentCommand.toggleTranscription.identifier)
         run(.toggleTranscription)
+        return true
     }
 
     func endHoldToTranscribe() {
@@ -97,7 +167,20 @@ final class AgentCommandRunner: ObservableObject {
         } else {
             statusMessage = "Stopping transcription as soon as it starts..."
         }
+        beginTranscribingActivity()
         stopHeldTranscriptionWhenReady()
+    }
+
+    @discardableResult
+    func stopTranscriptionFromFunctionKeyIfNeeded() -> Bool {
+        guard holdTranscriptionState == .idle,
+              recordingIndicator.isRecordingCommand(.toggleTranscription),
+              !isStopPending(for: .toggleTranscription) else {
+            return false
+        }
+
+        run(.toggleTranscription)
+        return true
     }
 
     func run(_ command: AgentCommand) {
@@ -111,20 +194,34 @@ final class AgentCommandRunner: ObservableObject {
 
         if isStopRequest {
             markStopRequested(for: command)
+            beginTranscribingActivity()
         }
 
         activeCommandCount += 1
-        statusMessage = isStopRequest
-            ? "Stopping \(command.title)..."
-            : "Running \(command.title)..."
+        beginCommandActivity(for: command)
+        if !self.bootstrapPhase.isPreparing {
+            statusMessage = isStopRequest
+                ? "Stopping \(command.title)..."
+                : "Running \(command.title)..."
+        }
 
+        let bootstrap = self.bootstrap
+        let reportBootstrapPhase = makeBootstrapProgressReporter()
+        let transcriptionDaemonArguments = AgentRuntime.shared.usesUserInstalledAgentCLI
+            ? nil
+            : TranscriptionSettings.whisperDaemonInstallArguments()
+        let commandArguments = command.resolvedArguments(
+            extraInstructions: TranscriptionSettings.extraInstructions,
+            transcriptionDaemonArguments: transcriptionDaemonArguments
+        )
         DispatchQueue.global(qos: .userInitiated).async {
-            let bootstrap = AgentRuntime.shared.ensureReady(for: command.bootstrapRequirement, force: command.forceBootstrap)
-            guard bootstrap.exitCode == 0 else {
-                let message = Self.statusMessage(for: command, result: bootstrap)
-                let notificationTitle = Self.notificationTitle(for: command, result: bootstrap)
-                let notificationBody = Self.notificationBody(for: command, result: bootstrap, statusMessage: message)
+            let bootstrapResult = bootstrap(command.bootstrapRequirement, command.forceBootstrap, reportBootstrapPhase)
+            guard bootstrapResult.exitCode == 0 else {
+                let message = Self.statusMessage(for: command, result: bootstrapResult)
+                let notificationTitle = Self.notificationTitle(for: command, result: bootstrapResult)
+                let notificationBody = Self.notificationBody(for: command, result: bootstrapResult, statusMessage: message)
                 Task { @MainActor in
+                    self.reportBootstrapPhase(.failed)
                     if isStopRequest {
                         self.clearStopRequested(for: command)
                     }
@@ -132,13 +229,19 @@ final class AgentCommandRunner: ObservableObject {
                         self.clearPasteAfterRecording(for: command)
                     }
                     self.clearHoldTranscriptionState(for: command)
+                    self.clearTranscribingActivityIfFinished()
+                    self.finishCommandActivity(for: command)
                     self.activeCommandCount = max(0, self.activeCommandCount - 1)
-                    self.lastOutput = bootstrap.output
-                    self.recordFailure(command: command, result: bootstrap)
+                    self.lastOutput = bootstrapResult.output
+                    self.recordFailure(command: command, result: bootstrapResult)
                     self.statusMessage = message
                     self.notify(title: notificationTitle, body: notificationBody)
                 }
                 return
+            }
+
+            Task { @MainActor in
+                self.reportBootstrapPhase(.idle)
             }
 
             if shouldStartRecording {
@@ -149,7 +252,12 @@ final class AgentCommandRunner: ObservableObject {
                 }
             }
 
-            let result = AgentRuntime.shared.runAgentCLI(arguments: command.arguments)
+            let commandResult = AgentRuntime.shared.runAgentCLI(arguments: commandArguments)
+            // A stop acknowledgement may be empty; a completed recording must contain text.
+            // Validate here too because user-installed CLIs can predate the CLI-side check.
+            let result = shouldStartRecording && command.identifier == AgentCommand.toggleTranscription.identifier
+                ? commandResult.requiringTranscript()
+                : commandResult
             let message = Self.statusMessage(for: command, result: result)
             let notificationTitle = Self.notificationTitle(for: command, result: result)
             let notificationBody = Self.notificationBody(for: command, result: result, statusMessage: message)
@@ -157,17 +265,19 @@ final class AgentCommandRunner: ObservableObject {
             Task { @MainActor in
                 if shouldStartRecording {
                     self.clearHoldTranscriptionState(for: command)
-                    let shouldPaste = self.shouldPasteAfterRecording(for: command) && result.exitCode == 0
+                    let shouldPaste = self.shouldPasteAfterRecording(for: command)
                     let pasteTarget = self.holdToTranscribePasteTarget
                     self.endRecordingIndicator(for: command)
                     self.clearStopRequested(for: command)
-                    if shouldPaste {
-                        self.pasteController.pasteTranscriptIntoFocusedField(result.output, target: pasteTarget) { message in
+                    if shouldPaste, let pasteText = result.pasteText {
+                        self.pasteController.pasteTranscriptIntoFocusedField(pasteText, target: pasteTarget) { message in
                             self.statusMessage = message
                         }
                     }
                     self.clearPasteAfterRecording(for: command)
+                    self.clearTranscribingActivityIfFinished()
                 }
+                self.finishCommandActivity(for: command)
                 self.activeCommandCount = max(0, self.activeCommandCount - 1)
 
                 if isStopRequest && result.exitCode == 0 {
@@ -180,6 +290,7 @@ final class AgentCommandRunner: ObservableObject {
 
                 if isStopRequest {
                     self.clearStopRequested(for: command)
+                    self.clearTranscribingActivityIfFinished()
                 }
                 self.lastOutput = result.output
                 if result.exitCode != 0 {
@@ -201,17 +312,22 @@ final class AgentCommandRunner: ObservableObject {
 
         statusMessage = "Stopping Toggle Transcription..."
 
+        let bootstrap = self.bootstrap
+        let reportBootstrapPhase = makeBootstrapProgressReporter()
         DispatchQueue.global(qos: .userInitiated).async {
-            let bootstrap = AgentRuntime.shared.ensureReady(
-                for: AgentCommand.stopTranscription.bootstrapRequirement,
-                force: AgentCommand.stopTranscription.forceBootstrap
+            let bootstrapResult = bootstrap(
+                AgentCommand.stopTranscription.bootstrapRequirement,
+                AgentCommand.stopTranscription.forceBootstrap,
+                reportBootstrapPhase
             )
-            guard bootstrap.exitCode == 0 else {
-                let message = Self.statusMessage(for: AgentCommand.stopTranscription, result: bootstrap)
+            guard bootstrapResult.exitCode == 0 else {
+                let message = Self.statusMessage(for: AgentCommand.stopTranscription, result: bootstrapResult)
                 Task { @MainActor in
+                    self.reportBootstrapPhase(.failed)
                     self.holdTranscriptionState = .idle
-                    self.lastOutput = bootstrap.output
-                    self.recordFailure(command: AgentCommand.stopTranscription, result: bootstrap)
+                    self.clearTranscribingActivityIfFinished()
+                    self.lastOutput = bootstrapResult.output
+                    self.recordFailure(command: AgentCommand.stopTranscription, result: bootstrapResult)
                     self.statusMessage = message
                     self.notify(
                         title: "Toggle Transcription Failed",
@@ -219,6 +335,10 @@ final class AgentCommandRunner: ObservableObject {
                     )
                 }
                 return
+            }
+
+            Task { @MainActor in
+                self.reportBootstrapPhase(.idle)
             }
 
             let result = AgentRuntime.shared.runAgentCLI(arguments: AgentCommand.stopTranscription.arguments)
@@ -232,6 +352,7 @@ final class AgentCommandRunner: ObservableObject {
                 }
 
                 self.holdTranscriptionState = .idle
+                self.clearTranscribingActivityIfFinished()
                 let message = result.output.isEmpty
                     ? "Toggle Transcription stop failed with exit code \(result.exitCode)"
                     : "Toggle Transcription stop failed: \(result.output)"
@@ -253,6 +374,26 @@ final class AgentCommandRunner: ObservableObject {
 
     private func clearStopRequested(for command: AgentCommand) {
         pendingStopRecordingCommands.remove(command.identifier)
+    }
+
+    private func beginCommandActivity(for command: AgentCommand) {
+        activityTracker.beginCommand(identifier: command.identifier, title: command.menuActivityTitle)
+    }
+
+    private func finishCommandActivity(for command: AgentCommand) {
+        activityTracker.finishCommand(identifier: command.identifier)
+    }
+
+    private func beginTranscribingActivity() {
+        activityTracker.beginTranscribing()
+        VoiceLevelOverlayController.shared.showTranscribing()
+    }
+
+    private func clearTranscribingActivityIfFinished() {
+        if pendingStopRecordingCommands.isEmpty && !holdTranscriptionState.isFinishing {
+            activityTracker.finishTranscribing()
+            VoiceLevelOverlayController.shared.finishTranscribing()
+        }
     }
 
     private func shouldPasteAfterRecording(for command: AgentCommand) -> Bool {
@@ -277,20 +418,33 @@ final class AgentCommandRunner: ObservableObject {
             return false
         }
 
+        let wasRecording = isRecording
         recordingIndicator.begin(for: command)
         isRecording = recordingIndicator.isRecording
+        if !wasRecording && isRecording {
+            activityTracker.beginRecording()
+        }
         return true
     }
 
     private func endRecordingIndicator(for command: AgentCommand) {
         recordingIndicator.end(for: command)
         isRecording = recordingIndicator.isRecording
+        if !isRecording {
+            activityTracker.finishRecording()
+        }
     }
 
     func copyLastOutput() {
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(lastOutput, forType: .string)
         statusMessage = "Copied last output"
+    }
+
+    func copyRecentTranscription(_ transcription: RecentTranscription) {
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(transcription.text, forType: .string)
+        statusMessage = "Copied recent transcription"
     }
 
     func openLastError() {
@@ -335,6 +489,21 @@ final class AgentCommandRunner: ObservableObject {
         }
     }
 
+    func openTranscriptionLog() {
+        let url = RecentTranscriptionReader.defaultLogURL
+
+        do {
+            try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+            if !FileManager.default.fileExists(atPath: url.path) {
+                _ = FileManager.default.createFile(atPath: url.path, contents: nil)
+            }
+            NSWorkspace.shared.activateFileViewerSelecting([url])
+            statusMessage = "Opened transcription log"
+        } catch {
+            statusMessage = "Could not open transcription log: \(error.localizedDescription)"
+        }
+    }
+
     func openConfigFolder() {
         let url = AgentRuntime.shared.appSupportURL.appendingPathComponent("config", isDirectory: true)
 
@@ -348,23 +517,106 @@ final class AgentCommandRunner: ObservableObject {
     }
 
     func notificationsDisabled() {
-        statusMessage = "Notifications are disabled. Use Open Notification Settings to enable Agent CLI notifications."
+        statusMessage = "Notifications are disabled. Use Fix Notification Permission to enable Agent CLI notifications."
     }
 
-    func openNotificationSettings() {
+    func repairNotificationPermission() {
+        let center = UNUserNotificationCenter.current()
+        center.getNotificationSettings { settings in
+            switch settings.authorizationStatus {
+            case .notDetermined:
+                UNUserNotificationCenter.current().requestAuthorization(options: [.alert]) { granted, _ in
+                    Task { @MainActor in
+                        self.statusMessage = granted
+                            ? "Notification permission enabled"
+                            : "Notifications are disabled. Enable Agent CLI in Notification Settings."
+                    }
+                }
+            case .denied:
+                Task { @MainActor in
+                    _ = self.openNotificationSettings()
+                    self.statusMessage = "Notifications are disabled. Enable Agent CLI in Notification Settings."
+                }
+            default:
+                Task { @MainActor in
+                    self.statusMessage = "Notification permission is already enabled"
+                }
+            }
+        }
+    }
+
+    @discardableResult
+    func openNotificationSettings() -> Bool {
         for url in Self.notificationSettingsURLs where NSWorkspace.shared.open(url) {
             statusMessage = "Opened Notification Settings"
-            return
+            return true
         }
         statusMessage = "Could not open Notification Settings"
+        return false
     }
 
-    func openAccessibilitySettings() {
-        for url in Self.accessibilitySettingsURLs where NSWorkspace.shared.open(url) {
-            statusMessage = "Opened Accessibility Settings. Accessibility permission controls auto-inserting transcripts."
-            return
+    func resetAccessibilityPermission() {
+        ConfigurableHotkeyController.shared.suspendFunctionAwareHotkeysForAccessibilityReset()
+        statusMessage = "Resetting Accessibility permission..."
+
+        DispatchQueue.global(qos: .utility).async {
+            let result = self.runTCCReset(service: "Accessibility")
+
+            Task { @MainActor in
+                try? FileManager.default.removeItem(at: AgentRuntime.shared.accessibilityPromptMarkerURL)
+
+                guard result.exitCode == 0 else {
+                    ConfigurableHotkeyController.shared.resumeFunctionAwareHotkeysAfterAccessibilityReset(runner: self)
+                    let output = result.output.trimmingCharacters(in: .whitespacesAndNewlines)
+                    self.statusMessage = output.isEmpty
+                        ? "Could not reset Accessibility permission"
+                        : "Could not reset Accessibility permission: \(output)"
+                    return
+                }
+
+                self.statusMessage = "Accessibility permission reset. Restarting AgentCLI to request permission cleanly."
+                self.relaunchAfterAccessibilityReset()
+            }
         }
-        statusMessage = "Could not open Accessibility Settings"
+    }
+
+    private func relaunchAfterAccessibilityReset() {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/bin/sh")
+        process.arguments = [
+            "-c",
+            "sleep 1; /usr/bin/open \"$1\"",
+            "relaunch-agentcli",
+            Bundle.main.bundleURL.path
+        ]
+
+        do {
+            try process.run()
+            NSApp.terminate(nil)
+        } catch {
+            statusMessage = "Accessibility permission reset. Reopen AgentCLI, then enable it in Accessibility."
+        }
+    }
+
+    nonisolated private func runTCCReset(service: String) -> CommandResult {
+        let bundleIdentifier = Bundle.main.bundleIdentifier ?? "lt.nijho.agent-cli.menubar"
+        let process = Process()
+        let pipe = Pipe()
+
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/tccutil")
+        process.arguments = ["reset", service, bundleIdentifier]
+        process.standardOutput = pipe
+        process.standardError = pipe
+
+        do {
+            try process.run()
+            process.waitUntilExit()
+            let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            let output = String(data: data, encoding: .utf8) ?? ""
+            return CommandResult(exitCode: process.terminationStatus, output: output)
+        } catch {
+            return CommandResult(exitCode: 1, output: error.localizedDescription)
+        }
     }
 
     @discardableResult

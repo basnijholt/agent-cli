@@ -15,6 +15,7 @@ from agent_cli.core.diarization import (
     _check_pyannote_installed,
     _get_torch_device,
     _load_audio_for_diarization,
+    select_clean_speaker_segments,
 )
 
 if TYPE_CHECKING:
@@ -25,6 +26,7 @@ DEFAULT_SPEAKER_PROFILES_FILE = Path.home() / ".config" / "agent-cli" / "speaker
 DEFAULT_SPEAKER_EMBEDDING_MODEL = "pyannote/wespeaker-voxceleb-resnet34-LM"
 DEFAULT_SPEAKER_MATCH_THRESHOLD = 0.70
 MAX_PROFILE_EMBEDDINGS = 20
+SPEAKER_EMBEDDING_NEAR_DUPLICATE_THRESHOLD = 0.98
 MIN_SPEAKER_EMBEDDING_SECONDS = 1.0
 MAX_SPEAKER_EMBEDDING_SECONDS = 120.0
 _ASSIGNMENT_SPLIT_RE = re.compile(r"\s*[,;]\s*")
@@ -206,7 +208,11 @@ def _normalize_embedding(values: Any) -> list[float]:
         msg = "Speaker embedding output is empty or scalar; expected a vector."
         raise RuntimeError(msg)
     if embedding.ndim > 1:
-        embedding = embedding.reshape(-1, embedding.shape[-1]).mean(axis=0)
+        reshaped = embedding.reshape(-1, embedding.shape[-1])
+        if reshaped.shape[0] == 0:
+            msg = "Speaker embedding output is empty; expected at least one vector."
+            raise RuntimeError(msg)
+        embedding = reshaped.mean(axis=0)
     if not np.all(np.isfinite(embedding)):
         msg = "Speaker embedding output contains non-finite values."
         raise RuntimeError(msg)
@@ -276,14 +282,52 @@ def match_speaker_profiles(
     return matches
 
 
-def _append_embedding(profile: dict[str, Any], embedding: list[float]) -> None:
-    embeddings = profile.setdefault("embeddings", [])
+def _compatible_profile_embeddings(
+    embeddings: Any,
+    embedding: list[float],
+) -> list[list[float]]:
     if not isinstance(embeddings, list):
-        embeddings = []
+        return []
+    return [
+        stored
+        for stored in embeddings
+        if isinstance(stored, list) and len(stored) == len(embedding)
+    ]
+
+
+def _most_redundant_embedding_index(embeddings: list[list[float]]) -> int:
+    if len(embeddings) <= 1:
+        return 0
+    nearest_similarities: list[float] = []
+    for index, embedding in enumerate(embeddings):
+        nearest_similarities.append(
+            max(
+                _cosine_similarity(embedding, other)
+                for other_index, other in enumerate(embeddings)
+                if other_index != index
+            ),
+        )
+    return max(range(len(nearest_similarities)), key=nearest_similarities.__getitem__)
+
+
+def _append_embedding(profile: dict[str, Any], embedding: list[float]) -> bool:
+    raw_embeddings = profile.setdefault("embeddings", [])
+    embeddings = _compatible_profile_embeddings(raw_embeddings, embedding)
+    if not isinstance(raw_embeddings, list) or len(embeddings) != len(raw_embeddings):
         profile["embeddings"] = embeddings
+
+    if any(
+        _cosine_similarity(embedding, stored) >= SPEAKER_EMBEDDING_NEAR_DUPLICATE_THRESHOLD
+        for stored in embeddings
+    ):
+        return False
+
     embeddings.append(embedding)
-    del embeddings[:-MAX_PROFILE_EMBEDDINGS]
+    if len(embeddings) > MAX_PROFILE_EMBEDDINGS:
+        del embeddings[_most_redundant_embedding_index(embeddings)]
+    profile["embeddings"] = embeddings
     profile["updated_at"] = _now()
+    return True
 
 
 def _add_named_embedding(
@@ -433,22 +477,29 @@ def _speaker_waveforms(
     sample_totals: dict[str, int] = {}
     total_samples = waveform.shape[-1]
 
-    for segment in sorted(segments, key=lambda item: (item.speaker, item.start, item.end)):
-        if segment.end <= segment.start:
-            continue
-        current_total = sample_totals.get(segment.speaker, 0)
-        if current_total >= max_samples:
-            continue
-        start = max(0, int(segment.start * sample_rate))
-        end = min(total_samples, int(segment.end * sample_rate))
-        if end <= start:
-            continue
-        chunk = waveform[:, start:end]
-        remaining = max_samples - current_total
-        if chunk.shape[-1] > remaining:
-            chunk = chunk[:, :remaining]
-        by_speaker.setdefault(segment.speaker, []).append(chunk)
-        sample_totals[segment.speaker] = current_total + chunk.shape[-1]
+    speakers = sorted({segment.speaker for segment in segments})
+    for speaker in speakers:
+        selected_segments = select_clean_speaker_segments(
+            segments,
+            speaker,
+            min_duration_seconds=MIN_SPEAKER_EMBEDDING_SECONDS,
+            max_total_seconds=MAX_SPEAKER_EMBEDDING_SECONDS,
+            fallback_to_unclean=False,
+        )
+        for segment in selected_segments:
+            current_total = sample_totals.get(segment.speaker, 0)
+            if current_total >= max_samples:
+                continue
+            start = max(0, int(segment.start * sample_rate))
+            end = min(total_samples, int(segment.end * sample_rate))
+            if end <= start:
+                continue
+            chunk = waveform[:, start:end]
+            remaining = max_samples - current_total
+            if chunk.shape[-1] > remaining:
+                chunk = chunk[:, :remaining]
+            by_speaker.setdefault(segment.speaker, []).append(chunk)
+            sample_totals[segment.speaker] = current_total + chunk.shape[-1]
 
     return {
         speaker: torch.cat(chunks, dim=1)

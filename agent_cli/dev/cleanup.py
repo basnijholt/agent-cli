@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING
 
 from . import worktree
 from .terminals.tmux import Tmux
+from .terminals.zellij import Zellij
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -16,7 +17,7 @@ if TYPE_CHECKING:
 
 @dataclass
 class RemoveWorktreeResult:
-    """Outcome of removing a worktree and any tagged tmux windows."""
+    """Outcome of removing a worktree and any multiplexer tabs/windows it owned."""
 
     name: str
     success: bool
@@ -130,7 +131,7 @@ def remove_worktree(
     force: bool = False,
     delete_branch: bool = False,
 ) -> RemoveWorktreeResult:
-    """Remove one worktree and then clean up any tagged tmux windows."""
+    """Remove one worktree and then clean up any tmux windows and zellij tabs it owned."""
     removed, error = worktree.remove_worktree(
         wt.path,
         force=force,
@@ -145,7 +146,8 @@ def remove_worktree(
     if not removed:
         return result
 
-    tmux = Tmux()
-    tmux_cleanup = tmux.kill_windows_for_worktree(wt.path)
+    tmux_cleanup = Tmux().kill_windows_for_worktree(wt.path)
     result.warnings.extend(tmux_cleanup.errors)
+    zellij_cleanup = Zellij().close_tabs_for_worktree(wt.path)
+    result.warnings.extend(zellij_cleanup.errors)
     return result

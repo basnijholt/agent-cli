@@ -55,11 +55,31 @@ def mock_console() -> Console:
     return Console(file=io.StringIO(), width=80, force_terminal=True)
 
 
+def force_plain_console(console: Console) -> None:
+    """Make a console audible and strip every escape sequence from its output.
+
+    `no_color` alone still emits bold and dim, so the colour system is switched
+    off outright.
+    """
+    console.quiet = False
+    console.no_color = True
+    console._color_system = None
+
+
 @pytest.fixture(autouse=True)
-def reset_rich_console_quiet() -> None:
-    """Prevent JSON-mode CLI tests from silencing later command output."""
-    utils.console.quiet = False
-    utils.err_console.quiet = False
+def reset_rich_console_state() -> None:
+    """Keep the shared consoles audible and plain for every test.
+
+    `quiet` is reset so JSON-mode CLI tests cannot silence later command output.
+
+    Colour is disabled because Rich honours `FORCE_COLOR` even when stdout is
+    captured, so a developer shell exporting it makes 29 tests fail on ANSI
+    escapes interleaved into otherwise-matching output. The consoles are mutated
+    in place rather than rebound: 17 modules hold a direct
+    `from agent_cli.core.utils import console` reference.
+    """
+    for console in (utils.console, utils.err_console):
+        force_plain_console(console)
 
 
 @pytest.fixture

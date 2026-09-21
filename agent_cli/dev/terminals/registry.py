@@ -6,6 +6,7 @@ from agent_cli.dev.registry import Registry
 
 from .apple_terminal import AppleTerminal
 from .base import Terminal  # noqa: TC001
+from .cmux import Cmux
 from .gnome import GnomeTerminal
 from .iterm2 import ITerm2
 from .kitty import Kitty
@@ -18,6 +19,7 @@ from .zellij import Zellij
 _TERMINALS: list[type[Terminal]] = [
     Tmux,
     Zellij,
+    Cmux,
     ITerm2,
     Kitty,
     Warp,
