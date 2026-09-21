@@ -268,6 +268,15 @@ final class AgentCommandTests: XCTestCase {
 
     private static let shellPATHProbeSuccess = CommandResult(exitCode: 0, output: "/shell/bin\n")
 
+    func testLoginShellPATHIgnoresStderrWarnings() {
+        let runtime = makeShellPATHProbingRuntime(suiteName: "AgentCLITests.shell-path-diagnostics") {
+            CommandResult(exitCode: 0, output: "/shell/bin\nShell startup warning", standardOutput: "/shell/bin\n")
+        }
+        let path = runtime.commandEnvironment()["PATH"] ?? ""
+        XCTAssertEqual(path.split(separator: ":").first.map(String.init), "/shell/bin")
+        XCTAssertFalse(path.contains("Shell startup warning"))
+    }
+
     /// `zsh -lic` costs roughly a second with a real dotfiles setup, so the login shell
     /// PATH must be resolved once per runtime instead of once per spawned command.
     func testUserInstalledRuntimeCachesLoginShellPATHLookup() {
