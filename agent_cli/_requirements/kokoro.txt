@@ -103,7 +103,6 @@ filelock==3.29.0 ; python_full_version < '3.14'
     # via
     #   huggingface-hub
     #   torch
-    #   transformers
 fsspec==2024.12.0 ; python_full_version < '3.14'
     # via
     #   huggingface-hub
@@ -112,7 +111,7 @@ h11==0.16.0
     # via
     #   httpcore
     #   uvicorn
-hf-xet==1.5.0 ; (python_full_version < '3.13' and platform_machine == 'AMD64') or (python_full_version < '3.14' and platform_machine == 'aarch64') or (python_full_version < '3.14' and platform_machine == 'amd64') or (python_full_version < '3.14' and platform_machine == 'arm64') or (python_full_version < '3.14' and platform_machine == 'x86_64')
+hf-xet==1.5.0 ; (python_full_version < '3.14' and platform_machine == 'AMD64') or (python_full_version < '3.14' and platform_machine == 'aarch64') or (python_full_version < '3.14' and platform_machine == 'amd64') or (python_full_version < '3.14' and platform_machine == 'arm64') or (python_full_version < '3.14' and platform_machine == 'x86_64')
     # via huggingface-hub
 httpcore==1.0.9
     # via httpx
@@ -125,13 +124,7 @@ httpx==0.28.1
     #   fastapi-cloud-cli
     #   huggingface-hub
     #   weasel
-huggingface-hub==0.36.2 ; python_full_version == '3.13.*'
-    # via
-    #   agent-cli
-    #   kokoro
-    #   tokenizers
-    #   transformers
-huggingface-hub==1.16.1 ; python_full_version < '3.13'
+huggingface-hub==1.16.1 ; python_full_version < '3.14'
     # via
     #   agent-cli
     #   kokoro
@@ -306,10 +299,7 @@ regex==2026.5.9 ; python_full_version < '3.14'
     #   segments
     #   transformers
 requests==2.34.2 ; python_full_version < '3.14'
-    # via
-    #   huggingface-hub
-    #   spacy
-    #   transformers
+    # via spacy
 rfc3986==1.5.0 ; python_full_version < '3.14'
     # via csvw
 rich==15.0.0
@@ -327,7 +317,7 @@ rpds-py==2026.5.1 ; python_full_version < '3.14'
     # via
     #   jsonschema
     #   referencing
-safetensors==0.7.0 ; python_full_version < '3.14'
+safetensors==0.8.0 ; python_full_version < '3.14'
     # via transformers
 segments==2.4.0 ; python_full_version < '3.14'
     # via phonemizer-fork
@@ -369,7 +359,7 @@ termcolor==3.3.0 ; python_full_version < '3.14'
     # via csvw
 thinc==8.3.13 ; python_full_version < '3.14'
     # via spacy
-tokenizers==0.22.2 ; python_full_version < '3.14'
+tokenizers==0.23.1 ; python_full_version < '3.14'
     # via transformers
 torch==2.12.0 ; python_full_version < '3.14'
     # via
@@ -381,11 +371,7 @@ tqdm==4.67.3 ; python_full_version < '3.14'
     #   huggingface-hub
     #   spacy
     #   transformers
-transformers==4.57.6 ; python_full_version == '3.13.*'
-    # via
-    #   agent-cli
-    #   kokoro
-transformers==5.9.0 ; python_full_version < '3.13'
+transformers==5.16.1 ; python_full_version < '3.14'
     # via
     #   agent-cli
     #   kokoro

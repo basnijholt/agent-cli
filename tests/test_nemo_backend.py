@@ -9,15 +9,18 @@ import wave
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures.process import BrokenProcessPool
 from types import ModuleType, SimpleNamespace
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
+from unittest.mock import patch
 
 import pytest
 
 from agent_cli.server.cli import _is_parakeet_model
+from agent_cli.server.whisper.backends import audio as audio_preparation
 from agent_cli.server.whisper.backends import nemo as backend
 from agent_cli.server.whisper.backends.base import BackendConfig, InvalidAudioError
 
 if TYPE_CHECKING:
+    from concurrent.futures import ProcessPoolExecutor
     from pathlib import Path
 
 
@@ -308,51 +311,60 @@ def test_audio_duration_seconds_returns_zero_for_non_wav(tmp_path: Path) -> None
     assert backend._audio_duration_seconds(str(audio_path)) == 0.0
 
 
-def test_prepare_audio_for_nemo_keeps_valid_wav(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """Valid WAV uploads should not require FFmpeg conversion."""
-    audio = _create_test_wav()
-    monkeypatch.setattr(
-        backend,
-        "convert_audio_to_wav_format",
-        lambda *_args, **_kwargs: pytest.fail("unexpected conversion"),
-    )
-
-    assert backend._prepare_audio_for_nemo(audio, "sample.wav") == audio
-
-
-def test_prepare_audio_for_nemo_converts_non_wav(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
+@pytest.mark.asyncio
+async def test_transcribe_converts_non_wav_upload(monkeypatch: pytest.MonkeyPatch) -> None:
     """Non-WAV uploads should be converted to a WAV container before NeMo sees them."""
     converted = _create_test_wav()
     calls: dict[str, object] = {}
 
-    def fake_convert(audio: bytes, source_filename: str) -> bytes:
+    async def fake_convert(audio: bytes, source_filename: str) -> bytes:
         calls["audio"] = audio
         calls["source_filename"] = source_filename
         return converted
 
-    monkeypatch.setattr(backend, "convert_audio_to_wav_format", fake_convert)
+    monkeypatch.setattr(audio_preparation, "convert_audio_to_wav_format", fake_convert)
+    nemo_backend = backend.NemoWhisperBackend(BackendConfig(model_name="parakeet-tdt-0.6b-v2"))
+    nemo_backend._executor = cast("ProcessPoolExecutor", object())
+    dispatched: dict[str, bytes] = {}
 
-    assert backend._prepare_audio_for_nemo(b"ID3", "sample.mp3") == converted
+    async def mock_run_in_executor(
+        _executor: object,
+        _func: object,
+        audio_bytes: bytes,
+        _kwargs: dict[str, object],
+    ) -> dict[str, Any]:
+        dispatched["audio"] = audio_bytes
+        return {
+            "text": "hello",
+            "language": "en",
+            "language_probability": 1.0,
+            "duration": 0.01,
+            "segments": [],
+        }
+
+    with patch("asyncio.get_running_loop") as mock_loop:
+        mock_loop.return_value.run_in_executor = mock_run_in_executor
+        result = await nemo_backend.transcribe(b"ID3", source_filename="sample.mp3")
+
+    assert result.text == "hello"
+    assert dispatched["audio"] == converted
     assert calls == {"audio": b"ID3", "source_filename": "sample.mp3"}
 
 
-def test_prepare_audio_for_nemo_raises_invalid_audio_error(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
+@pytest.mark.asyncio
+async def test_transcribe_raises_invalid_audio_error(monkeypatch: pytest.MonkeyPatch) -> None:
     """Conversion failures should become API-visible invalid-audio errors."""
 
-    def fake_convert(audio: bytes, source_filename: str) -> bytes:  # noqa: ARG001
+    async def fake_convert(audio: bytes, source_filename: str) -> bytes:  # noqa: ARG001
         msg = "ffmpeg failed"
         raise RuntimeError(msg)
 
-    monkeypatch.setattr(backend, "convert_audio_to_wav_format", fake_convert)
+    monkeypatch.setattr(audio_preparation, "convert_audio_to_wav_format", fake_convert)
+    nemo_backend = backend.NemoWhisperBackend(BackendConfig(model_name="parakeet-tdt-0.6b-v2"))
+    nemo_backend._executor = cast("ProcessPoolExecutor", object())
 
     with pytest.raises(InvalidAudioError, match="Unsupported audio format for NeMo"):
-        backend._prepare_audio_for_nemo(b"not audio", "sample.mp3")
+        await nemo_backend.transcribe(b"not audio", source_filename="sample.mp3")
 
 
 def test_build_transcribe_kwargs_omits_language_for_plain_asr_models() -> None:

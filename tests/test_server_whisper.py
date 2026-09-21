@@ -20,7 +20,7 @@ from agent_cli.server.cli import (
 )
 from agent_cli.server.model_manager import ModelStats
 from agent_cli.server.whisper.backends import TranscriptionResult
-from agent_cli.server.whisper.backends.base import UnsupportedRequestError
+from agent_cli.server.whisper.backends.base import InvalidAudioError, UnsupportedRequestError
 from agent_cli.server.whisper.model_manager import (
     WhisperModelConfig as ModelConfig,
 )
@@ -52,6 +52,7 @@ class TestModelConfig:
         assert config.backend_type == "auto"
         assert config.default_language is None
         assert config.trust_remote_code is False
+        assert config.max_new_tokens == 4096
 
     def test_custom_values(self) -> None:
         """Test custom configuration values."""
@@ -64,6 +65,7 @@ class TestModelConfig:
             cpu_threads=8,
             default_language="en",
             trust_remote_code=True,
+            max_new_tokens=2048,
         )
         assert config.model_name == "small"
         assert config.device == "cuda:0"
@@ -73,6 +75,7 @@ class TestModelConfig:
         assert config.cpu_threads == 8
         assert config.default_language == "en"
         assert config.trust_remote_code is True
+        assert config.max_new_tokens == 2048
 
     def test_zero_ttl_disables_auto_unload(self) -> None:
         """TTL 0 should be accepted as keep-loaded mode."""
@@ -598,6 +601,62 @@ class TestWhisperAPI:
         data = response.json()
         assert data["status"] == "healthy"
         assert data["models"] == []
+
+    def test_transcribe_forwards_upload_filename_to_backend(
+        self,
+        client: TestClient,
+        mock_registry: WhisperModelRegistry,
+    ) -> None:
+        """The upload filename is the demuxer hint backends need to convert non-WAV audio."""
+        manager = mock_registry.get_manager()
+        with patch.object(
+            manager,
+            "transcribe",
+            new_callable=AsyncMock,
+            return_value=TranscriptionResult(
+                text="Hello world",
+                language="en",
+                language_probability=0.95,
+                duration=1.5,
+                segments=[],
+            ),
+        ) as mock_transcribe:
+            response = client.post(
+                "/v1/audio/transcriptions",
+                files={"file": ("voice.m4a", b"\x00\x00\x00 ftypM4A ", "audio/mp4")},
+                data={"model": "whisper-1"},
+            )
+
+        assert response.status_code == 200
+        assert response.json() == {"text": "Hello world"}
+        assert mock_transcribe.await_args is not None
+        assert mock_transcribe.await_args.kwargs["source_filename"] == "voice.m4a"
+
+    def test_transcribe_undecodable_audio_returns_400(
+        self,
+        client: TestClient,
+        mock_registry: WhisperModelRegistry,
+    ) -> None:
+        """Undecodable audio is an actionable 400, never a 200 or a raw parser traceback."""
+        manager = mock_registry.get_manager()
+        with patch.object(
+            manager,
+            "transcribe",
+            new_callable=AsyncMock,
+            side_effect=InvalidAudioError(
+                "Unsupported audio format for faster-whisper. "
+                "Provide a WAV file or install ffmpeg to convert uploads.",
+            ),
+        ):
+            response = client.post(
+                "/v1/audio/transcriptions",
+                files={"file": ("voice.ogg", b"OggS\x00\x02", "audio/ogg")},
+                data={"model": "whisper-1"},
+            )
+
+        assert response.status_code == 400
+        assert "Unsupported audio format" in response.json()["detail"]
+        assert "install ffmpeg" in response.json()["detail"]
 
     def test_transcribe_empty_audio_returns_400(self, client: TestClient) -> None:
         """Test that empty audio file returns 400 error."""

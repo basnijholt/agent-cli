@@ -361,8 +361,8 @@ def install_cmd(  # noqa: PLR0912, PLR0915
     - **memory**: Long-term memory proxy for LLMs (port 8100)
     - **rag**: Document retrieval proxy for LLMs (port 8000)
 
-    Note: tts-kokoro and tts-piper use the same ports and are mutually exclusive.
-    Use `--all` to auto-select based on your platform (kokoro on GPU, piper on CPU).
+    Note: tts-kokoro and tts-piper are mutually exclusive. Use `--all` to
+    auto-select the default TTS backend.
 
     Daemons run via `uv tool run` and don't require a virtual environment.
 
@@ -379,6 +379,9 @@ def install_cmd(  # noqa: PLR0912, PLR0915
 
         # Pass server args to one daemon command
         agent-cli daemon install whisper -- --model small --port 10311
+
+        # Install Qwen3-ASR through the Transformers backend
+        agent-cli daemon install whisper -- --backend transformers --model Qwen/Qwen3-ASR-1.7B-hf
 
     After installation, check status with:
         agent-cli daemon status

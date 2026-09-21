@@ -30,6 +30,7 @@ class WhisperModelConfig(ModelConfig):
     backend_type: BackendType = "auto"
     default_language: str | None = None
     trust_remote_code: bool = False
+    max_new_tokens: int = 4096
 
 
 class WhisperModelManager:
@@ -50,6 +51,7 @@ class WhisperModelManager:
                 cache_dir=config.cache_dir,
                 default_language=config.default_language,
                 trust_remote_code=config.trust_remote_code,
+                max_new_tokens=config.max_new_tokens,
             ),
             backend_type=config.backend_type,
         )
