@@ -161,13 +161,13 @@ final class AgentCommandRunner: ObservableObject {
         holdTranscriptionState = .stopping
 
         let wasRecording = recordingIndicator.isRecordingCommand(.toggleTranscription)
-        beginTranscribingActivity()
         if wasRecording {
             endRecordingIndicator(for: .toggleTranscription)
             statusMessage = "Transcribing..."
         } else {
             statusMessage = "Stopping transcription as soon as it starts..."
         }
+        beginTranscribingActivity()
         stopHeldTranscriptionWhenReady()
     }
 
@@ -386,11 +386,13 @@ final class AgentCommandRunner: ObservableObject {
 
     private func beginTranscribingActivity() {
         activityTracker.beginTranscribing()
+        VoiceLevelOverlayController.shared.showTranscribing()
     }
 
     private func clearTranscribingActivityIfFinished() {
         if pendingStopRecordingCommands.isEmpty && !holdTranscriptionState.isFinishing {
             activityTracker.finishTranscribing()
+            VoiceLevelOverlayController.shared.finishTranscribing()
         }
     }
 

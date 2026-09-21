@@ -4,6 +4,19 @@ import XCTest
 @testable import AgentCLI
 
 final class RecordingIndicatorControllerTests: XCTestCase {
+    func testRepeatedEndDoesNotStopAnotherRecording() {
+        let defaults = UserDefaults(suiteName: "AgentCLITests.recording-repeated-end")!
+        defaults.removePersistentDomain(forName: "AgentCLITests.recording-repeated-end")
+        let controller = RecordingIndicatorController(defaults: defaults, audioCuePlayer: RecordingCuePlayerSpy())
+        defer { controller.end(for: .voiceEdit) }
+        controller.begin(for: .toggleTranscription)
+        controller.begin(for: .voiceEdit)
+        controller.end(for: .toggleTranscription)
+        controller.end(for: .toggleTranscription)
+        XCTAssertTrue(controller.isRecording)
+        XCTAssertTrue(controller.isRecordingCommand(.voiceEdit))
+    }
+
     func testRecordingSoundsAreDisabledByDefault() {
         let defaults = UserDefaults(suiteName: "AgentCLITests.recording-sounds-default")!
         defaults.removePersistentDomain(forName: "AgentCLITests.recording-sounds-default")

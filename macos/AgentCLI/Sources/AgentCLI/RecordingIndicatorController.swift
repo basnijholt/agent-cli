@@ -38,6 +38,7 @@ final class RecordingIndicatorController {
     }
 
     func end(for command: AgentCommand) {
+        guard isRecordingCommand(command) else { return }
         let wasRecording = isRecording
         let activeCommandCount = max(0, activeRecordingCommands[command.identifier, default: 0] - 1)
         if activeCommandCount > 0 {
@@ -48,7 +49,7 @@ final class RecordingIndicatorController {
         recordingCommandCount = max(0, recordingCommandCount - 1)
         if wasRecording && !isRecording {
             play(.finishedRecording)
-            VoiceLevelOverlayController.shared.hide()
+            VoiceLevelOverlayController.shared.endRecording()
         }
         if command.supportsLivePreviewOverlay {
             LiveTranscriptionPreview.shared.stop()
