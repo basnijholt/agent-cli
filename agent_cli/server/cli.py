@@ -403,6 +403,17 @@ def whisper_cmd(  # noqa: C901, PLR0912, PLR0915
             ),
         ),
     ] = False,
+    max_new_tokens: Annotated[
+        int,
+        typer.Option(
+            "--max-new-tokens",
+            min=1,
+            help=(
+                "Maximum output tokens for autoregressive transformers ASR models. "
+                "Increase for unusually long audio"
+            ),
+        ),
+    ] = 4096,
     ttl: Annotated[
         int,
         typer.Option(
@@ -602,6 +613,7 @@ def whisper_cmd(  # noqa: C901, PLR0912, PLR0915
             compute_type=compute_type,
             default_language=default_language,
             trust_remote_code=trust_remote_code,
+            max_new_tokens=max_new_tokens,
             ttl_seconds=ttl,
             cache_dir=cache_dir,
             backend_type=resolved_backend,  # type: ignore[arg-type]
@@ -702,7 +714,11 @@ def transcribe_proxy_cmd(
     The server exposes:
 
     - `POST /transcribe` - Accepts audio files, returns `{raw_transcript, cleaned_transcript}`
+    - `POST /diarize` - Speaker timestamps (requires the `diarization` extra and `HF_TOKEN`)
     - `GET /health` - Health check endpoint
+
+    Pass `diarize=true` and `cleanup=false` to `/transcribe` for speaker-labeled segments.
+    Add `align_words=true` for forced word alignment. Docker: `docker/diarization.Dockerfile`.
 
     **When to use this vs `server whisper`:**
 

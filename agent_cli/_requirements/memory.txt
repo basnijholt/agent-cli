@@ -86,9 +86,7 @@ fastar==0.11.0
     #   fastapi
     #   fastapi-cloud-cli
 filelock==3.29.0
-    # via
-    #   huggingface-hub
-    #   transformers
+    # via huggingface-hub
 flatbuffers==25.12.19
     # via onnxruntime
 frozenlist==1.8.0
@@ -118,7 +116,7 @@ h11==0.16.0
     #   httpcore
     #   httpcore2
     #   uvicorn
-hf-xet==1.5.0 ; (python_full_version < '3.13' and platform_machine == 'AMD64') or platform_machine == 'aarch64' or platform_machine == 'amd64' or platform_machine == 'arm64' or platform_machine == 'x86_64'
+hf-xet==1.5.0 ; platform_machine == 'AMD64' or platform_machine == 'aarch64' or platform_machine == 'amd64' or platform_machine == 'arm64' or platform_machine == 'x86_64'
     # via huggingface-hub
 httpcore==1.0.9
     # via httpx
@@ -139,12 +137,7 @@ httpx==0.28.1
     #   pydantic-graph
 httpx2==2.2.0
     # via genai-prices
-huggingface-hub==0.36.2 ; python_full_version >= '3.13'
-    # via
-    #   agent-cli
-    #   tokenizers
-    #   transformers
-huggingface-hub==1.16.1 ; python_full_version < '3.13'
+huggingface-hub==1.16.1
     # via
     #   agent-cli
     #   tokenizers
@@ -324,11 +317,9 @@ requests==2.34.2
     # via
     #   google-auth
     #   google-genai
-    #   huggingface-hub
     #   kubernetes
     #   requests-oauthlib
     #   tiktoken
-    #   transformers
 requests-oauthlib==2.0.0
     # via kubernetes
 rich==15.0.0
@@ -347,7 +338,7 @@ rpds-py==2026.5.1
     # via
     #   jsonschema
     #   referencing
-safetensors==0.7.0
+safetensors==0.8.0
     # via transformers
 sentry-sdk==2.61.0
     # via fastapi-cloud-cli
@@ -371,7 +362,7 @@ tenacity==9.1.4
     #   google-genai
 tiktoken==0.13.0
     # via pydantic-ai-slim
-tokenizers==0.22.2
+tokenizers==0.23.1
     # via
     #   chromadb
     #   transformers
@@ -381,9 +372,7 @@ tqdm==4.67.3
     #   huggingface-hub
     #   openai
     #   transformers
-transformers==4.57.6 ; python_full_version >= '3.13'
-    # via agent-cli
-transformers==5.9.0 ; python_full_version < '3.13'
+transformers==5.16.1
     # via agent-cli
 typer==0.26.3
     # via

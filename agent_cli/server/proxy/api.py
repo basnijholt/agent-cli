@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Annotated, Any
 
 from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, UploadFile
 from pydantic import BaseModel
+from starlette.concurrency import run_in_threadpool
 
 from agent_cli import config, opts
 from agent_cli.agents.transcribe import (
@@ -17,13 +18,18 @@ from agent_cli.agents.transcribe import (
     SYSTEM_PROMPT,
     _build_context_payload,
 )
+from agent_cli.core.alignment import ALIGN_MODELS
 from agent_cli.core.audio_format import (
     VALID_EXTENSIONS,
     convert_audio_to_wyoming_format,
     is_valid_audio_file,
 )
+from agent_cli.core.diarization import (
+    DiarizedSegment,  # noqa: TC001 - Pydantic needs this at runtime
+)
 from agent_cli.core.transcription_logger import TranscriptionLogger, get_default_logger
 from agent_cli.server.common import log_requests_middleware
+from agent_cli.server.proxy.diarization import DiarizationService, get_diarization_service
 from agent_cli.services import asr
 from agent_cli.services.llm import process_and_update_clipboard
 
@@ -88,6 +94,13 @@ class TranscriptionResponse(BaseModel):
     cleaned_transcript: str | None = None
     success: bool
     error: str | None = None
+    segments: list[DiarizedSegment] | None = None
+
+
+class DiarizationResponse(BaseModel):
+    """Speaker labels and timestamps, with text when aligned to a transcript."""
+
+    segments: list[DiarizedSegment]
 
 
 class HealthResponse(BaseModel):
@@ -102,15 +115,116 @@ class TranscriptionRequest(BaseModel):
 
     cleanup: bool = True
     extra_instructions: str | None = None
+    diarize: bool = False
+    min_speakers: int | None = None
+    max_speakers: int | None = None
+    align_words: bool = False
+    align_language: str = "en"
 
 
 async def _parse_transcription_form(
     cleanup: Annotated[str | bool, Form()] = True,
     extra_instructions: Annotated[str | None, Form()] = None,
+    diarize: Annotated[bool, Form()] = False,
+    min_speakers: Annotated[int | None, Form(ge=1)] = None,
+    max_speakers: Annotated[int | None, Form(ge=1)] = None,
+    align_words: Annotated[bool, Form()] = False,
+    align_language: Annotated[str, Form()] = "en",
 ) -> TranscriptionRequest:
     """Parse form data into TranscriptionRequest model."""
     cleanup_bool = cleanup.lower() in ("true", "1", "yes") if isinstance(cleanup, str) else cleanup
-    return TranscriptionRequest(cleanup=cleanup_bool, extra_instructions=extra_instructions)
+    _validate_speaker_hints(min_speakers, max_speakers)
+    if diarize and cleanup_bool:
+        raise HTTPException(status_code=422, detail="Diarization requires cleanup=false.")
+    if align_words and (not diarize or align_language not in ALIGN_MODELS):
+        raise HTTPException(
+            status_code=422,
+            detail=f"Word alignment requires diarize=true and a language in {list(ALIGN_MODELS)}.",
+        )
+    return TranscriptionRequest(
+        cleanup=cleanup_bool,
+        extra_instructions=extra_instructions,
+        diarize=diarize,
+        min_speakers=min_speakers,
+        max_speakers=max_speakers,
+        align_words=align_words,
+        align_language=align_language,
+    )
+
+
+def _validate_speaker_hints(minimum: int | None, maximum: int | None) -> None:
+    """Reject contradictory speaker count hints."""
+    if minimum is not None and maximum is not None and minimum > maximum:
+        raise HTTPException(status_code=422, detail="min_speakers must be <= max_speakers.")
+
+
+def _get_diarizer(defaults: dict[str, Any]) -> DiarizationService:
+    """Resolve server-owned credentials before doing transcription work."""
+    token = _cfg("hf_token", defaults, opts.HF_TOKEN)
+    if not token or not str(token).strip():
+        raise HTTPException(status_code=503, detail="Configure HF_TOKEN to enable diarization.")
+    device = os.environ.get("DIARIZATION_DEVICE", "auto")
+    return get_diarization_service(token, device)
+
+
+async def _diarize_upload(
+    service: DiarizationService,
+    audio: bytes,
+    filename: str,
+    *,
+    transcript: str | None = None,
+    min_speakers: int | None = None,
+    max_speakers: int | None = None,
+    align_words: bool = False,
+    align_language: str = "en",
+) -> list[DiarizedSegment]:
+    """Run blocking inference off the event loop and report model failures."""
+    try:
+        return await run_in_threadpool(
+            service.diarize,
+            audio,
+            filename,
+            transcript=transcript,
+            min_speakers=min_speakers,
+            max_speakers=max_speakers,
+            align_words=align_words,
+            align_language=align_language,
+        )
+    except ImportError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail="Install agent-cli[diarization] to enable diarization.",
+        ) from exc
+    except Exception as exc:
+        LOGGER.exception("Diarization failed")
+        raise HTTPException(
+            status_code=500, detail="Diarization failed. Check server logs."
+        ) from exc
+
+
+@app.post("/diarize", response_model=DiarizationResponse)
+async def diarize_audio(
+    request: Request,
+    audio: Annotated[UploadFile | None, File()] = None,
+    min_speakers: Annotated[int | None, Form(ge=1)] = None,
+    max_speakers: Annotated[int | None, Form(ge=1)] = None,
+) -> DiarizationResponse:
+    """Return speaker timestamps without calling a transcription provider."""
+    _validate_speaker_hints(min_speakers, max_speakers)
+    audio_file = await _extract_audio_file_from_request(request, audio)
+    _validate_audio_file(audio_file)
+    audio_data = await audio_file.read()
+    if not audio_data:
+        raise HTTPException(status_code=400, detail="Empty audio file")
+    defaults = _load_transcription_defaults()
+    segments = await _diarize_upload(
+        _get_diarizer(defaults),
+        audio_data,
+        audio_file.filename or "audio.wav",
+        min_speakers=min_speakers,
+        max_speakers=max_speakers,
+    )
+    return DiarizationResponse(segments=segments)
 
 
 @app.get("/health", response_model=HealthResponse)
@@ -202,6 +316,12 @@ def _cfg(key: str, defaults: dict[str, Any], opt: OptionInfo) -> Any:
     return defaults.get(key, opt.default)
 
 
+def _load_transcription_defaults() -> dict[str, Any]:
+    """Merge defaults without requiring any provider configuration."""
+    loaded_config = config.load_config()
+    return {**loaded_config.get("defaults", {}), **loaded_config.get("transcribe", {})}
+
+
 def _load_transcription_configs() -> tuple[
     config.ProviderSelection,
     config.WyomingASR,
@@ -213,10 +333,7 @@ def _load_transcription_configs() -> tuple[
     dict[str, Any],
 ]:
     """Load config objects. Priority: env var > config file > default."""
-    loaded_config = config.load_config()
-    wildcard_config = loaded_config.get("defaults", {})
-    command_config = loaded_config.get("transcribe", {})
-    defaults = {**wildcard_config, **command_config}
+    defaults = _load_transcription_defaults()
 
     provider_cfg = config.ProviderSelection(
         asr_provider=_cfg("asr_provider", defaults, opts.ASR_PROVIDER),
@@ -360,8 +477,13 @@ async def transcribe_audio(
             defaults,
         ) = _load_transcription_configs()
 
+        diarizer = _get_diarizer(defaults) if form_data.diarize else None
+
         # Read uploaded file
         audio_data = await audio_file.read()
+        original_audio = audio_data
+        if form_data.diarize and not audio_data:
+            raise HTTPException(status_code=400, detail="Empty audio file")  # noqa: TRY301
         LOGGER.info(
             "Received audio: filename=%s, size=%d bytes, content_type=%s",
             audio_file.filename,
@@ -388,6 +510,19 @@ async def transcribe_audio(
                 raw_transcript="",
                 success=False,
                 error="No transcript generated from audio",
+            )
+
+        segments = None
+        if diarizer is not None:
+            segments = await _diarize_upload(
+                diarizer,
+                original_audio,
+                audio_file.filename or "audio.wav",
+                transcript=raw_transcript,
+                min_speakers=form_data.min_speakers,
+                max_speakers=form_data.max_speakers,
+                align_words=form_data.align_words,
+                align_language=form_data.align_language,
             )
 
         if transcription_logger is None:
@@ -422,6 +557,7 @@ async def transcribe_audio(
             raw_transcript=raw_transcript,
             cleaned_transcript=cleaned_transcript,
             success=True,
+            segments=segments,
         )
 
     except HTTPException:

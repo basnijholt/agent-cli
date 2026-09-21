@@ -161,13 +161,13 @@ final class AgentCommandRunner: ObservableObject {
         holdTranscriptionState = .stopping
 
         let wasRecording = recordingIndicator.isRecordingCommand(.toggleTranscription)
-        beginTranscribingActivity()
         if wasRecording {
             endRecordingIndicator(for: .toggleTranscription)
             statusMessage = "Transcribing..."
         } else {
             statusMessage = "Stopping transcription as soon as it starts..."
         }
+        beginTranscribingActivity()
         stopHeldTranscriptionWhenReady()
     }
 
@@ -252,7 +252,12 @@ final class AgentCommandRunner: ObservableObject {
                 }
             }
 
-            let result = AgentRuntime.shared.runAgentCLI(arguments: commandArguments)
+            let commandResult = AgentRuntime.shared.runAgentCLI(arguments: commandArguments)
+            // A stop acknowledgement may be empty; a completed recording must contain text.
+            // Validate here too because user-installed CLIs can predate the CLI-side check.
+            let result = shouldStartRecording && command.identifier == AgentCommand.toggleTranscription.identifier
+                ? commandResult.requiringTranscript()
+                : commandResult
             let message = Self.statusMessage(for: command, result: result)
             let notificationTitle = Self.notificationTitle(for: command, result: result)
             let notificationBody = Self.notificationBody(for: command, result: result, statusMessage: message)
@@ -260,12 +265,12 @@ final class AgentCommandRunner: ObservableObject {
             Task { @MainActor in
                 if shouldStartRecording {
                     self.clearHoldTranscriptionState(for: command)
-                    let shouldPaste = self.shouldPasteAfterRecording(for: command) && result.exitCode == 0
+                    let shouldPaste = self.shouldPasteAfterRecording(for: command)
                     let pasteTarget = self.holdToTranscribePasteTarget
                     self.endRecordingIndicator(for: command)
                     self.clearStopRequested(for: command)
-                    if shouldPaste {
-                        self.pasteController.pasteTranscriptIntoFocusedField(result.output, target: pasteTarget) { message in
+                    if shouldPaste, let pasteText = result.pasteText {
+                        self.pasteController.pasteTranscriptIntoFocusedField(pasteText, target: pasteTarget) { message in
                             self.statusMessage = message
                         }
                     }
@@ -381,11 +386,13 @@ final class AgentCommandRunner: ObservableObject {
 
     private func beginTranscribingActivity() {
         activityTracker.beginTranscribing()
+        VoiceLevelOverlayController.shared.showTranscribing()
     }
 
     private func clearTranscribingActivityIfFinished() {
         if pendingStopRecordingCommands.isEmpty && !holdTranscriptionState.isFinishing {
             activityTracker.finishTranscribing()
+            VoiceLevelOverlayController.shared.finishTranscribing()
         }
     }
 
