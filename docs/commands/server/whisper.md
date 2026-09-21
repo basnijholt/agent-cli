@@ -8,7 +8,7 @@ Run a local ASR server with automatic backend selection based on your platform:
 
 - **macOS Apple Silicon** → [mlx-whisper](https://github.com/ml-explore/mlx-examples/tree/main/whisper) (Metal acceleration)
 - **Linux/CUDA** → [faster-whisper](https://github.com/SYSTRAN/faster-whisper) (CTranslate2)
-- **HuggingFace** → [transformers](https://huggingface.co/docs/transformers/model_doc/whisper) (supports safetensors models and known remote-code ASR models such as Cohere Transcribe)
+- **HuggingFace** → [transformers](https://huggingface.co/docs/transformers/model_doc/whisper) (supports safetensors models, Qwen3-ASR, and known remote-code ASR models such as Cohere Transcribe)
 - **NVIDIA Parakeet** → [NeMo](https://github.com/NVIDIA/NeMo) (e.g., `parakeet-tdt-0.6b-v3`)
 
 > [!NOTE]
@@ -34,6 +34,14 @@ Run a local ASR server with automatic backend selection based on your platform:
 >   --default-language en
 > ```
 >
+> Qwen3-ASR via native HuggingFace transformers support:
+> ```bash
+> pip install "agent-cli[whisper-transformers]"
+> agent-cli server whisper \
+>   --backend transformers \
+>   --model Qwen/Qwen3-ASR-1.7B-hf
+> ```
+>
 > NVIDIA Parakeet via NeMo:
 > ```bash
 > agent-cli install-extras nemo-whisper wyoming
@@ -47,6 +55,7 @@ Run a local ASR server with automatic backend selection based on your platform:
 - **OpenAI-compatible API** at `/v1/audio/transcriptions` - drop-in replacement for OpenAI's Whisper API
 - **Wyoming protocol** for [Home Assistant](https://www.home-assistant.io/) voice integration (Wyoming is the standard protocol for local voice services)
 - **TTL-based memory management** - models unload after idle period, freeing RAM/VRAM
+- **CUDA cache cleanup** - the transformers backend releases unused GPU cache after each transcription while keeping model weights loaded
 - **Multiple models** - run different model sizes with independent TTLs
 - **Background preloading** - downloads start at startup without blocking; use `--preload` to wait
 - **Multi-platform support** - automatically uses the optimal backend for your hardware (`auto` switches to `nemo` for Parakeet models)
@@ -96,6 +105,11 @@ agent-cli server whisper \
   --backend transformers \
   --model CohereLabs/cohere-transcribe-03-2026 \
   --default-language en
+
+# Run Qwen3-ASR through its native transformers integration
+agent-cli server whisper \
+  --backend transformers \
+  --model Qwen/Qwen3-ASR-1.7B-hf
 ```
 
 ## Options
@@ -117,6 +131,7 @@ agent-cli server whisper \
 | `--cache-dir` | - | Custom directory for downloaded models (default: HuggingFace cache) |
 | `--default-language` | - | Fallback language code for requests that omit `language`. Required for models that do not support language auto-detection (for example Cohere Transcribe). |
 | `--trust-remote-code` | `false` | Allow Hugging Face model repositories to execute custom Python code. Known supported remote-code ASR models are trusted automatically. |
+| `--max-new-tokens` | `4096` | Maximum output tokens for autoregressive transformers ASR models. Increase for unusually long audio |
 | `--ttl` | `300` | Seconds of inactivity before unloading model from memory. Set to 0 to keep loaded indefinitely |
 | `--preload` | `false` | Load model(s) immediately at startup instead of on first request. Useful for reducing first-request latency |
 | `--host` | `0.0.0.0` | Network interface to bind. Use `0.0.0.0` for all interfaces |
@@ -285,7 +300,28 @@ pip install "agent-cli[whisper-transformers]"
 agent-cli server whisper --backend transformers
 ```
 
-This uses HuggingFace's `transformers` library, which supports loading `.safetensors` models directly from the Hub.
+This uses HuggingFace's `transformers` library, which supports loading `.safetensors` models directly from the Hub. Qwen3-ASR requires `transformers>=5.13.0` and supports automatic language detection and transcription prompts.
+
+### Qwen3-ASR
+
+```bash
+pip install "agent-cli[whisper-transformers]"
+agent-cli server whisper \
+  --backend transformers \
+  --model Qwen/Qwen3-ASR-1.7B-hf
+```
+
+Qwen3-ASR supports transcription, automatic language detection, and context or hotwords through the OpenAI-compatible `prompt` field. Translation and timestamped subtitle output are not currently supported.
+
+The default output budget is 4096 tokens, which accommodates long recordings. For unusually long or dense speech, increase it with `--max-new-tokens`. If Qwen3-ASR exhausts the configured budget, the request fails with a clear error instead of returning a silently truncated transcript.
+
+To install it as the standard `whisper` background daemon:
+
+```bash
+agent-cli daemon install whisper -- \
+  --backend transformers \
+  --model Qwen/Qwen3-ASR-1.7B-hf
+```
 
 For Cohere Transcribe specifically:
 

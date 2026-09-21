@@ -1,9 +1,8 @@
 name: Publish Docker Images
 
 on:
-  workflow_run:
-    workflows: ["Upload Python Package"]
-    types: [completed]
+  release:
+    types: [published]
   workflow_dispatch:
 
 env:
@@ -13,7 +12,6 @@ jobs:
   # Images with cuda/cpu targets (whisper, tts)
   build-multi-target:
     runs-on: ubuntu-latest
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     permissions:
       contents: read
       packages: write
@@ -51,7 +49,7 @@ jobs:
           fetch-depth: 0  # Full history for version detection
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4.2.0
+        uses: docker/setup-buildx-action@v4.4.1
 
       - name: Log in to Container Registry
         uses: docker/login-action@v4.5.1
@@ -62,11 +60,12 @@ jobs:
 
       - name: Get version from trigger
         id: version
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
         run: |
-          if [[ "${{ github.event_name }}" == "workflow_run" ]]; then
+          if [[ "$GITHUB_EVENT_NAME" == "release" ]]; then
             # Extract version from release tag (v0.61.3 -> 0.61.3)
-            TAG="${{ github.event.workflow_run.head_branch }}"
-            echo "version=${TAG#v}" >> $GITHUB_OUTPUT
+            echo "version=${RELEASE_TAG#v}" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Extract metadata
@@ -80,7 +79,7 @@ jobs:
             type=sha,suffix=-${{ matrix.suffix }}
 
       - name: Build and push
-        uses: docker/build-push-action@v7.3.0
+        uses: docker/build-push-action@v7.4.0
         with:
           context: .
           file: ${{ matrix.dockerfile }}
@@ -91,10 +90,9 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  # Single-target images (transcribe-proxy)
+  # Single-target images (proxies and diarization)
   build-single-target:
     runs-on: ubuntu-latest
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     permissions:
       contents: read
       packages: write
@@ -108,15 +106,23 @@ jobs:
             dockerfile: docker/rag-proxy.Dockerfile
           - image: memory-proxy
             dockerfile: docker/memory-proxy.Dockerfile
+          - image: diarization
+            dockerfile: docker/diarization.Dockerfile
 
     steps:
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /usr/local/lib/android
+          df -h
+
       - name: Checkout repository
         uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0  # Full history for version detection
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4.2.0
+        uses: docker/setup-buildx-action@v4.4.1
 
       - name: Log in to Container Registry
         uses: docker/login-action@v4.5.1
@@ -127,11 +133,12 @@ jobs:
 
       - name: Get version from trigger
         id: version
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
         run: |
-          if [[ "${{ github.event_name }}" == "workflow_run" ]]; then
+          if [[ "$GITHUB_EVENT_NAME" == "release" ]]; then
             # Extract version from release tag (v0.61.3 -> 0.61.3)
-            TAG="${{ github.event.workflow_run.head_branch }}"
-            echo "version=${TAG#v}" >> $GITHUB_OUTPUT
+            echo "version=${RELEASE_TAG#v}" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Extract metadata
@@ -145,7 +152,7 @@ jobs:
             type=sha
 
       - name: Build and push
-        uses: docker/build-push-action@v7.3.0
+        uses: docker/build-push-action@v7.4.0
         with:
           context: .
           file: ${{ matrix.dockerfile }}
@@ -154,3 +161,81 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  smoke-diarization:
+    needs: build-single-target
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      packages: read
+
+    steps:
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /usr/local/lib/android
+          df -h
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v4.5.1
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Resolve image reference
+        id: image
+        run: |
+          tag="sha-${GITHUB_SHA::7}"
+          echo "ref=${REGISTRY}/${GITHUB_REPOSITORY}-diarization:${tag}" >> "$GITHUB_OUTPUT"
+
+      - name: Pull published image
+        run: docker pull "${{ steps.image.outputs.ref }}"
+
+      - name: Verify package version
+        env:
+          IMAGE_REF: ${{ steps.image.outputs.ref }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          actual_version=$(
+            docker run --rm --entrypoint /app/.venv/bin/python "$IMAGE_REF" \
+              -c 'import importlib.metadata; print(importlib.metadata.version("agent-cli"))'
+          )
+          if [[ "$GITHUB_EVENT_NAME" == "release" ]]; then
+            expected_version="${RELEASE_TAG#v}"
+            if [[ "${actual_version%%+*}" != "$expected_version" ]]; then
+              echo "Expected agent-cli $expected_version, got $actual_version" >&2
+              exit 1
+            fi
+          fi
+          echo "Verified agent-cli $actual_version"
+
+      - name: Verify health and API routes
+        env:
+          IMAGE_REF: ${{ steps.image.outputs.ref }}
+        run: |
+          container_id=$(docker run --detach --publish 61337:61337 "$IMAGE_REF")
+          trap 'docker rm --force "$container_id" >/dev/null 2>&1 || true' EXIT
+
+          ready=false
+          for _ in {1..30}; do
+            if curl --fail --silent --connect-timeout 1 --max-time 2 \
+              http://localhost:61337/health | jq --exit-status '.status == "healthy"' >/dev/null; then
+              ready=true
+              break
+            fi
+            sleep 2
+          done
+          if [[ "$ready" != "true" ]]; then
+            docker logs "$container_id"
+            exit 1
+          fi
+
+          if ! curl --fail --silent --show-error --connect-timeout 1 --max-time 2 \
+            http://localhost:61337/openapi.json | jq --exit-status \
+              '.paths["/health"].get and .paths["/transcribe"].post and .paths["/diarize"].post' \
+              >/dev/null; then
+            docker logs "$container_id"
+            exit 1
+          fi

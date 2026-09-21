@@ -37,12 +37,13 @@ class ServiceConfig:
 
 # TTS services that are mutually exclusive (same ports)
 TTS_SERVICES = ("tts-kokoro", "tts-piper")
-_WHISPER_BACKEND_EXTRAS = {
-    "faster-whisper",
-    "mlx-whisper",
-    "whisper-transformers",
-    "nemo-whisper",
+_WHISPER_EXTRA_BY_BACKEND = {
+    "faster-whisper": "faster-whisper",
+    "mlx": "mlx-whisper",
+    "nemo": "nemo-whisper",
+    "transformers": "whisper-transformers",
 }
+_WHISPER_BACKEND_EXTRAS = frozenset(_WHISPER_EXTRA_BY_BACKEND.values())
 
 
 def detect_preferred_tts() -> str:
@@ -172,7 +173,15 @@ def _service_extra_for_command(
     extra_command_args: list[str] | None,
 ) -> str:
     """Adjust service extras when custom daemon args select a specific backend."""
-    if service.name != "whisper" or not _uses_nemo_backend(extra_command_args):
+    if service.name != "whisper":
+        return extra
+
+    backend = _backend_from_args(extra_command_args)
+    if backend is None:
+        return extra
+
+    backend_extra = _WHISPER_EXTRA_BY_BACKEND.get(backend)
+    if backend_extra is None:
         return extra
 
     parts = _split_extras(extra)
@@ -181,13 +190,13 @@ def _service_extra_for_command(
     for part in parts:
         if part in _WHISPER_BACKEND_EXTRAS:
             if not inserted:
-                result.append("nemo-whisper")
+                result.append(backend_extra)
                 inserted = True
             continue
         result.append(part)
 
     if not inserted:
-        result.append("nemo-whisper")
+        result.append(backend_extra)
     return ",".join(result)
 
 
@@ -195,14 +204,14 @@ def _split_extras(extra: str) -> list[str]:
     return [part.strip() for part in extra.split(",") if part.strip()]
 
 
-def _uses_nemo_backend(extra_command_args: list[str] | None) -> bool:
+def _backend_from_args(extra_command_args: list[str] | None) -> str | None:
     args = extra_command_args or []
     for index, arg in enumerate(args):
         if arg in {"--backend", "-b"} and index + 1 < len(args):
-            return args[index + 1] == "nemo"
-        if arg in {"--backend=nemo", "-b=nemo"}:
-            return True
-    return False
+            return args[index + 1]
+        if arg.startswith(("--backend=", "-b=")):
+            return arg.split("=", maxsplit=1)[1]
+    return None
 
 
 def find_uv(extra_paths: list[Path] | None = None) -> Path | None:

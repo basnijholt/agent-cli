@@ -3,7 +3,7 @@ import Foundation
 import SwiftUI
 
 enum VoiceLevelOverlayLayout {
-    static let pillSize = CGSize(width: 147, height: 38)
+    static let pillSize = CGSize(width: 190, height: 38)
     static let textWidth = CGFloat(420)
     static let textHeight = CGFloat(86)
     static let shadowRadius = CGFloat(13)
@@ -72,41 +72,69 @@ struct VoiceLevelOverlayView: View {
             height: VoiceLevelOverlayLayout.panelSize(showsPreviewSpace: showsPreviewSpace).height,
             alignment: .bottom
         )
-        .accessibilityLabel(Text("Voice level"))
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text(meter.captureState == .recording
+            ? "Recording \(meter.recordingDuration)"
+            : meter.captureState == .transcribing
+                ? "Transcribing \(meter.transcribingDuration)"
+                : meter.captureState.label))
+        .accessibilityValue(Text(showsPreviewSpace ? preview.text : ""))
     }
 
     private var levelMeter: some View {
-        HStack(alignment: .center, spacing: 3.5) {
-            ForEach(Array(meter.amplitudes.enumerated()), id: \.offset) { _, amplitude in
-                Capsule()
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                barGradientStart,
-                                barGradientEnd
-                            ],
-                            startPoint: .bottom,
-                            endPoint: .top
-                        )
-                    )
-                    .frame(width: 3.5, height: max(5, 25 * amplitude))
-                    .animation(.easeOut(duration: 0.11), value: amplitude)
+        HStack(spacing: 8) {
+            if meter.captureState == .recording {
+                Text(meter.recordingDuration)
+                    .font(.system(size: 12, weight: .semibold))
+                    .monospacedDigit()
+                    .fixedSize()
+                waveform
+            } else {
+                ProgressView()
+                    .controlSize(.small)
+                Text(meter.captureState.label)
+                    .font(.system(size: 12, weight: .semibold))
+                if meter.captureState == .transcribing {
+                    Text(meter.transcribingDuration)
+                        .font(.system(size: 12, weight: .semibold))
+                        .monospacedDigit()
+                        .fixedSize()
+                }
             }
         }
+        .foregroundStyle(statusColor)
+        .padding(.horizontal, 14)
         .frame(width: VoiceLevelOverlayLayout.pillSize.width, height: VoiceLevelOverlayLayout.pillSize.height)
-        .background(
-            Capsule()
-                .fill(backgroundColor)
-        )
-        .overlay(
-            Capsule()
-                .stroke(borderColor, lineWidth: 1)
-        )
+        .background(Capsule().fill(statusColor.opacity(isLightMode ? 0.10 : 0.14)))
+        .background(Capsule().fill(backgroundColor))
+        .overlay(Capsule().stroke(statusColor.opacity(0.55), lineWidth: 1))
         .shadow(
             color: shadowColor,
             radius: VoiceLevelOverlayLayout.shadowRadius,
             y: VoiceLevelOverlayLayout.shadowYOffset
         )
+    }
+
+    private var waveform: some View {
+        HStack(alignment: .center, spacing: 2) {
+            ForEach(Array(meter.amplitudes.enumerated()), id: \.offset) { _, amplitude in
+                Capsule()
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                statusColor.opacity(0.65),
+                                statusColor
+                            ],
+                            startPoint: .bottom,
+                            endPoint: .top
+                        )
+                    )
+                    .frame(maxWidth: .infinity)
+                    .frame(height: max(6, 30 * amplitude))
+                    .animation(.easeOut(duration: 0.11), value: amplitude)
+            }
+        }
+        .frame(maxWidth: .infinity)
     }
 
     private var isLightMode: Bool {
@@ -133,12 +161,20 @@ struct VoiceLevelOverlayView: View {
         Color.black.opacity(isLightMode ? 0.16 : 0.24)
     }
 
-    private var barGradientStart: Color {
-        isLightMode ? Color(red: 0.04, green: 0.45, blue: 0.95) : Color(red: 0.18, green: 0.82, blue: 0.92)
-    }
-
-    private var barGradientEnd: Color {
-        isLightMode ? Color(red: 0.07, green: 0.72, blue: 0.68) : Color(red: 0.64, green: 0.96, blue: 0.58)
+    private var statusColor: Color {
+        if meter.captureState == .transcribing {
+            return isLightMode
+                ? Color(red: 0.10, green: 0.32, blue: 0.70)
+                : Color(red: 0.45, green: 0.72, blue: 1.0)
+        }
+        if meter.captureState == .recording {
+            return isLightMode
+                ? Color(red: 0.04, green: 0.40, blue: 0.18)
+                : Color(red: 0.42, green: 0.91, blue: 0.58)
+        }
+        return isLightMode
+            ? Color(red: 0.62, green: 0.34, blue: 0.0)
+            : Color(red: 1.0, green: 0.74, blue: 0.25)
     }
 }
 
@@ -147,25 +183,61 @@ final class VoiceLevelOverlayController {
 
     private var panel: NSPanel?
     private var showsPreviewSpace = false
+    private var recordingShowsPreviewSpace = false
+    private var isRecording = false
+    private var isTranscribing = false
 
     private init() {}
 
     func show(showsPreviewSpace: Bool = false) {
+        isRecording = true
+        recordingShowsPreviewSpace = showsPreviewSpace
         let panel = panel ?? makePanel()
         self.panel = panel
-        if self.showsPreviewSpace != showsPreviewSpace {
-            self.showsPreviewSpace = showsPreviewSpace
-            updatePanelContent(panel)
-        }
-        panel.setContentSize(VoiceLevelOverlayLayout.panelSize(showsPreviewSpace: showsPreviewSpace))
-        position(panel)
+        setPreviewSpace(showsPreviewSpace, for: panel)
         VoiceLevelMeter.shared.start()
         panel.orderFrontRegardless()
     }
 
     func hide() {
+        isRecording = false
+        isTranscribing = false
         VoiceLevelMeter.shared.stop()
         panel?.orderOut(nil)
+    }
+
+    func showTranscribing() {
+        isTranscribing = true
+        let panel = panel ?? makePanel()
+        self.panel = panel
+        VoiceLevelMeter.shared.beginTranscribing()
+        setPreviewSpace(false, for: panel)
+        panel.orderFrontRegardless()
+    }
+
+    func finishTranscribing() {
+        guard isTranscribing else { return }
+        isTranscribing = false
+        if isRecording {
+            if let panel {
+                setPreviewSpace(recordingShowsPreviewSpace, for: panel)
+            }
+            VoiceLevelMeter.shared.resumeRecording()
+        } else {
+            hide()
+        }
+    }
+
+    func endRecording() {
+        isRecording = false
+        if isTranscribing {
+            VoiceLevelMeter.shared.beginTranscribing()
+            if let panel {
+                setPreviewSpace(false, for: panel)
+            }
+        } else {
+            hide()
+        }
     }
 
     private func makePanel() -> NSPanel {
@@ -187,6 +259,15 @@ final class VoiceLevelOverlayController {
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .ignoresCycle]
         updatePanelContent(panel)
         return panel
+    }
+
+    private func setPreviewSpace(_ showsPreviewSpace: Bool, for panel: NSPanel) {
+        if self.showsPreviewSpace != showsPreviewSpace {
+            self.showsPreviewSpace = showsPreviewSpace
+            updatePanelContent(panel)
+        }
+        panel.setContentSize(VoiceLevelOverlayLayout.panelSize(showsPreviewSpace: showsPreviewSpace))
+        position(panel)
     }
 
     private func updatePanelContent(_ panel: NSPanel) {
@@ -306,10 +387,31 @@ enum VoiceLevelLog {
     }()
 }
 
+enum VoiceCaptureState {
+    case idle
+    case connecting
+    case recording
+    case waitingForAudio
+    case transcribing
+
+    var label: String {
+        switch self {
+        case .idle: return "Ready"
+        case .connecting: return "Connecting…"
+        case .recording: return "Recording"
+        case .waitingForAudio: return "Waiting for audio…"
+        case .transcribing: return "Transcribing…"
+        }
+    }
+}
+
 final class VoiceLevelMeter: ObservableObject {
     static let shared = VoiceLevelMeter()
 
     @Published private(set) var amplitudes = VoiceLevelMeter.idleAmplitudes
+    @Published private(set) var captureState = VoiceCaptureState.idle
+    @Published private(set) var recordingDuration = "00:00"
+    @Published private(set) var transcribingDuration = "00:00"
 
     private static let barCount = 16
     private static let idleAmplitudes = Array(repeating: CGFloat(0.16), count: barCount)
@@ -319,6 +421,8 @@ final class VoiceLevelMeter: ObservableObject {
     private let levelLogURL: URL
     private let now: () -> Date
     private var timer: Timer?
+    private var recordingStartedAt: Date?
+    private var transcribingStartedAt: Date?
     private var phase = 0.0
     private var smoothedLevel = CGFloat(0.16)
 
@@ -328,12 +432,21 @@ final class VoiceLevelMeter: ObservableObject {
     }
 
     func start() {
-        guard timer == nil else { return }
+        guard timer == nil || captureState == .transcribing else { return }
         VoiceLevelLog.reset(levelLogURL)
+        captureState = .connecting
+        recordingStartedAt = nil
+        recordingDuration = "00:00"
+        transcribingStartedAt = nil
+        transcribingDuration = "00:00"
         phase = 0
         smoothedLevel = Self.idleLevel
         amplitudes = Self.idleAmplitudes
+        startPolling()
+    }
 
+    private func startPolling() {
+        timer?.invalidate()
         let timer = Timer(timeInterval: Self.pollInterval, repeats: true) { [weak self] _ in
             self?.pollLevel()
         }
@@ -342,16 +455,55 @@ final class VoiceLevelMeter: ObservableObject {
         pollLevel()
     }
 
+    func resumeRecording() {
+        guard captureState == .transcribing else { return }
+        transcribingStartedAt = nil
+        captureState = recordingStartedAt == nil ? .connecting : .waitingForAudio
+        startPolling()
+    }
+
     func stop() {
         timer?.invalidate()
         timer = nil
+        captureState = .idle
+        transcribingStartedAt = nil
+        transcribingDuration = "00:00"
+        recordingStartedAt = nil
+        recordingDuration = "00:00"
         phase = 0
         smoothedLevel = Self.idleLevel
         amplitudes = Self.idleAmplitudes
     }
 
-    private func pollLevel() {
-        let level = VoiceLevelLog.latestLevel(from: levelLogURL, now: now()) ?? Self.idleLevel
+    func beginTranscribing() {
+        guard captureState != .transcribing else { return }
+        transcribingStartedAt = now()
+        transcribingDuration = "00:00"
+        captureState = .transcribing
+        amplitudes = Self.idleAmplitudes
+        startPolling()
+    }
+
+    func pollLevel() {
+        guard timer != nil else { return }
+        let now = now()
+        if captureState == .transcribing {
+            let elapsed = max(0, Int(now.timeIntervalSince(transcribingStartedAt ?? now)))
+            transcribingDuration = String(format: "%02d:%02d", elapsed / 60, elapsed % 60)
+            return
+        }
+        guard let level = VoiceLevelLog.latestLevel(from: levelLogURL, now: now) else {
+            if captureState == .recording {
+                captureState = .waitingForAudio
+            }
+            amplitudes = Self.idleAmplitudes
+            return
+        }
+        captureState = .recording
+        let startedAt = recordingStartedAt ?? now
+        recordingStartedAt = startedAt
+        let elapsedSeconds = max(0, Int(now.timeIntervalSince(startedAt)))
+        recordingDuration = String(format: "%02d:%02d", elapsedSeconds / 60, elapsedSeconds % 60)
         updateDisplay(level: level)
     }
 

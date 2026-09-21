@@ -477,6 +477,9 @@ async def _async_main(  # noqa: PLR0912, PLR0915, C901
                     live_preview_config=live_preview_config,
                 )
 
+        if transcript and not transcript.strip():
+            transcript = None
+
         elapsed = time.monotonic() - start_time
 
         # Apply diarization if enabled
@@ -554,6 +557,9 @@ async def _async_main(  # noqa: PLR0912, PLR0915, C901
                 live=live,
                 context=combined_context,
             )
+            if general_cfg.clipboard and not (processed_transcript or "").strip():
+                # Keep the raw speech recoverable if cleanup overwrote it with blank text.
+                pyperclip.copy(transcript)
 
             # Log transcription if requested
             if transcription_log:
@@ -613,6 +619,21 @@ async def _async_main(  # noqa: PLR0912, PLR0915, C901
         transcript=transcript,
         llm_enabled=False,
     )
+
+
+def _require_transcript(result: TranscriptResult, provider: str) -> None:
+    """Do not report successful dictation when the backend produced no text."""
+    if not (result.get("transcript") or "").strip():
+        if result.get("raw_transcript"):
+            message = "LLM cleanup returned no text. Retry with --no-llm to use the raw transcript."
+        else:
+            message = f"No transcript returned by {provider}. Check the microphone and ASR server."
+        typer.echo(
+            f"{message} "
+            "If a recording was saved, retry with agent-cli transcribe --last-recording.",
+            err=True,
+        )
+        raise typer.Exit(1)
 
 
 @app.command("transcribe", rich_help_panel="Voice Commands")
@@ -896,6 +917,7 @@ def transcribe(  # noqa: PLR0912, PLR0911, PLR0915, C901
             LOGGER.exception("Diarization failed")
             _print_diarization_error(exc)
             raise typer.Exit(1) from None
+        _require_transcript(result, asr_provider)
         if json_output:
             print(json.dumps(result))
         return
@@ -937,6 +959,7 @@ def transcribe(  # noqa: PLR0912, PLR0911, PLR0915, C901
     ):
         return
 
+    result = TranscriptResult(raw_transcript=None, transcript=None, llm_enabled=False)
     # Use context manager before audio setup so --stop can target startup reliably.
     try:
         with process.pid_file_context(process_name), suppress(KeyboardInterrupt):
@@ -992,5 +1015,6 @@ def transcribe(  # noqa: PLR0912, PLR0911, PLR0915, C901
         LOGGER.exception("Diarization failed")
         _print_diarization_error(exc)
         raise typer.Exit(1) from None
+    _require_transcript(result, asr_provider)
     if json_output:
         print(json.dumps(result))
