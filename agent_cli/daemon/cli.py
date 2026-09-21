@@ -16,6 +16,7 @@ from rich.panel import Panel
 
 from agent_cli.cli import app as main_app
 from agent_cli.core.utils import console, err_console
+from agent_cli.daemon import transcribe_recorder
 from agent_cli.install.service_config import (
     SERVICES,
     ServiceStatus,
@@ -70,6 +71,11 @@ Daemons run via `uv tool run` and start automatically at login.
     no_args_is_help=True,
 )
 main_app.add_typer(app, name="daemon", rich_help_panel="Servers")
+app.add_typer(
+    transcribe_recorder.app,
+    name="transcribe-recorder",
+    rich_help_panel="Daemon Commands",
+)
 
 
 @app.command("status")
