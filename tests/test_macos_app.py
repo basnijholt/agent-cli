@@ -99,7 +99,7 @@ def test_macos_app_depends_on_keyboardshortcuts_package() -> None:
     package = (MACOS_APP / "Package.swift").read_text(encoding="utf-8")
 
     assert "https://github.com/sindresorhus/KeyboardShortcuts" in package
-    assert 'exact: "1.10.0"' in package
+    assert 'exact: "1.17.0"' in package
     assert '.product(name: "KeyboardShortcuts", package: "KeyboardShortcuts")' in package
 
 
