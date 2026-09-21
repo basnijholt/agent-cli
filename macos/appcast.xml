@@ -5,6 +5,29 @@
         <link>https://github.com/basnijholt/agent-cli</link>
         <description>Signed Agent CLI macOS app updates.</description>
         <item>
+            <title>0.107.0</title>
+            <pubDate>Mon, 21 Sep 2026 18:53:01 +0000</pubDate>
+            <link>https://github.com/basnijholt/agent-cli</link>
+            <sparkle:version>208</sparkle:version>
+            <sparkle:shortVersionString>0.107.0</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[## Features
+
+- **See transcription progress after releasing the key.** The macOS overlay stays visible with a blue spinner and “Transcribing…” label until the request completes or fails. A separate MM:SS timer shows elapsed transcription time, starting from zero when processing begins. (#651)
+- **A fuller recording waveform.** The recording timer sits closer to the left edge, and wider, taller waveform bars fill the remaining pill space. (#651)
+
+## Bug fixes
+
+- Keep the transcription pill compact after live-preview recordings, and restore the preview layout if a failed toggle-stop request returns to recording. (#651)
+- Preserve overlay visibility across overlapping recording and transcription activity. Ignore duplicate recording-completion events so they cannot stop another active recording indicator. (#651)
+
+**Full changelog:** https://github.com/basnijholt/agent-cli/compare/v0.106.0...v0.107.0
+
+]]></description>
+            <enclosure url="https://github.com/basnijholt/agent-cli/releases/download/v0.107.0/AgentCLI.zip" length="18871107" type="application/octet-stream" sparkle:edSignature="NBfAeYMwnrVy3ageqaHEyepstJ6EBHI6tJgwqf3UrdOH0u8zEx0pWWuKzNgv+Tq2Uu2rn6PMeiUSfuUpHl8WCw=="/>
+        </item>
+        <item>
             <title>0.106.0</title>
             <pubDate>Mon, 21 Sep 2026 16:57:54 +0000</pubDate>
             <link>https://github.com/basnijholt/agent-cli</link>
@@ -178,33 +201,6 @@
 - Drop the broken Homebrew tap dispatch from the release workflow (#623).
 ]]></description>
             <enclosure url="https://github.com/basnijholt/agent-cli/releases/download/v0.102.2/AgentCLI.zip" length="24329779" type="application/octet-stream" sparkle:edSignature="CeWZFIPSDJSiO8iQbm46QDRet3IYvIvgL4qSyYdDmwlTlkhV66IaXp05Wt04+xLBKTJcAv9333tA9n8BZ9IvBQ=="/>
-        </item>
-        <item>
-            <title>0.102.1</title>
-            <pubDate>Sat, 25 Jul 2026 18:58:28 +0000</pubDate>
-            <link>https://github.com/basnijholt/agent-cli</link>
-            <sparkle:version>198</sparkle:version>
-            <sparkle:shortVersionString>0.102.1</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[## Bug fixes
-
-* **Transcription now starts ~1.3s sooner after pressing the hotkey.** The macOS app spawned a login + interactive shell (`zsh -lic`) to discover `PATH` on *every* command it ran, costing 1.1–1.4s with a typical dotfiles setup. The recording pill appeared immediately but the microphone did not open until that shell finished, so speaking right away lost the first words. The login shell `PATH` is now resolved once per app launch, during the existing startup warm-up. Measured hotkey to first audio chunk: ~1.8s → ~0.4–0.6s. (#622)
-  * Only successful lookups are cached, so a login shell that fails once does not leave the app on a degraded `PATH` for the rest of the session.
-  * *Install or Update CLI* still re-probes, so a relocated `agent-cli` binary is picked up without restarting the app.
-
-## Performance
-
-* `agent-cli` no longer reads its own distribution metadata on startup. `__version__` resolves lazily, saving ~29ms on every command. (#622)
-
-## Maintenance
-
-* ⬆️ Update docker/login-action to v4.5.1 (#621, #619)
-* ⬆️ Update actions/checkout to v7.0.1 (#617)
-* ⬆️ Update release-drafter/release-drafter to v7.6.0 (#614)
-* [pre-commit.ci] pre-commit autoupdate (#616)
-]]></description>
-            <enclosure url="https://github.com/basnijholt/agent-cli/releases/download/v0.102.1/AgentCLI.zip" length="24329452" type="application/octet-stream" sparkle:edSignature="MQizz/9FfhxJGKQc6I/XXtIUBLVPh20yWi/kvfE7xBpoQGPF4yE4C0T1Ex1WpU3im/vRLrMIbZMv0+yHYTifBQ=="/>
         </item>
     </channel>
 </rss>
