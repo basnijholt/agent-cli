@@ -11,18 +11,34 @@ final class TranscriptionResultTests: XCTestCase {
         """).requiringTranscript()
         XCTAssertEqual(result.exitCode, 0)
         XCTAssertEqual(result.output, "CI is failing for the proxy. Fix it.")
+        XCTAssertEqual(result.pasteText, "CI is failing for the proxy. Fix it.")
     }
 
     func testWarningsAloneDoNotCountAsTranscript() {
         let result = runShell("printf 'Audio shutdown warning\\n' >&2").requiringTranscript()
         XCTAssertNotEqual(result.exitCode, 0)
         XCTAssertTrue(result.output.contains("No transcript"))
+        XCTAssertEqual(result.pasteText, "Audio shutdown warning")
     }
 
     func testFailureKeepsStderrDiagnostics() {
         let result = runShell("printf 'ASR connection failed\\n' >&2; exit 7").requiringTranscript()
         XCTAssertEqual(result.exitCode, 7)
         XCTAssertTrue(result.output.contains("ASR connection failed"))
+        XCTAssertEqual(result.pasteText, "ASR connection failed")
+    }
+
+    func testStdoutWinsOverStderrEvenWhenCommandFails() {
+        let result = runShell("printf 'Recognized speech\\n'; printf 'Cleanup failed\\n' >&2; exit 7")
+            .requiringTranscript()
+        XCTAssertEqual(result.exitCode, 7)
+        XCTAssertEqual(result.pasteText, "Recognized speech")
+    }
+
+    func testSilentProcessDoesNotPasteInventedTranscript() {
+        let result = runShell("exit 0").requiringTranscript()
+        XCTAssertNotEqual(result.exitCode, 0)
+        XCTAssertNil(result.pasteText)
     }
 
     func testLargeDiagnosticsDoNotBlockTranscriptCapture() {

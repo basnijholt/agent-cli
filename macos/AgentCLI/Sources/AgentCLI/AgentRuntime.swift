@@ -842,7 +842,8 @@ struct AgentRuntime {
             return CommandResult(
                 exitCode: task.terminationStatus,
                 output: output,
-                standardOutput: stdout
+                standardOutput: stdout,
+                standardError: diagnostics.output
             )
         } catch {
             return CommandResult(exitCode: 127, output: error.localizedDescription)
