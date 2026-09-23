@@ -48,6 +48,14 @@ _MODEL_MAP: dict[str, str] = {
 
 _REMOTE_CODE_MODEL_PREFIXES = ("CohereLabs/cohere-transcribe",)
 
+_QWEN_SAMPLE_RATE = 16000
+# Qwen3-ASR's encoder memory grows with clip length. On CUDA OOM, split clips
+# of at least this length at a pause and retry; halves stay above the official
+# qwen-asr MIN_ASR_INPUT_SECONDS of 0.5 s.
+_QWEN_MIN_SPLIT_SECONDS = 2.0
+_QWEN_SPLIT_SEARCH_SECONDS = 5.0
+_QWEN_SPLIT_WINDOW_SECONDS = 0.1
+
 
 class TranscriptionTruncatedError(RuntimeError):
     """Raised when an autoregressive ASR model exhausts its output budget."""
@@ -194,8 +202,25 @@ def _load_qwen_audio(wav_path: str) -> Any:
     """Decode and resample audio for Qwen3-ASR."""
     import librosa  # noqa: PLC0415
 
-    audio_array, _ = librosa.load(wav_path, sr=16000, mono=True)
+    audio_array, _ = librosa.load(wav_path, sr=_QWEN_SAMPLE_RATE, mono=True)
     return audio_array
+
+
+def _split_qwen_audio_at_pause(audio_array: Any) -> tuple[Any, Any]:
+    """Split audio at the quietest short window near its middle."""
+    import numpy as np  # noqa: PLC0415
+
+    middle = len(audio_array) // 2
+    expand = min(int(_QWEN_SPLIT_SEARCH_SECONDS * _QWEN_SAMPLE_RATE), len(audio_array) // 4)
+    window = int(_QWEN_SPLIT_WINDOW_SECONDS * _QWEN_SAMPLE_RATE)
+    left = middle - expand
+    energy = np.convolve(
+        np.abs(audio_array[left : middle + expand]),
+        np.ones(window, dtype=np.float32),
+        mode="valid",
+    )
+    boundary = left + int(np.argmin(energy)) + window // 2
+    return audio_array[:boundary], audio_array[boundary:]
 
 
 def _make_result(
@@ -307,6 +332,55 @@ def _transcribe_qwen3_asr(
 
     import torch  # noqa: PLC0415
 
+    parsed: tuple[str, str] | None = None
+    try:
+        parsed = _generate_qwen3_asr(
+            audio_array=audio_array,
+            effective_language=effective_language,
+            initial_prompt=initial_prompt,
+            max_new_tokens=max_new_tokens,
+        )
+    except torch.cuda.OutOfMemoryError:
+        if len(audio_array) < _QWEN_MIN_SPLIT_SECONDS * _QWEN_SAMPLE_RATE:
+            raise
+        logger.warning("Qwen3-ASR ran out of GPU memory on %.1fs of audio; splitting", duration)
+    if parsed is None:
+        # Retry outside the except block so the failed attempt's tensors are freed.
+        parts = [
+            _transcribe_qwen3_asr(
+                audio_array=part,
+                effective_language=effective_language,
+                task=task,
+                initial_prompt=initial_prompt,
+                duration=len(part) / _QWEN_SAMPLE_RATE,
+                max_new_tokens=max_new_tokens,
+            )
+            for part in _split_qwen_audio_at_pause(audio_array)
+        ]
+        parsed = (
+            " ".join(part["text"] for part in parts if part["text"]),
+            next((part["language"] for part in parts if part["language"] != "unknown"), "unknown"),
+        )
+    text, language = parsed
+
+    return _make_result(
+        text=text,
+        language=language,
+        language_probability=1.0 if effective_language else 0.0,
+        duration=duration,
+    )
+
+
+def _generate_qwen3_asr(
+    *,
+    audio_array: Any,
+    effective_language: str | None,
+    initial_prompt: str | None,
+    max_new_tokens: int,
+) -> tuple[str, str]:
+    """Run one Qwen3-ASR generate pass and return its text and language."""
+    import torch  # noqa: PLC0415
+
     inputs = _state.processor.apply_transcription_request(
         audio=audio_array,
         language=effective_language,
@@ -331,14 +405,7 @@ def _transcribe_qwen3_asr(
         )
         raise TranscriptionTruncatedError(msg)
     parsed = _state.processor.decode(generated_ids, return_format="parsed")[0]
-    language = parsed["language"] or effective_language or "unknown"
-
-    return _make_result(
-        text=parsed["transcription"],
-        language=language,
-        language_probability=1.0 if effective_language else 0.0,
-        duration=duration,
-    )
+    return parsed["transcription"], parsed["language"] or effective_language or "unknown"
 
 
 def _transcribe_with_model_helper(
