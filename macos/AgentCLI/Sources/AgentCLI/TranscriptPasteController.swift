@@ -13,9 +13,8 @@ struct TranscriptPasteController {
         NSPasteboard.general.setString(transcript, forType: .string)
 
         guard AXIsProcessTrusted() else {
-            requestAccessibilityPermissionIfNeeded()
             Task { @MainActor in
-                onStatus("Transcript copied. Allow Accessibility permission to auto-insert text.")
+                onStatus("Transcript copied. Enable Accessibility in Settings > Permissions to insert text automatically.")
             }
             return
         }
@@ -29,35 +28,6 @@ struct TranscriptPasteController {
         }
     }
 
-    private var accessibilityPromptMarkerContents: String {
-        let executableURL = Bundle.main.executableURL ?? Bundle.main.bundleURL
-        let executableValues = try? executableURL.resourceValues(forKeys: [.contentModificationDateKey])
-        let executableModified = executableValues?.contentModificationDate?.timeIntervalSince1970 ?? 0
-        return [
-            "packageSource=\(AgentRuntime.shared.agentCLIPackageSource)",
-            "executable=\(executableURL.path)",
-            "executableModified=\(executableModified)"
-        ].joined(separator: "\n") + "\n"
-    }
-
-    private func requestAccessibilityPermissionIfNeeded() {
-        let accessibilityPromptMarkerContents = self.accessibilityPromptMarkerContents
-        guard (try? String(contentsOf: AgentRuntime.shared.accessibilityPromptMarkerURL)) != accessibilityPromptMarkerContents else {
-            return
-        }
-
-        try? FileManager.default.createDirectory(at: AgentRuntime.shared.appSupportURL, withIntermediateDirectories: true)
-        try? accessibilityPromptMarkerContents.write(
-            to: AgentRuntime.shared.accessibilityPromptMarkerURL,
-            atomically: true,
-            encoding: .utf8
-        )
-
-        // Equivalent to kAXTrustedCheckOptionPrompt as String, but Swift exposes it unmanaged.
-        let promptOption = kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String
-        let options = [promptOption: true] as CFDictionary
-        _ = AXIsProcessTrustedWithOptions(options)
-    }
 }
 
 private func postPasteShortcut() {

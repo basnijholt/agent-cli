@@ -12,8 +12,7 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
 
     private let runner = AgentCommandRunner.shared
     private let appUpdater = AppUpdater.shared
-    private let loginItemController = LoginItemController.shared
-    private let shortcutSummary = ShortcutSummaryState.shared
+    private let permissions = PermissionController.shared
 
     private var statusItem: NSStatusItem?
     private let menu = NSMenu()
@@ -74,7 +73,6 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
         menu.addItem(voiceStatusItem)
         self.voiceStatusItem = voiceStatusItem
 
-        menu.addItem(disabledItem(shortcutSummary.summary))
         menu.addItem(.separator())
 
         menu.addItem(submenuItem(
@@ -84,15 +82,14 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
         ))
         menu.addItem(.separator())
 
-        let loginItem = actionItem(
-            loginItemController.presentation.menuTitle,
-            symbolName: loginItemController.presentation.isEnabled ? "checkmark.circle" : "circle",
-            action: #selector(toggleStartAtLogin)
-        )
-        loginItem.isEnabled = loginItemController.presentation.canToggle
-        menu.addItem(loginItem)
-
-        menu.addItem(actionItem("Settings...", symbolName: "gearshape", action: #selector(openSettings)))
+        menu.addItem(actionItem(
+            permissions.needsSetup ? "Set Up Permissions…" : "Permissions…",
+            symbolName: permissions.needsSetup ? "exclamationmark.shield" : "hand.raised",
+            action: #selector(openPermissions)
+        ))
+        let settingsItem = actionItem("Settings…", symbolName: "gearshape", action: #selector(openSettings))
+        settingsItem.keyEquivalent = ","
+        menu.addItem(settingsItem)
 
         let updateItem = actionItem("Check for Updates...", symbolName: "arrow.down.circle", action: #selector(checkForUpdates))
         updateItem.isEnabled = appUpdater.canCheckForUpdates
@@ -193,19 +190,9 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
         ))
         troubleshootingMenu.addItem(.separator())
         troubleshootingMenu.addItem(actionItem(
-            "Fix Notification Permission...",
-            symbolName: "bell.badge",
-            action: #selector(fixNotificationPermission)
-        ))
-        troubleshootingMenu.addItem(actionItem(
-            "Reset Accessibility Permission...",
-            symbolName: "figure.wave",
-            action: #selector(resetAccessibilityPermission)
-        ))
-        troubleshootingMenu.addItem(actionItem(
-            "Reset Keyboard Shortcuts",
-            symbolName: "arrow.counterclockwise",
-            action: #selector(resetKeyboardShortcuts)
+            "Keyboard Shortcuts…",
+            symbolName: "keyboard",
+            action: #selector(openShortcuts)
         ))
         refreshDynamicStatus()
     }
@@ -300,10 +287,6 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
         runner.run(.autocorrect)
     }
 
-    @objc private func toggleStartAtLogin() {
-        loginItemController.toggle()
-    }
-
     @objc private func openSettings() {
         SettingsWindowController.shared.show()
     }
@@ -344,17 +327,12 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
         runner.openConfigFolder()
     }
 
-    @objc private func fixNotificationPermission() {
-        runner.repairNotificationPermission()
+    @objc private func openPermissions() {
+        SettingsWindowController.shared.show(.permissions)
     }
 
-    @objc private func resetAccessibilityPermission() {
-        runner.resetAccessibilityPermission()
-    }
-
-    @objc private func resetKeyboardShortcuts() {
-        ShortcutSummaryState.shared.resetDefaults()
-        runner.statusMessage = "Reset keyboard shortcuts to defaults"
+    @objc private func openShortcuts() {
+        SettingsWindowController.shared.show(.shortcuts)
     }
 
     @objc private func copyRecentTranscription(_ sender: NSMenuItem) {

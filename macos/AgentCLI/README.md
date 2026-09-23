@@ -21,14 +21,41 @@ The packaged app registers native macOS global hotkeys itself:
 - `Cmd+Shift+A` autocorrects clipboard text
 - `Cmd+Shift+V` starts voice edit
 
-Choose **Settings...** from the menu bar app to change these shortcuts, enable
-**Start at Login**, or switch between the bundled runtime and a user-installed
-`agent-cli`. The settings UI uses the `KeyboardShortcuts` Swift package for
+Choose **Settings…** from the menu bar app to open a resizable window with
+five sections: **General**, **Recording**, **Shortcuts**, **Permissions**, and
+**Advanced**. General contains **Start at login** and app updates; Recording
+contains speech models, vocabulary, sounds, and live preview; Advanced contains
+the runtime choice and diagnostics. Existing settings and shortcuts are retained.
+The settings UI uses the `KeyboardShortcuts` Swift package for
 shortcut parsing and `UserDefaults` storage. Transcription shortcuts are handled
 by a small CGEvent tap so `Fn`, `Fn+Space`, and plain Space remain distinct; the
 clipboard utility shortcuts still use `KeyboardShortcuts` global handlers. The
 login option uses Apple's login item API for the main app bundle, so macOS may
 require approval in System Settings → General → Login Items.
+
+## Permissions
+
+On first launch, Agent CLI opens the Permissions page if setup is incomplete.
+It checks access silently; macOS permission requests appear only after you
+choose an action on that page. **Set Up Permissions…** in the menu bar returns
+to setup at any time.
+
+- **Microphone** is needed for transcription and voice editing. Starting a
+  recording without access opens setup before starting the recording.
+- **Accessibility** enables Fn shortcuts and automatic text insertion. Without
+  it, menu recording still copies transcripts to the clipboard.
+- **Notifications** are optional and do not block recording.
+
+Permissions refresh when you return from System Settings, or choose **Check
+Again**. Previously denied access directs you to System Settings; access
+restricted by a device policy is shown separately. If Accessibility is enabled
+there but not in Agent CLI, quit and reopen the app and check that the enabled
+entry matches the running copy. **Still having trouble?** shows this app's
+location and an Accessibility reset as a last resort. Reset requires confirmation,
+removes this app's grant, and restarts the app; it is unavailable during commands
+or recording.
+
+## App updates
 
 The app uses Sparkle for direct app updates. Release builds stamp
 `SUPublicEDKey` into `Info.plist`, publish signed updates in `macos/appcast.xml`,
