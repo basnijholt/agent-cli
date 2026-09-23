@@ -5,7 +5,7 @@ The app does not reimplement any agent behavior. By default, it bundles `uv`,
 installs a private `agent-cli[audio,llm]` tool into the user's Application
 Support directory on first use, and shells out to that private executable.
 Users who already manage their own `agent-cli` install can enable
-**Use User-Installed agent-cli** in Settings to run the `agent-cli` found on
+**Use my installed agent-cli** in Settings > Advanced to run the `agent-cli` found on
 PATH with their normal config instead.
 
 Transcription is the default zero-config path. The first transcription action
