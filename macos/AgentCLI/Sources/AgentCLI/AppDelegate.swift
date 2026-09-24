@@ -13,12 +13,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         NSApp.setActivationPolicy(.accessory)
         UNUserNotificationCenter.current().delegate = self
         StatusMenuController.shared.start()
-        configureNotifications()
         ShortcutDefaultsMigrator.migrate()
         LoginItemController.shared.refresh()
         ConfigurableHotkeyController.shared.registerDefaultHotkeys(runner: AgentCommandRunner.shared)
         ShortcutSummaryState.shared.refresh()
         AgentCommandRunner.shared.warmUpTranscription()
+        Task { @MainActor in
+            let permissions = PermissionController.shared
+            await permissions.refresh()
+            let defaults = UserDefaults.standard
+            let shouldShowSetup = permissions.shouldShowSetupOnLaunch(
+                hasSeenSetup: defaults.bool(forKey: PermissionController.hasSeenSetupKey),
+                recoveryRequested: defaults.bool(forKey: PermissionController.showOnNextLaunchKey)
+            )
+            defaults.set(true, forKey: PermissionController.hasSeenSetupKey)
+            defaults.removeObject(forKey: PermissionController.showOnNextLaunchKey)
+            if shouldShowSetup {
+                SettingsWindowController.shared.show(.permissions)
+            }
+        }
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -29,6 +42,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
 
     func applicationDidBecomeActive(_ notification: Notification) {
         ConfigurableHotkeyController.shared.retryFunctionAwareHotkeysIfTrusted(runner: AgentCommandRunner.shared)
+        Task { @MainActor in
+            LoginItemController.shared.refresh()
+            await PermissionController.shared.refresh()
+        }
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
@@ -65,28 +82,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         flock(instanceLockFD, LOCK_UN)
         close(instanceLockFD)
         instanceLockFD = -1
-    }
-
-    private func configureNotifications() {
-        let center = UNUserNotificationCenter.current()
-        center.getNotificationSettings { settings in
-            switch settings.authorizationStatus {
-            case .notDetermined:
-                center.requestAuthorization(options: [.alert]) { granted, _ in
-                    if !granted {
-                        DispatchQueue.main.async {
-                            AgentCommandRunner.shared.notificationsDisabled()
-                        }
-                    }
-                }
-            case .denied:
-                DispatchQueue.main.async {
-                    AgentCommandRunner.shared.notificationsDisabled()
-                }
-            default:
-                break
-            }
-        }
     }
 
     func userNotificationCenter(

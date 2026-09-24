@@ -26,11 +26,14 @@ final class AgentCommandRunner: ObservableObject {
     @Published var lastOutput = ""
     @Published private(set) var hasLastError = false
     @Published private(set) var isRecording = false
+    @Published private(set) var isResettingAccessibility = false
     @Published private(set) var bootstrapPhase: BootstrapPhase = .idle
     @Published private var activeCommandCount = 0
     private var recordingIndicator = RecordingIndicatorController()
     private let pasteController: TranscriptPasteController
     private let bootstrap: AgentBootstrap
+    private let recordingPermissionCheck: @MainActor () -> Bool
+    private let showPermissionSettings: @MainActor () -> Void
     private var activityTracker = MenuActivityTracker()
     private var pendingStopRecordingCommands: Set<String> = []
     private var holdTranscriptionState: HoldTranscriptionState = .idle
@@ -71,18 +74,18 @@ final class AgentCommandRunner: ObservableObject {
         pasteController: TranscriptPasteController = TranscriptPasteController(),
         bootstrap: @escaping AgentBootstrap = { requirement, force, progress in
             AgentRuntime.shared.ensureReady(for: requirement, force: force, progress: progress)
-        }
+        },
+        recordingPermissionCheck: @escaping @MainActor () -> Bool = { PermissionController.shared.canRecord },
+        showPermissionSettings: @escaping @MainActor () -> Void = { SettingsWindowController.shared.show(.permissions) }
     ) {
         self.pasteController = pasteController
         self.bootstrap = bootstrap
+        self.recordingPermissionCheck = recordingPermissionCheck
+        self.showPermissionSettings = showPermissionSettings
         hasLastError = FileManager.default.fileExists(atPath: AgentRuntime.shared.lastErrorURL.path)
     }
 
     nonisolated private static let menuStatusMaxLength = 72
-    private static let notificationSettingsURLs: [URL] = [
-        URL(string: "x-apple.systempreferences:com.apple.Notifications-Settings.extension")!,
-        URL(string: "x-apple.systempreferences:com.apple.preference.notifications")!
-    ]
     func warmUpTranscription() {
         guard !hasStartedTranscriptionWarmUp else { return }
         hasStartedTranscriptionWarmUp = true
@@ -148,11 +151,10 @@ final class AgentCommandRunner: ObservableObject {
             statusMessage = "Transcription is already recording"
             return false
         }
-
+        guard run(.toggleTranscription) else { return false }
         holdTranscriptionState = .recording
         holdToTranscribePasteTarget = FocusedTextTarget.capture()
         pasteAfterRecordingCommands.insert(AgentCommand.toggleTranscription.identifier)
-        run(.toggleTranscription)
         return true
     }
 
@@ -183,13 +185,19 @@ final class AgentCommandRunner: ObservableObject {
         return true
     }
 
-    func run(_ command: AgentCommand) {
+    @discardableResult
+    func run(_ command: AgentCommand) -> Bool {
+        guard !isResettingAccessibility else {
+            statusMessage = "Accessibility reset is in progress. Wait for Agent CLI to restart."
+            return false
+        }
         let isStopRequest = command.showsRecordingIndicator && recordingIndicator.isRecordingCommand(command)
         let shouldStartRecording = command.showsRecordingIndicator && !isStopRequest
+        guard !shouldStartRecording || ensureMicrophonePermission() else { return false }
 
         if isStopRequest && isStopPending(for: command) {
             statusMessage = "Stop already requested for \(command.title)"
-            return
+            return false
         }
 
         if isStopRequest {
@@ -300,6 +308,7 @@ final class AgentCommandRunner: ObservableObject {
                 self.notify(title: notificationTitle, body: notificationBody)
             }
         }
+        return true
     }
 
     private func notifyStart(for command: AgentCommand) {
@@ -516,46 +525,32 @@ final class AgentCommandRunner: ObservableObject {
         }
     }
 
-    func notificationsDisabled() {
-        statusMessage = "Notifications are disabled. Use Fix Notification Permission to enable Agent CLI notifications."
-    }
-
-    func repairNotificationPermission() {
-        let center = UNUserNotificationCenter.current()
-        center.getNotificationSettings { settings in
-            switch settings.authorizationStatus {
-            case .notDetermined:
-                UNUserNotificationCenter.current().requestAuthorization(options: [.alert]) { granted, _ in
-                    Task { @MainActor in
-                        self.statusMessage = granted
-                            ? "Notification permission enabled"
-                            : "Notifications are disabled. Enable Agent CLI in Notification Settings."
-                    }
-                }
-            case .denied:
-                Task { @MainActor in
-                    _ = self.openNotificationSettings()
-                    self.statusMessage = "Notifications are disabled. Enable Agent CLI in Notification Settings."
-                }
-            default:
-                Task { @MainActor in
-                    self.statusMessage = "Notification permission is already enabled"
-                }
-            }
+    private func ensureMicrophonePermission() -> Bool {
+        guard recordingPermissionCheck() else {
+            statusMessage = "Microphone access is needed. Open Permissions to enable recording."
+            showPermissionSettings()
+            return false
         }
-    }
-
-    @discardableResult
-    func openNotificationSettings() -> Bool {
-        for url in Self.notificationSettingsURLs where NSWorkspace.shared.open(url) {
-            statusMessage = "Opened Notification Settings"
-            return true
-        }
-        statusMessage = "Could not open Notification Settings"
-        return false
+        return true
     }
 
     func resetAccessibilityPermission() {
+        guard !isRunning, !isRecording, !isResettingAccessibility else {
+            statusMessage = "Finish the current command before resetting Accessibility."
+            return
+        }
+        let alert = NSAlert()
+        alert.messageText = "Reset Accessibility access?"
+        alert.informativeText = "This removes Agent CLI's existing Accessibility permission and restarts the app. You will need to enable Agent CLI again in System Settings. Use this only if reopening the app did not help."
+        alert.addButton(withTitle: "Cancel")
+        alert.addButton(withTitle: "Reset and Restart")
+        guard alert.runModal() == .alertSecondButtonReturn else { return }
+        // The modal alert runs the main loop, so a hotkey may have started work meanwhile.
+        guard !isRunning, !isRecording, !isResettingAccessibility else {
+            statusMessage = "Finish the current command before resetting Accessibility."
+            return
+        }
+        isResettingAccessibility = true
         ConfigurableHotkeyController.shared.suspendFunctionAwareHotkeysForAccessibilityReset()
         statusMessage = "Resetting Accessibility permission..."
 
@@ -566,6 +561,7 @@ final class AgentCommandRunner: ObservableObject {
                 try? FileManager.default.removeItem(at: AgentRuntime.shared.accessibilityPromptMarkerURL)
 
                 guard result.exitCode == 0 else {
+                    self.isResettingAccessibility = false
                     ConfigurableHotkeyController.shared.resumeFunctionAwareHotkeysAfterAccessibilityReset(runner: self)
                     let output = result.output.trimmingCharacters(in: .whitespacesAndNewlines)
                     self.statusMessage = output.isEmpty
@@ -574,7 +570,8 @@ final class AgentCommandRunner: ObservableObject {
                     return
                 }
 
-                self.statusMessage = "Accessibility permission reset. Restarting AgentCLI to request permission cleanly."
+                self.statusMessage = "Accessibility permission reset. Restarting AgentCLI to reopen setup."
+                UserDefaults.standard.set(true, forKey: PermissionController.showOnNextLaunchKey)
                 self.relaunchAfterAccessibilityReset()
             }
         }
@@ -594,6 +591,7 @@ final class AgentCommandRunner: ObservableObject {
             try process.run()
             NSApp.terminate(nil)
         } catch {
+            isResettingAccessibility = false
             statusMessage = "Accessibility permission reset. Reopen AgentCLI, then enable it in Accessibility."
         }
     }

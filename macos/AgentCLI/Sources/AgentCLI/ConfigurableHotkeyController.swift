@@ -134,6 +134,10 @@ final class ConfigurableHotkeyController {
     private func registerFunctionAwareTranscriptionHotkeys(runner: AgentCommandRunner) {
         cancelAccessibilityRetry()
         guard eventTap == nil else { return }
+        guard AXIsProcessTrusted() else {
+            scheduleAccessibilityRetry(runner: runner, deadline: Date().addingTimeInterval(accessibilityRetryTimeout))
+            return
+        }
 
         let eventMask =
             CGEventMask(1 << CGEventType.keyDown.rawValue) |
@@ -158,10 +162,8 @@ final class ConfigurableHotkeyController {
             },
             userInfo: userInfo
         ) else {
-            requestAccessibilityPermissionForFunctionHotkeys()
-            scheduleAccessibilityRetry(runner: runner, deadline: Date().addingTimeInterval(accessibilityRetryTimeout))
             Task { @MainActor in
-                runner.statusMessage = "Allow Accessibility permission for Fn transcription shortcuts"
+                runner.statusMessage = "Fn shortcuts unavailable. Check Permissions in Settings, then quit and reopen Agent CLI."
             }
             return
         }
@@ -470,12 +472,4 @@ final class ConfigurableHotkeyController {
         event.getIntegerValueField(.keyboardEventAutorepeat) != 0
     }
 
-    private func requestAccessibilityPermissionForFunctionHotkeys() {
-        guard !AXIsProcessTrusted() else { return }
-
-        // Equivalent to kAXTrustedCheckOptionPrompt as String, but Swift exposes it unmanaged.
-        let promptOption = kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String
-        let options = [promptOption: true] as CFDictionary
-        _ = AXIsProcessTrustedWithOptions(options)
-    }
 }

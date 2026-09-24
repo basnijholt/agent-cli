@@ -13,7 +13,7 @@ The app is a SwiftUI wrapper around the same `agent-cli` commands. It bundles `u
 - Apple Silicon Mac
 - macOS 13 Ventura or later
 - Microphone permission for transcription
-- Accessibility permission if you want AgentCLI to insert text into other apps
+- Accessibility permission for Fn shortcuts and inserting text into other apps
 
 ## Install with Homebrew
 
@@ -27,10 +27,14 @@ Then open **AgentCLI** from `/Applications` or Spotlight.
 
 ## First Launch
 
-1. Open **AgentCLI**.
-2. Approve macOS microphone permission when prompted.
-3. Use the menu bar icon to start transcription, autocorrect clipboard text, or open Settings.
-4. Grant Accessibility permission in System Settings if auto-insert or clipboard automation is blocked.
+1. Open **AgentCLI**. The Permissions page opens on first launch if microphone access is missing.
+2. Choose **Allow…** for Microphone, then approve the macOS request.
+3. To use Fn shortcuts and automatic text insertion, choose **Open System Settings…** for Accessibility and enable Agent CLI. Notifications are optional.
+4. Return to Agent CLI to refresh permission status, then use the menu bar icon to start recording or open Settings.
+
+Permission checks never trigger a prompt on their own. If access was previously denied, the Permissions page opens the relevant System Settings page instead of requesting it again. You can reopen **Settings… > Permissions** at any time and choose **Check Again** to refresh status.
+
+If Accessibility is enabled in System Settings but not in the app, quit and reopen Agent CLI and check that you enabled the running copy. The **Still having trouble?** section shows the app's location and offers a confirmation-gated Accessibility reset as a last resort.
 
 The first transcription can take longer because AgentCLI installs the private CLI runtime, ensures the Whisper launchd daemon is available, and downloads the speech model lazily.
 
@@ -43,11 +47,11 @@ The first transcription can take longer because AgentCLI installs the private CL
 | `Cmd+Shift+A` | Autocorrect clipboard text |
 | `Cmd+Shift+V` | Start voice edit |
 
-Open **Settings...** from the menu bar app to change shortcuts, enable **Start at Login**, or switch runtime modes.
+Open **Settings… > Shortcuts** to change shortcuts. **Start at login** is in General; runtime choices and diagnostics are in Advanced.
 
 ## Live Transcription Preview
 
-The menu bar app can show provisional transcription text above the recording meter while you speak. Enable **Show Live Transcription Preview** in **Settings...** to turn it on.
+The menu bar app can show provisional transcription text above the recording meter while you speak. Enable **Show live transcription preview** in **Settings… > Recording** to turn it on.
 
 This setting is off by default. When enabled, AgentCLI writes rolling preview events to `~/.config/agent-cli/live-preview.jsonl` and updates the overlay during toggle or hold-to-transcribe recordings. Preview text is best-effort and may revise earlier words as more audio arrives; the final transcript is still produced and inserted after recording stops.
 
@@ -55,11 +59,11 @@ This setting is off by default. When enabled, AgentCLI writes rolling preview ev
 
 By default, the app manages its own private `agent-cli` install so the menu bar workflow is zero-config and does not depend on your shell PATH.
 
-If you already manage `agent-cli` yourself, enable **Use User-Installed agent-cli** in Settings. AgentCLI will then run the `agent-cli` executable found on PATH and use your normal configuration.
+If you already manage `agent-cli` yourself, enable **Use my installed agent-cli** in **Settings… > Advanced**. AgentCLI will then run the `agent-cli` executable found on PATH and use your normal configuration.
 
 ## Updates
 
-The app uses Sparkle for direct updates. Choose **Check for Updates...** from the menu bar app or Settings to check for a newer signed release.
+The app uses Sparkle for direct updates. Choose **Check for Updates…** from the menu bar app or **Settings… > General** to check for a newer signed release.
 
 If you installed with Homebrew, you can also update through Homebrew:
 
