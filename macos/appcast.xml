@@ -5,6 +5,32 @@
         <link>https://github.com/basnijholt/agent-cli</link>
         <description>Signed Agent CLI macOS app updates.</description>
         <item>
+            <title>0.108.0</title>
+            <pubDate>Thu, 24 Sep 2026 20:07:28 +0000</pubDate>
+            <link>https://github.com/basnijholt/agent-cli</link>
+            <sparkle:version>210</sparkle:version>
+            <sparkle:shortVersionString>0.108.0</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[## macOS settings and permissions
+
+Agent CLI's macOS app now has a resizable settings window with a sidebar for General, Recording, Shortcuts, Permissions, and Advanced. Recording options, model settings, keyboard shortcuts, and diagnostics are easier to find, with help beside the controls it explains.
+
+A dedicated Permissions page shows microphone, Accessibility, and notification access. Permission checks are silent; requests happen when you choose them. Starting a recording without microphone access opens setup first. Denied access opens the relevant System Settings page, and status refreshes when you return. Notifications remain optional, and clipboard recording works without Accessibility.
+
+Accessibility recovery now requires confirmation, is unavailable during active work, and reopens setup after restart. Existing preferences and shortcuts are preserved.
+
+## Other changes
+
+- Update KeyboardShortcuts to 1.17.0.
+- Update CI dependencies and the macOS installation guide.
+
+**Full changelog:** https://github.com/basnijholt/agent-cli/compare/v0.107.1...v0.108.0
+
+]]></description>
+            <enclosure url="https://github.com/basnijholt/agent-cli/releases/download/v0.108.0/AgentCLI.zip" length="19000403" type="application/octet-stream" sparkle:edSignature="DooP01BCKOTuO1YTyskLLAJ5or87E0GLFt/MC4WWraOeivWfn5Otsojf9s8xesxBLDrA/o6k1nAlhIcNDO+jDQ=="/>
+        </item>
+        <item>
             <title>0.107.1</title>
             <pubDate>Mon, 21 Sep 2026 22:49:11 +0000</pubDate>
             <link>https://github.com/basnijholt/agent-cli</link>
@@ -189,23 +215,6 @@ The audio-shutdown timeout itself is unchanged; this release corrects how its di
 **Full Changelog**: https://github.com/basnijholt/agent-cli/compare/v0.102.3...v0.102.4
 ]]></description>
             <enclosure url="https://github.com/basnijholt/agent-cli/releases/download/v0.102.4/AgentCLI.zip" length="20511224" type="application/octet-stream" sparkle:edSignature="Sk10Ka432Bkg/joGZR0VdmhY8qBwz4PX3zXhRNYGt8sYb0S3TuT8EPBad8KAaaoJ0lUZPzqcOq+LeP30f3C6Aw=="/>
-        </item>
-        <item>
-            <title>0.102.3</title>
-            <pubDate>Mon, 27 Jul 2026 16:39:21 +0000</pubDate>
-            <link>https://github.com/basnijholt/agent-cli</link>
-            <sparkle:version>200</sparkle:version>
-            <sparkle:shortVersionString>0.102.3</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[## What’s Changed
-
-* Copy local agent instructions into dev worktrees (#626) @basnijholt
-* ⬆️ Update actions/setup-python action to v7 (#615) [@renovate[bot]](https://github.com/apps/renovate)
-* ⬆️ Update astral-sh/setup-uv action to v9 (#618) [@renovate[bot]](https://github.com/apps/renovate)
-
-]]></description>
-            <enclosure url="https://github.com/basnijholt/agent-cli/releases/download/v0.102.3/AgentCLI.zip" length="24330021" type="application/octet-stream" sparkle:edSignature="H5CMNeeXWbrvg2BgAHnoYuoOX6dzLCUJpjock6YE6xPqsJvsIrkMABiEuxRbKAGWuf17P4KOGktodhyWj1IODw=="/>
         </item>
     </channel>
 </rss>
