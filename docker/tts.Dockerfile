@@ -12,7 +12,7 @@
 # =============================================================================
 # Builder stage for CUDA - Kokoro TTS (requires build tools)
 # =============================================================================
-FROM python:3.13-slim AS builder-cuda
+FROM python:3.14-slim AS builder-cuda
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends build-essential git && \
@@ -32,7 +32,7 @@ RUN uv sync --frozen --no-dev --no-editable --extra server --extra kokoro --extr
 # =============================================================================
 # Builder stage for CPU - Piper TTS
 # =============================================================================
-FROM python:3.13-slim AS builder-cpu
+FROM python:3.14-slim AS builder-cpu
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends git && \
@@ -108,7 +108,7 @@ ENTRYPOINT ["sh", "-c", "agent-cli server tts \
 # =============================================================================
 # CPU target: CPU-only with Piper TTS
 # =============================================================================
-FROM python:3.13-slim AS cpu
+FROM python:3.14-slim AS cpu
 
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
