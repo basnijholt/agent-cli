@@ -315,6 +315,8 @@ Qwen3-ASR supports transcription, automatic language detection, and context or h
 
 The default output budget is 4096 tokens, which accommodates long recordings. For unusually long or dense speech, increase it with `--max-new-tokens`. If Qwen3-ASR exhausts the configured budget, the request fails with a clear error instead of returning a silently truncated transcript.
 
+Qwen3-ASR's GPU memory use grows with recording length. If a long recording does not fit in free GPU memory (for example, when the GPU is shared with other models), the server splits the audio at pauses and transcribes the parts separately instead of failing.
+
 To install it as the standard `whisper` background daemon:
 
 ```bash

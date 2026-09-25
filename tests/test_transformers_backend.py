@@ -325,7 +325,14 @@ def test_transcribe_qwen3_asr_rejects_truncated_generation(
         def generate(self, **_kwargs: object) -> Tensor:
             return Tensor([[1, 2, 3, 41, 42]])
 
-    monkeypatch.setitem(sys.modules, "torch", SimpleNamespace(inference_mode=nullcontext))
+    monkeypatch.setitem(
+        sys.modules,
+        "torch",
+        SimpleNamespace(
+            inference_mode=nullcontext,
+            cuda=SimpleNamespace(OutOfMemoryError=_FakeOutOfMemoryError),
+        ),
+    )
     monkeypatch.setattr(
         backend,
         "_state",
@@ -346,6 +353,127 @@ def test_transcribe_qwen3_asr_rejects_truncated_generation(
             initial_prompt=None,
             duration=180.0,
             max_new_tokens=2,
+        )
+
+
+class _FakeOutOfMemoryError(RuntimeError):
+    """Stand-in for torch.cuda.OutOfMemoryError."""
+
+
+class _FakeTensor:
+    """Minimal 2D token tensor for Qwen generate/decode doubles."""
+
+    def __init__(self, values: list[list[int]]) -> None:
+        self.values = values
+        self.shape = (len(values), len(values[0]))
+
+    def __getitem__(self, key: tuple[slice, slice]) -> _FakeTensor:
+        rows, columns = key
+        return _FakeTensor([row[columns] for row in self.values[rows]])
+
+    def tolist(self) -> list[list[int]]:
+        return self.values
+
+
+def _install_memory_limited_qwen(
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    max_samples: int,
+) -> list[Any]:
+    """Install a Qwen double that OOMs above max_samples; return seen segments.
+
+    The encoder's activations grow linearly with audio length (its convolution
+    runs over every 1 s window at once in transformers' Qwen3ASREncoder.forward),
+    so a long request can exhaust a shared GPU while shorter ones fit. PyTorch
+    raises torch.cuda.OutOfMemoryError for failed CUDA allocations:
+    https://docs.pytorch.org/docs/stable/generated/torch.cuda.OutOfMemoryError.html
+    """
+    segments: list[Any] = []
+    words = {7: "low", 8: "high"}
+
+    class Processor:
+        def apply_transcription_request(self, *, audio: Any, **_kwargs: object) -> dict[str, Any]:
+            return {"input_ids": _FakeTensor([[1]]), "audio": audio}
+
+        def decode(self, generated_ids: _FakeTensor, **_kwargs: object) -> list[dict[str, str]]:
+            text = " ".join(words[token] for token in generated_ids.tolist()[0][:-1])
+            return [{"language": "English", "transcription": text}]
+
+    class Model:
+        generation_config = SimpleNamespace(eos_token_id=[99])
+
+        def generate(self, *, audio: Any, **_kwargs: object) -> _FakeTensor:
+            if len(audio) > max_samples:
+                msg = "CUDA out of memory."
+                raise _FakeOutOfMemoryError(msg)
+            segments.append(audio)
+            tokens = [7] * bool((audio == 0.25).any()) + [8] * bool((audio == 0.75).any())
+            return _FakeTensor([[1, *tokens, 99]])
+
+    fake_torch = SimpleNamespace(
+        inference_mode=nullcontext,
+        cuda=SimpleNamespace(OutOfMemoryError=_FakeOutOfMemoryError),
+    )
+    monkeypatch.setitem(sys.modules, "torch", fake_torch)
+    monkeypatch.setattr(
+        backend,
+        "_state",
+        backend._SubprocessState(
+            model=Model(),
+            processor=Processor(),
+            device="cuda",
+            is_qwen3_asr=True,
+        ),
+    )
+    return segments
+
+
+def test_transcribe_qwen3_asr_splits_audio_at_silence_on_cuda_oom(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A GPU without room for the full clip must still transcribe it in parts.
+
+    The split must land in the pause between words, like the official qwen-asr
+    toolkit's low-energy boundary search (qwen_asr.inference.utils.split_audio_into_chunks).
+    """
+    np = pytest.importorskip("numpy")
+    sr = backend._QWEN_SAMPLE_RATE
+    quiet_word_then_pause = [np.full(3 * sr, 0.25), np.zeros(sr // 2)]
+    audio = np.concatenate([*quiet_word_then_pause, np.full(5 * sr, 0.75)]).astype(np.float32)
+    segments = _install_memory_limited_qwen(monkeypatch, max_samples=6 * sr)
+
+    result = backend._transcribe_qwen3_asr(
+        audio_array=audio,
+        effective_language=None,
+        task="transcribe",
+        initial_prompt=None,
+        duration=8.5,
+        max_new_tokens=16,
+    )
+
+    assert result["text"] == "low high"
+    assert result["language"] == "English"
+    assert result["duration"] == 8.5
+    assert sum(len(segment) for segment in segments) == len(audio)
+    assert all(len(set(segment[segment != 0].tolist())) == 1 for segment in segments)
+
+
+def test_transcribe_qwen3_asr_reraises_cuda_oom_for_short_audio(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Clips too short to split must surface the OOM instead of recursing forever."""
+    np = pytest.importorskip("numpy")
+    audio = np.full(backend._QWEN_SAMPLE_RATE, 0.25, dtype=np.float32)
+    _install_memory_limited_qwen(monkeypatch, max_samples=0)
+
+    with pytest.raises(_FakeOutOfMemoryError):
+        backend._transcribe_qwen3_asr(
+            audio_array=audio,
+            effective_language=None,
+            task="transcribe",
+            initial_prompt=None,
+            duration=1.0,
+            max_new_tokens=16,
         )
 
 
