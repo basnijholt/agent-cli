@@ -533,12 +533,14 @@ cp "$BINARY" "$APP_DIR/Contents/MacOS/$APP_NAME"
 cp "$INFO_PLIST" "$APP_DIR/Contents/Info.plist"
 ditto "$SPARKLE_FRAMEWORK" "$APP_DIR/Contents/Frameworks/Sparkle.framework"
 cp "$UV_BINARY" "$APP_DIR/Contents/Resources/bin/uv"
+cp "$ROOT_DIR/macos/uninstall-macos-app.sh" "$APP_DIR/Contents/Resources/uninstall.sh"
 cp "$WHEEL_PATH" "$APP_DIR/Contents/Resources/wheels/"
 cp "$MENU_BAR_LOGO_SVG" "$APP_DIR/Contents/Resources/logo-avatar.svg"
 cp "$NOTIFICATION_LOGO_PNG" "$APP_DIR/Contents/Resources/logo-avatar.png"
 cp "$APP_ICON_ICNS" "$APP_DIR/Contents/Resources/AgentCLI.icns"
 chmod 755 "$APP_DIR/Contents/MacOS/$APP_NAME"
 chmod 755 "$APP_DIR/Contents/Resources/bin/uv"
+chmod 755 "$APP_DIR/Contents/Resources/uninstall.sh"
 if ! otool -l "$APP_DIR/Contents/MacOS/$APP_NAME" |
     grep -q '@executable_path/../Frameworks'; then
     install_name_tool -add_rpath "@executable_path/../Frameworks" \
