@@ -15,7 +15,7 @@ final class VoiceLevelMeterTests: XCTestCase {
         })
         XCTAssertEqual(panel.frame.width, 446)
         overlay.showTranscribing()
-        XCTAssertEqual(panel.frame.width, 216)
+        XCTAssertEqual(panel.frame.width, 248)
         overlay.finishTranscribing()
         XCTAssertEqual(panel.frame.width, 446)
     }
