@@ -5,6 +5,25 @@
         <link>https://github.com/basnijholt/agent-cli</link>
         <description>Signed Agent CLI macOS app updates.</description>
         <item>
+            <title>0.108.2</title>
+            <pubDate>Fri, 25 Sep 2026 02:27:22 +0000</pubDate>
+            <link>https://github.com/basnijholt/agent-cli</link>
+            <sparkle:version>212</sparkle:version>
+            <sparkle:shortVersionString>0.108.2</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[## macOS installed-CLI fix
+
+When **Use my installed agent-cli** is enabled, the app now respects your existing speech-provider and server configuration without automatically starting a local voice service or warming a local speech model. This fixes unnecessary model loading and delays during startup and recording for users with a remote server or another provider.
+
+The app still checks that your installed CLI is available. Bundled-runtime voice setup keeps its existing behavior.
+
+**Full changelog:** https://github.com/basnijholt/agent-cli/compare/v0.108.1...v0.108.2
+
+]]></description>
+            <enclosure url="https://github.com/basnijholt/agent-cli/releases/download/v0.108.2/AgentCLI.zip" length="19069951" type="application/octet-stream" sparkle:edSignature="fpXnyQu3IM91gCUYL06EN8oYpG4aG60mDrLJeUlvUSjttJGKY7fw13QawlwA9xa1+5YAADmFlWvkOOwK9K0+Ag=="/>
+        </item>
+        <item>
             <title>0.108.1</title>
             <pubDate>Fri, 25 Sep 2026 00:45:32 +0000</pubDate>
             <link>https://github.com/basnijholt/agent-cli</link>
@@ -199,21 +218,6 @@ The audio-shutdown timeout itself is unchanged; this release corrects how its di
 
 ]]></description>
             <enclosure url="https://github.com/basnijholt/agent-cli/releases/download/v0.104.0/AgentCLI.zip" length="18454336" type="application/octet-stream" sparkle:edSignature="p7BVeR6YS/LBGO61o0xR8GE9beHf+4uaz0c28HrHX4oyWjVZSBgwI6jIjR2Mn23HNLS65CfECbp2NSJoIc+ABw=="/>
-        </item>
-        <item>
-            <title>0.103.0</title>
-            <pubDate>Tue, 01 Sep 2026 19:34:50 +0000</pubDate>
-            <link>https://github.com/basnijholt/agent-cli</link>
-            <sparkle:version>202</sparkle:version>
-            <sparkle:shortVersionString>0.103.0</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[## What’s Changed
-
-* feat(whisper): add Qwen3-ASR daemon support (#636) @basnijholt
-
-]]></description>
-            <enclosure url="https://github.com/basnijholt/agent-cli/releases/download/v0.103.0/AgentCLI.zip" length="18564995" type="application/octet-stream" sparkle:edSignature="grYFD0bw+V3WZ53hL+W2KNkkeeTRjJO5HXvC3/ETUl+cGRoxG1K93xJxiUe10yzCy9msJIqlKz/JMw/y6mtSDw=="/>
         </item>
     </channel>
 </rss>
