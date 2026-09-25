@@ -238,9 +238,9 @@ final class VoiceLevelOverlayController {
         if !isMinimized { panel.orderFrontRegardless() }
     }
 
-    func showPreparation(_ phase: BootstrapPhase) {
+    func showPreparation(_ phase: BootstrapPhase, restoring: Bool = false) {
         guard !isRecording, !isTranscribing else { return }
-        isMinimized = false
+        if restoring { isMinimized = false }
         if preparationPhase == nil {
             preparationStartedAt = Date()
             preparationPhase = phase
@@ -258,7 +258,7 @@ final class VoiceLevelOverlayController {
     func restore() {
         guard hasActiveOverlay else { return }
         if let preparationPhase {
-            showPreparation(preparationPhase)
+            showPreparation(preparationPhase, restoring: true)
         } else {
             isMinimized = false
             panel?.orderFrontRegardless()

@@ -20,6 +20,8 @@ final class RecordingPreparationTests: XCTestCase {
         setup.finish()
         await waitUntilFinished(runner)
         XCTAssertEqual(setup.callCount, 1, "A canceled start must not queue --stop setup.")
+        XCTAssertEqual(setup.requirements, [.transcriptionModel],
+                       "A cold recording request must prepare the model before recording.")
         XCTAssertFalse(runner.isRecording, "Setup completion must not record after key release.")
         XCTAssertEqual(VoiceLevelOverlayController.shared.preparationPhase, .idle)
     }
@@ -65,6 +67,23 @@ final class RecordingPreparationTests: XCTestCase {
         runner.endHoldToTranscribe()
         await waitUntilFinished(runner)
         XCTAssertEqual(setup.callCount, 2)
+        XCTAssertEqual(setup.requirements, [.transcriptionModel, .transcriptionModel],
+                       "A failed model setup must be retried visibly before recording.")
+    }
+
+    @MainActor
+    func testRecordingChecksModelReadinessEvenAfterStartupWarmUp() async {
+        let setup = PreparationGate(phase: .warmingWhisperModel)
+        let runner = makeRunner(setup: setup)
+        defer { VoiceLevelOverlayController.shared.hide() }
+        runner.warmUpTranscription()
+        await fulfillment(of: [setup.started], timeout: 2)
+        setup.finish()
+        await waitUntilFinished(runner)
+        XCTAssertTrue(runner.beginHoldToTranscribe())
+        runner.endHoldToTranscribe()
+        await waitUntilFinished(runner)
+        XCTAssertEqual(setup.requirements, [.transcriptionModel, .transcriptionModel])
     }
 
     func testDismissedSetupDoesNotReopenOnBackgroundProgress() {
@@ -76,6 +95,55 @@ final class RecordingPreparationTests: XCTestCase {
         XCTAssertNil(overlay.preparationPhase)
         overlay.updatePreparation(.idle)
         XCTAssertNil(overlay.preparationPhase)
+    }
+
+    @MainActor
+    func testUnrelatedCommandDoesNotReplaceFailedVoiceSetupWithReady() async {
+        let setup = PreparationGate(phase: .installingVoiceService,
+                                    result: CommandResult(exitCode: 1, output: "Service failed"))
+        let runner = AgentCommandRunner(
+            bootstrap: { requirement, force, progress in
+                if requirement == .cliRuntime {
+                    progress(.checkingRuntime)
+                    return CommandResult(exitCode: 0, output: "")
+                }
+                return setup.bootstrap(requirement, force, progress)
+            },
+            recordingPermissionCheck: { true },
+            sendNotification: { _ in },
+            runCommand: { _ in CommandResult(exitCode: 0, output: "Clipboard corrected") }
+        )
+        defer { VoiceLevelOverlayController.shared.hide() }
+        XCTAssertTrue(runner.beginHoldToTranscribe())
+        await fulfillment(of: [setup.started], timeout: 2)
+        runner.endHoldToTranscribe()
+        setup.finish()
+        await waitUntilFinished(runner)
+        XCTAssertEqual(VoiceLevelOverlayController.shared.preparationPhase, .failed)
+        XCTAssertTrue(runner.run(.autocorrect))
+        await waitUntilFinished(runner)
+        XCTAssertEqual(runner.bootstrapPhase, .failed)
+        XCTAssertEqual(VoiceLevelOverlayController.shared.preparationPhase, .failed)
+    }
+
+    @MainActor
+    func testRecordingAttemptDoesNotRestoreMinimizedSetup() async throws {
+        let setup = PreparationGate(phase: .warmingWhisperModel)
+        let runner = makeRunner(setup: setup)
+        let overlay = VoiceLevelOverlayController.shared
+        defer { overlay.hide() }
+        runner.warmUpTranscription()
+        await fulfillment(of: [setup.started], timeout: 2)
+        XCTAssertFalse(runner.beginHoldToTranscribe())
+        let panel = try preparationPanel()
+        overlay.minimize()
+        XCTAssertFalse(runner.beginHoldToTranscribe())
+        XCTAssertFalse(panel.isVisible)
+        setup.finish()
+        await waitUntilFinished(runner)
+        XCTAssertFalse(panel.isVisible)
+        overlay.restore()
+        XCTAssertTrue(panel.isVisible)
     }
 
     @MainActor
@@ -132,7 +200,7 @@ final class RecordingPreparationTests: XCTestCase {
         overlay.updatePreparation(.idle)
         XCTAssertFalse(panel.isVisible, "Completion must not interrupt the user either.")
         XCTAssertEqual(overlay.preparationPhase, .idle)
-        overlay.showPreparation(.idle)
+        overlay.restore()
         XCTAssertTrue(panel.isVisible)
     }
 
@@ -197,6 +265,7 @@ private final class PreparationGate {
     private let condition = NSCondition()
     private var released = false
     private var calls = 0
+    private var requestedRequirements: [AgentBootstrapRequirement] = []
     private var progress: AgentBootstrapProgress?
     private let phase: BootstrapPhase
     private let result: CommandResult
@@ -212,10 +281,17 @@ private final class PreparationGate {
         return calls
     }
 
+    var requirements: [AgentBootstrapRequirement] {
+        condition.lock()
+        defer { condition.unlock() }
+        return requestedRequirements
+    }
+
     func bootstrap(_ requirement: AgentBootstrapRequirement, _ force: Bool,
                    _ progress: @escaping AgentBootstrapProgress) -> CommandResult {
         condition.lock()
         calls += 1
+        requestedRequirements.append(requirement)
         self.progress = progress
         let firstCall = calls == 1
         condition.unlock()

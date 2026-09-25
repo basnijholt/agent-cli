@@ -46,6 +46,8 @@ final class AgentCommandRunner: ObservableObject {
     private var pendingRecordingStarts: [String: UUID] = [:]
     private var bootstrapRequests: [UUID: BootstrapPhase] = [:]
     private var bootstrapRequestOrder: [UUID] = []
+    private var voiceBootstrapRequests: Set<UUID> = []
+    private var lastVoiceBootstrapPhase: BootstrapPhase = .idle
 
     var isRunning: Bool {
         activeCommandCount > 0
@@ -101,7 +103,7 @@ final class AgentCommandRunner: ObservableObject {
         hasStartedTranscriptionWarmUp = true
 
         activeCommandCount += 1
-        let bootstrapRequestID = beginBootstrap(initialPhase: .checkingRuntime)
+        let bootstrapRequestID = beginBootstrap(initialPhase: .checkingRuntime, preparesVoice: true)
 
         let bootstrap = self.bootstrap
         let reportBootstrapPhase = makeBootstrapProgressReporter(for: bootstrapRequestID)
@@ -128,11 +130,11 @@ final class AgentCommandRunner: ObservableObject {
         }
     }
 
-    private func reportBootstrapPhase(_ phase: BootstrapPhase) {
+    private func reportBootstrapPhase(_ phase: BootstrapPhase, updatesPreparation: Bool) {
         let wasPreparing = bootstrapPhase.isPreparing
         let phaseChanged = bootstrapPhase != phase
         bootstrapPhase = phase
-        VoiceLevelOverlayController.shared.updatePreparation(phase)
+        if updatesPreparation { VoiceLevelOverlayController.shared.updatePreparation(phase) }
         if phase.isPreparing {
             statusMessage = phase.statusMessage
             if !wasPreparing || phaseChanged {
@@ -146,21 +148,27 @@ final class AgentCommandRunner: ObservableObject {
         }
     }
 
-    private func beginBootstrap(initialPhase: BootstrapPhase = .idle) -> UUID {
+    private func beginBootstrap(initialPhase: BootstrapPhase = .idle, preparesVoice: Bool) -> UUID {
         let id = UUID()
         bootstrapRequests[id] = initialPhase
         bootstrapRequestOrder.append(id)
-        if initialPhase.isPreparing { reportBootstrapPhase(initialPhase) }
+        if preparesVoice { voiceBootstrapRequests.insert(id) }
+        if initialPhase.isPreparing {
+            reportBootstrapPhase(initialPhase, updatesPreparation: preparesVoice)
+        }
         return id
     }
 
     private func finishBootstrap(_ id: UUID, failed: Bool = false) {
+        let preparesVoice = voiceBootstrapRequests.remove(id) != nil
+        if preparesVoice { lastVoiceBootstrapPhase = failed ? .failed : .idle }
         bootstrapRequests.removeValue(forKey: id)
         bootstrapRequestOrder.removeAll { $0 == id }
         // Another command may already be setting up. Only finish this request.
         let currentPhase = bootstrapRequestOrder.reversed()
             .compactMap { bootstrapRequests[$0] }.first { $0.isPreparing }
-        reportBootstrapPhase(currentPhase ?? (failed ? .failed : .idle))
+        reportBootstrapPhase(currentPhase ?? (failed ? .failed : lastVoiceBootstrapPhase),
+                             updatesPreparation: preparesVoice)
     }
 
     private func makeBootstrapProgressReporter(for id: UUID) -> AgentBootstrapProgress {
@@ -170,7 +178,7 @@ final class AgentCommandRunner: ObservableObject {
                 self.bootstrapRequests[id] = phase
                 self.bootstrapRequestOrder.removeAll { $0 == id }
                 self.bootstrapRequestOrder.append(id)
-                self.reportBootstrapPhase(phase)
+                self.reportBootstrapPhase(phase, updatesPreparation: self.voiceBootstrapRequests.contains(id))
             }
         }
     }
@@ -248,7 +256,10 @@ final class AgentCommandRunner: ObservableObject {
             return false
         }
 
-        let bootstrapRequestID = beginBootstrap(initialPhase: shouldStartRecording ? .checkingRuntime : .idle)
+        let bootstrapRequestID = beginBootstrap(
+            initialPhase: shouldStartRecording ? .checkingRuntime : .idle,
+            preparesVoice: command.bootstrapRequirement != .cliRuntime
+        )
         let recordingRequestID = shouldStartRecording ? UUID() : nil
         if let recordingRequestID {
             pendingRecordingStarts[command.identifier] = recordingRequestID
@@ -278,8 +289,10 @@ final class AgentCommandRunner: ObservableObject {
             transcriptionDaemonArguments: transcriptionDaemonArguments
         )
         let runCommand = self.runCommand
+        let bootstrapRequirement = shouldStartRecording && command.bootstrapRequirement == .transcription
+            ? AgentBootstrapRequirement.transcriptionModel : command.bootstrapRequirement
         DispatchQueue.global(qos: .userInitiated).async {
-            let bootstrapResult = bootstrap(command.bootstrapRequirement, command.forceBootstrap, reportBootstrapPhase)
+            let bootstrapResult = bootstrap(bootstrapRequirement, command.forceBootstrap, reportBootstrapPhase)
             guard bootstrapResult.exitCode == 0 else {
                 let message = Self.statusMessage(for: command, result: bootstrapResult)
                 let notificationTitle = Self.notificationTitle(for: command, result: bootstrapResult)
@@ -395,7 +408,7 @@ final class AgentCommandRunner: ObservableObject {
 
         let bootstrap = self.bootstrap
         let runCommand = self.runCommand
-        let bootstrapRequestID = beginBootstrap()
+        let bootstrapRequestID = beginBootstrap(preparesVoice: true)
         let reportBootstrapPhase = makeBootstrapProgressReporter(for: bootstrapRequestID)
         DispatchQueue.global(qos: .userInitiated).async {
             let bootstrapResult = bootstrap(

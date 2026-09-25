@@ -77,6 +77,8 @@ struct AgentRuntime {
     private static let appSupportDisplayName = "Application Support"
     private static let fallbackPackageSource = "agent-cli"
     private static let bootstrapQueue = DispatchQueue(label: "lt.nijho.agent-cli.bootstrap")
+    // Access only on bootstrapQueue. Never persist readiness across app launches.
+    private static var preparedModelIdentity: String?
     private static let appPrivateEnvironmentKeys = [
         "AGENTCLI_APP_SUPPORT_DIR",
         "AGENTCLI_RUNTIME_DIR",
@@ -475,7 +477,8 @@ struct AgentRuntime {
         progress: AgentBootstrapProgress = { _ in }
     ) -> CommandResult {
         Self.bootstrapQueue.sync {
-            ensureReadyUnsynchronized(for: requirement, force: force, progress: progress)
+            if force { Self.preparedModelIdentity = nil }
+            return ensureReadyUnsynchronized(for: requirement, force: force, progress: progress)
         }
     }
 
@@ -502,8 +505,14 @@ struct AgentRuntime {
             guard daemonResult.exitCode == 0 else {
                 return daemonResult
             }
+            let identity = appSupportURL.path + "\n" + whisperDaemonMarkerContents
+            guard Self.preparedModelIdentity != identity else {
+                return CommandResult(exitCode: 0, output: "")
+            }
             progress(.warmingWhisperModel)
-            return warmUpWhisperModel()
+            let result = warmUpWhisperModel()
+            if result.exitCode == 0 { Self.preparedModelIdentity = identity }
+            return result
         }
     }
 
@@ -522,12 +531,13 @@ struct AgentRuntime {
     }
 
     private func installWhisperDaemon(progress: AgentBootstrapProgress) -> CommandResult {
+        Self.preparedModelIdentity = nil
         progress(.installingVoiceService)
         let logOffset = (try? fileManager.attributesOfItem(atPath: voiceServiceLogURL.path)[.size] as? NSNumber)?.uint64Value ?? 0
         let arguments = runtimeMode == .bundled
             ? TranscriptionSettings.whisperDaemonInstallArguments(userDefaults: userDefaults)
             : ["daemon", "ensure", "whisper", "--quiet"]
-        let result = runAgentCLI(arguments: arguments)
+        let result = executeAgentCLI(arguments: arguments)
         guard result.exitCode == 0 else {
             return result
         }
@@ -842,6 +852,17 @@ struct AgentRuntime {
     }
 
     func runAgentCLI(arguments: [String]) -> CommandResult {
+        if arguments.starts(with: ["daemon", "install", "whisper"]) {
+            // Settings can reinstall the service independently of bootstrap.
+            return Self.bootstrapQueue.sync {
+                Self.preparedModelIdentity = nil
+                return executeAgentCLI(arguments: arguments)
+            }
+        }
+        return executeAgentCLI(arguments: arguments)
+    }
+
+    private func executeAgentCLI(arguments: [String]) -> CommandResult {
         processRunner(
             agentCLIExecutableURL,
             agentCLIProcessArguments(arguments),

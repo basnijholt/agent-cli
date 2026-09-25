@@ -4,6 +4,38 @@ import XCTest
 @testable import AgentCLI
 
 final class VoiceServiceStartupTests: XCTestCase {
+    func testModelWarmUpRetriesFailuresCachesSuccessAndResetsAfterServiceInstall() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let suite = "AgentCLITests.model-ready.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defaults.set(true, forKey: RuntimeSettings.useUserInstalledAgentCLIKey)
+        defer { defaults.removePersistentDomain(forName: suite) }
+        var warmUpCount = 0
+        let runtime = AgentRuntime(
+            environment: ["AGENTCLI_APP_SUPPORT_DIR": root.path, "SHELL": "/no/such/shell"],
+            userDefaults: defaults,
+            processRunner: { _, arguments, _ in
+                if arguments.contains("--from-file") {
+                    warmUpCount += 1
+                    if warmUpCount == 1 { return CommandResult(exitCode: 1, output: "Download failed") }
+                }
+                return CommandResult(exitCode: 0, output: "")
+            },
+            localhostConnector: { _ in true },
+            whisperReadyTimeout: 0.01,
+            voiceServiceLogURL: root.appendingPathComponent("stderr.log")
+        )
+        XCTAssertNotEqual(runtime.ensureReady(for: .transcriptionModel).exitCode, 0)
+        XCTAssertEqual(runtime.ensureReady(for: .transcriptionModel).exitCode, 0)
+        XCTAssertEqual(warmUpCount, 2, "Failed model setup must be retried.")
+        XCTAssertEqual(runtime.ensureReady(for: .transcriptionModel).exitCode, 0)
+        XCTAssertEqual(warmUpCount, 2, "Normal recording must not repeatedly transcribe warm-up audio.")
+        XCTAssertEqual(runtime.runAgentCLI(arguments: ["daemon", "install", "whisper", "-y"]).exitCode, 0)
+        XCTAssertEqual(runtime.ensureReady(for: .transcriptionModel).exitCode, 0)
+        XCTAssertEqual(warmUpCount, 3, "Replacing the service invalidates model readiness.")
+    }
+
     func testTransientWyomingListenerDoesNotHideHTTPBindFailure() throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: root) }
