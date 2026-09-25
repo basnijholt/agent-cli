@@ -6,6 +6,100 @@ import XCTest
 
 final class RecordingPreparationTests: XCTestCase {
     @MainActor
+    func testFastRecordingStartDoesNotPresentSetupBeforeConnecting() async {
+        await assertFastRecordingStart()
+    }
+
+    @MainActor
+    func testFastRecordingAfterReadyDoesNotFlashSetup() async {
+        await assertFastRecordingStart(after: .idle)
+    }
+
+    @MainActor
+    func testFastRecordingAfterFailureDoesNotFlashSetup() async {
+        await assertFastRecordingStart(after: .failed)
+    }
+
+    @MainActor
+    private func assertFastRecordingStart(after phase: BootstrapPhase? = nil) async {
+        let overlay = VoiceLevelOverlayController.shared
+        overlay.hide()
+        if let phase { overlay.showPreparation(phase) }
+        let started = expectation(description: "recording command started")
+        let releaseCommand = DispatchSemaphore(value: 0)
+        let runner = AgentCommandRunner(
+            bootstrap: { _, _, progress in
+                progress(.checkingRuntime)
+                return CommandResult(exitCode: 0, output: "")
+            },
+            recordingPermissionCheck: { true },
+            sendNotification: { _ in },
+            runCommand: { _ in
+                started.fulfill()
+                _ = releaseCommand.wait(timeout: .now() + 5)
+                return CommandResult(exitCode: 0, output: "Fixture transcript")
+            }
+        )
+        defer { releaseCommand.signal(); overlay.hide() }
+
+        XCTAssertTrue(runner.run(.toggleTranscription))
+        XCTAssertFalse(hasVisiblePreparationPanel,
+                       "A routine availability check must not flash a setup window before Connecting.")
+        await fulfillment(of: [started], timeout: 2)
+        XCTAssertNil(overlay.preparationPhase)
+        XCTAssertEqual(VoiceLevelMeter.shared.captureState, .connecting)
+        try? await Task.sleep(nanoseconds: 300_000_000)
+        XCTAssertFalse(hasVisiblePreparationPanel, "Delayed setup must not appear over Connecting.")
+        releaseCommand.signal()
+        await waitUntilFinished(runner)
+    }
+
+    @MainActor
+    private var hasVisiblePreparationPanel: Bool {
+        NSApplication.shared.windows.contains {
+            $0.isVisible && $0.contentView is NSHostingView<VoicePreparationOverlayView>
+        }
+    }
+
+    @MainActor
+    func testCanceledFastSetupDoesNotFlashReadyCard() async {
+        let setup = PreparationGate(phase: .checkingRuntime)
+        let runner = makeRunner(setup: setup)
+        let overlay = VoiceLevelOverlayController.shared
+        overlay.hide()
+        defer { overlay.hide() }
+
+        XCTAssertTrue(runner.beginHoldToTranscribe())
+        await fulfillment(of: [setup.started], timeout: 2)
+        runner.endHoldToTranscribe()
+        setup.finish()
+        await waitUntilFinished(runner)
+        XCTAssertNil(overlay.preparationPhase)
+        XCTAssertFalse(hasVisiblePreparationPanel)
+        try? await Task.sleep(nanoseconds: 300_000_000)
+        XCTAssertFalse(overlay.hasActiveOverlay, "A canceled quick check must not present a delayed Ready card.")
+    }
+
+    @MainActor
+    func testDismissedPendingSetupDoesNotAppearAfterDelay() async {
+        let setup = PreparationGate(phase: .warmingWhisperModel)
+        let runner = makeRunner(setup: setup)
+        let overlay = VoiceLevelOverlayController.shared
+        overlay.hide()
+        defer { overlay.hide() }
+
+        XCTAssertTrue(runner.beginHoldToTranscribe())
+        await fulfillment(of: [setup.started], timeout: 2)
+        overlay.hide()
+        try? await Task.sleep(nanoseconds: 300_000_000)
+        XCTAssertFalse(hasVisiblePreparationPanel)
+        runner.endHoldToTranscribe()
+        setup.finish()
+        await waitUntilFinished(runner)
+        XCTAssertNil(overlay.preparationPhase)
+    }
+
+    @MainActor
     func testReleasingHoldDuringSetupNeverLaunchesRecordingOrStop() async {
         let setup = PreparationGate(phase: .warmingWhisperModel)
         let runner = makeRunner(setup: setup)
@@ -13,6 +107,8 @@ final class RecordingPreparationTests: XCTestCase {
 
         XCTAssertTrue(runner.beginHoldToTranscribe())
         await fulfillment(of: [setup.started], timeout: 2)
+        await waitForVisiblePreparation()
+        XCTAssertEqual(VoiceLevelOverlayController.shared.preparationPhase, .warmingWhisperModel)
         runner.endHoldToTranscribe()
         XCTAssertFalse(runner.isRecording)
         XCTAssertNotEqual(VoiceLevelMeter.shared.captureState, .transcribing)
@@ -36,6 +132,7 @@ final class RecordingPreparationTests: XCTestCase {
         await fulfillment(of: [setup.started], timeout: 2)
         XCTAssertFalse(runner.beginHoldToTranscribe(),
                        "Setup must ask the user to try again when ready, not record later.")
+        await waitForVisiblePreparation()
         XCTAssertEqual(VoiceLevelOverlayController.shared.preparationPhase, .installingRuntime)
         runner.endHoldToTranscribe()
         XCTAssertNotEqual(VoiceLevelMeter.shared.captureState, .transcribing)
@@ -62,6 +159,7 @@ final class RecordingPreparationTests: XCTestCase {
         setup.finish()
         await waitUntilFinished(runner)
         XCTAssertEqual(VoiceLevelOverlayController.shared.preparationPhase, .failed)
+        XCTAssertTrue(hasVisiblePreparationPanel, "A fast setup failure must still show recovery.")
         XCTAssertFalse(runner.isRecording)
         XCTAssertTrue(runner.beginHoldToTranscribe(), "A setup failure must not leave the hold state stuck.")
         runner.endHoldToTranscribe()
@@ -135,6 +233,7 @@ final class RecordingPreparationTests: XCTestCase {
         runner.warmUpTranscription()
         await fulfillment(of: [setup.started], timeout: 2)
         XCTAssertFalse(runner.beginHoldToTranscribe())
+        await waitForVisiblePreparation()
         let panel = try preparationPanel()
         overlay.minimize()
         XCTAssertFalse(runner.beginHoldToTranscribe())
@@ -247,6 +346,15 @@ final class RecordingPreparationTests: XCTestCase {
                 return CommandResult(exitCode: 1, output: "Unexpected command")
             }
         )
+    }
+
+    @MainActor
+    private func waitForVisiblePreparation() async {
+        let deadline = Date().addingTimeInterval(2)
+        while !hasVisiblePreparationPanel && Date() < deadline {
+            try? await Task.sleep(nanoseconds: 10_000_000)
+        }
+        XCTAssertTrue(hasVisiblePreparationPanel, "Real setup waits must still show their current stage.")
     }
 
     @MainActor
