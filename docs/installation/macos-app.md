@@ -36,7 +36,11 @@ Permission checks never trigger a prompt on their own. If access was previously 
 
 If Accessibility is enabled in System Settings but not in the app, quit and reopen Agent CLI and check that you enabled the running copy. The **Still having trouble?** section shows the app's location and offers a confirmation-gated Accessibility reset as a last resort.
 
-The first transcription can take longer because AgentCLI installs the private CLI runtime, ensures the Whisper launchd daemon is available, and downloads the speech model lazily.
+First-use setup can take several minutes while AgentCLI installs its private runtime, starts the voice service, and downloads and loads the speech model. If you try to record during setup, a progress card shows the current stage, elapsed time, and **Not recording**. Wait for **Ready to record**, then use your recording shortcut again. Releasing hold-to-transcribe before recording starts cancels that recording request; setup can finish in the background.
+
+Choose **Details…** on the setup card to open the voice service controls and diagnostics in **Settings… > Advanced**. **Dismiss** hides the card without interrupting setup. If setup fails, the card offers the same route to the saved error and recovery controls.
+
+Drag the setup card or recording/transcribing indicator to move it. The **−** button minimizes it to the menu bar without stopping the work; choose **Show Voice Setup…** or **Show Voice Activity…** from the menu to restore it. Progress updates keep your chosen position and do not reopen a minimized card.
 
 ## Default Shortcuts
 

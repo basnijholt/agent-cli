@@ -73,6 +73,14 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
         menu.addItem(voiceStatusItem)
         self.voiceStatusItem = voiceStatusItem
 
+        let overlay = VoiceLevelOverlayController.shared
+        if runner.bootstrapPhase.isPreparing || overlay.hasActiveOverlay {
+            let title = overlay.preparationPhase != nil || !overlay.hasActiveOverlay
+                ? "Show Voice Setup…" : "Show Voice Activity…"
+            menu.addItem(actionItem(title, symbolName: "arrow.up.forward.square",
+                                    action: #selector(showVoiceActivity)))
+        }
+
         menu.addItem(.separator())
 
         menu.addItem(submenuItem(
@@ -289,6 +297,15 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
 
     @objc private func openSettings() {
         SettingsWindowController.shared.show()
+    }
+
+    @objc private func showVoiceActivity() {
+        let overlay = VoiceLevelOverlayController.shared
+        if overlay.hasActiveOverlay {
+            overlay.restore()
+        } else if runner.bootstrapPhase.isPreparing {
+            overlay.showPreparation(runner.bootstrapPhase)
+        }
     }
 
     @objc private func checkForUpdates() {

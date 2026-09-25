@@ -99,6 +99,7 @@ struct AgentRuntime {
     private let userInstalledCLICheckCache: UserInstalledCLICheckCache
     private let loginShellPATHCache: LoginShellPATHCache
     private let whisperReadyTimeout: TimeInterval
+    private let voiceServiceLogURL: URL
     let appSupportURL: URL
     let bundledUVURL: URL
     let bundledWheelsURL: URL
@@ -123,7 +124,8 @@ struct AgentRuntime {
             AgentRuntime.runProcess(executableURL: $0, arguments: $1, environment: $2)
         },
         localhostConnector: @escaping LocalhostConnector = AgentRuntime.canConnectToLocalhost,
-        whisperReadyTimeout: TimeInterval = 180
+        whisperReadyTimeout: TimeInterval = 180,
+        voiceServiceLogURL: URL? = nil
     ) {
         self.baseEnvironment = environment
         self.userDefaults = userDefaults
@@ -158,6 +160,8 @@ struct AgentRuntime {
         lastErrorURL = appSupportURL.appendingPathComponent("last-error.txt")
         logsURL = FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("Logs", isDirectory: true)
+        self.voiceServiceLogURL = voiceServiceLogURL
+            ?? logsURL.appendingPathComponent("agent-cli-whisper/stderr.log")
     }
 
     var usesUserInstalledAgentCLI: Bool {
@@ -519,6 +523,7 @@ struct AgentRuntime {
 
     private func installWhisperDaemon(progress: AgentBootstrapProgress) -> CommandResult {
         progress(.installingVoiceService)
+        let logOffset = (try? fileManager.attributesOfItem(atPath: voiceServiceLogURL.path)[.size] as? NSNumber)?.uint64Value ?? 0
         let arguments = runtimeMode == .bundled
             ? TranscriptionSettings.whisperDaemonInstallArguments(userDefaults: userDefaults)
             : ["daemon", "ensure", "whisper", "--quiet"]
@@ -527,13 +532,16 @@ struct AgentRuntime {
             return result
         }
 
-        try? whisperDaemonMarkerContents.write(
-            to: whisperDaemonMarkerURL,
-            atomically: true,
-            encoding: .utf8
-        )
         progress(.waitingForVoiceService)
-        return waitForWhisperDaemonReady()
+        let readyResult = waitForWhisperDaemonReady(logOffset: logOffset)
+        if readyResult.exitCode == 0 {
+            try? whisperDaemonMarkerContents.write(
+                to: whisperDaemonMarkerURL,
+                atomically: true,
+                encoding: .utf8
+            )
+        }
+        return readyResult
     }
 
     private var whisperDaemonMarkerContents: String {
@@ -629,15 +637,22 @@ struct AgentRuntime {
         }
     }
 
-    private func waitForWhisperDaemonReady() -> CommandResult {
-        waitForWhisperDaemonReady(timeout: whisperReadyTimeout)
-    }
-
-    private func waitForWhisperDaemonReady(timeout: TimeInterval) -> CommandResult {
-        let deadline = Date().addingTimeInterval(timeout)
+    private func waitForWhisperDaemonReady(logOffset: UInt64) -> CommandResult {
+        let deadline = Date().addingTimeInterval(whisperReadyTimeout)
         while Date() < deadline {
+            if let failure = voiceServiceStartupFailure(after: logOffset) {
+                return CommandResult(exitCode: 1, output: failure)
+            }
             if localhostConnector(10300) {
-                return CommandResult(exitCode: 0, output: "")
+                // Wyoming starts before the HTTP listener binds. Allow startup to
+                // settle, then check both diagnostics and the listener again.
+                Thread.sleep(forTimeInterval: min(0.5, whisperReadyTimeout))
+                if let failure = voiceServiceStartupFailure(after: logOffset) {
+                    return CommandResult(exitCode: 1, output: failure)
+                }
+                if localhostConnector(10300) {
+                    return CommandResult(exitCode: 0, output: "")
+                }
             }
             Thread.sleep(forTimeInterval: 0.5)
         }
@@ -648,6 +663,32 @@ struct AgentRuntime {
             ? "Whisper ASR service did not become ready at localhost:10300."
             : "Whisper ASR service did not become ready at localhost:10300.\n\n\(statusOutput)"
         return CommandResult(exitCode: 1, output: output)
+    }
+
+    private func voiceServiceStartupFailure(after offset: UInt64) -> String? {
+        guard let file = try? FileHandle(forReadingFrom: voiceServiceLogURL) else { return nil }
+        defer { try? file.close() }
+        guard let size = try? file.seekToEnd() else { return nil }
+        // Only examine diagnostics written by this attempt, never old failures.
+        // Keep reads bounded even if a restarting daemon produces a large log.
+        let start = size < offset ? 0 : offset
+        guard size > start else { return nil }
+        do {
+            try file.seek(toOffset: max(start, size > 16_384 ? size - 16_384 : 0))
+            let data = try file.read(upToCount: 16_384) ?? Data()
+            let lines = String(decoding: data, as: UTF8.self).components(separatedBy: .newlines)
+            guard let conflict = lines.last(where: {
+                $0.localizedCaseInsensitiveContains("address already in use")
+            }) else { return nil }
+            return """
+            Voice service could not start because a port is already in use.
+            Another speech service may still be running. Quit or reconfigure that service, then try again.
+
+            \(conflict)
+            """
+        } catch {
+            return nil
+        }
     }
 
     private static func canConnectToLocalhost(port: UInt16) -> Bool {

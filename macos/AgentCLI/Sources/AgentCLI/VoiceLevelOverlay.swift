@@ -3,7 +3,7 @@ import Foundation
 import SwiftUI
 
 enum VoiceLevelOverlayLayout {
-    static let pillSize = CGSize(width: 190, height: 38)
+    static let pillSize = CGSize(width: 222, height: 38)
     static let textWidth = CGFloat(420)
     static let textHeight = CGFloat(86)
     static let shadowRadius = CGFloat(13)
@@ -31,6 +31,7 @@ struct VoiceLevelOverlayView: View {
     @ObservedObject var meter: VoiceLevelMeter
     @ObservedObject var preview: LiveTranscriptionPreview
     let showsPreviewSpace: Bool
+    var minimize: () -> Void = {}
 
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -72,7 +73,7 @@ struct VoiceLevelOverlayView: View {
             height: VoiceLevelOverlayLayout.panelSize(showsPreviewSpace: showsPreviewSpace).height,
             alignment: .bottom
         )
-        .accessibilityElement(children: .ignore)
+        .accessibilityElement(children: .contain)
         .accessibilityLabel(Text(meter.captureState == .recording
             ? "Recording \(meter.recordingDuration)"
             : meter.captureState == .transcribing
@@ -101,6 +102,12 @@ struct VoiceLevelOverlayView: View {
                         .fixedSize()
                 }
             }
+            Button(action: minimize) {
+                Image(systemName: "minus").frame(width: 18, height: 18)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Minimize to menu bar")
+            .help("Minimize to menu bar. Restore with Show Voice Activity…")
         }
         .foregroundStyle(statusColor)
         .padding(.horizontal, 14)
@@ -186,33 +193,114 @@ final class VoiceLevelOverlayController {
     private var recordingShowsPreviewSpace = false
     private var isRecording = false
     private var isTranscribing = false
+    private(set) var preparationPhase: BootstrapPhase?
+    private var preparationStartedAt = Date()
+    private var dismissPreparationWorkItem: DispatchWorkItem?
+    private var isMinimized = false
+    private var hasPositioned = false
+
+    var hasActiveOverlay: Bool {
+        preparationPhase != nil || isRecording || isTranscribing
+    }
 
     private init() {}
 
     func show(showsPreviewSpace: Bool = false) {
+        clearPreparation()
         isRecording = true
         recordingShowsPreviewSpace = showsPreviewSpace
         let panel = panel ?? makePanel()
         self.panel = panel
         setPreviewSpace(showsPreviewSpace, for: panel)
+        updatePanelContent(panel)
         VoiceLevelMeter.shared.start()
-        panel.orderFrontRegardless()
+        if !isMinimized { panel.orderFrontRegardless() }
     }
 
     func hide() {
+        clearPreparation()
         isRecording = false
         isTranscribing = false
+        isMinimized = false
+        hasPositioned = false
         VoiceLevelMeter.shared.stop()
         panel?.orderOut(nil)
     }
 
     func showTranscribing() {
+        clearPreparation()
         isTranscribing = true
         let panel = panel ?? makePanel()
         self.panel = panel
         VoiceLevelMeter.shared.beginTranscribing()
         setPreviewSpace(false, for: panel)
-        panel.orderFrontRegardless()
+        updatePanelContent(panel)
+        if !isMinimized { panel.orderFrontRegardless() }
+    }
+
+    func showPreparation(_ phase: BootstrapPhase) {
+        guard !isRecording, !isTranscribing else { return }
+        isMinimized = false
+        if preparationPhase == nil {
+            preparationStartedAt = Date()
+            preparationPhase = phase
+        }
+        updatePreparation(phase)
+    }
+
+    func minimize() {
+        guard hasActiveOverlay else { return }
+        isMinimized = true
+        dismissPreparationWorkItem?.cancel()
+        panel?.orderOut(nil)
+    }
+
+    func restore() {
+        guard hasActiveOverlay else { return }
+        if let preparationPhase {
+            showPreparation(preparationPhase)
+        } else {
+            isMinimized = false
+            panel?.orderFrontRegardless()
+        }
+    }
+
+    func updatePreparation(_ phase: BootstrapPhase) {
+        guard preparationPhase != nil else { return }
+        if preparationPhase?.isPreparing == false && phase.isPreparing {
+            preparationStartedAt = Date()
+        }
+        dismissPreparationWorkItem?.cancel()
+        preparationPhase = phase
+        let panel = panel ?? makePanel()
+        self.panel = panel
+        panel.ignoresMouseEvents = false
+        panel.isMovableByWindowBackground = true
+        panel.contentView = NSHostingView(rootView: VoicePreparationOverlayView(
+            phase: phase,
+            startedAt: preparationStartedAt,
+            showDetails: {
+                Task { @MainActor in SettingsWindowController.shared.show(.advanced) }
+            },
+            dismiss: { [weak self] in self?.hide() },
+            minimize: { [weak self] in self?.minimize() }
+        ))
+        resize(panel, to: VoicePreparationOverlayView.panelSize)
+        if !isMinimized { panel.orderFrontRegardless() }
+        if phase == .idle && !isMinimized {
+            let work = DispatchWorkItem { [weak self] in
+                guard self?.preparationPhase == .idle else { return }
+                self?.hide()
+            }
+            dismissPreparationWorkItem = work
+            DispatchQueue.main.asyncAfter(deadline: .now() + 5, execute: work)
+        }
+    }
+
+    private func clearPreparation() {
+        dismissPreparationWorkItem?.cancel()
+        dismissPreparationWorkItem = nil
+        preparationPhase = nil
     }
 
     func finishTranscribing() {
@@ -255,7 +343,8 @@ final class VoiceLevelOverlayController {
         panel.backgroundColor = .clear
         panel.isOpaque = false
         panel.hasShadow = false
-        panel.ignoresMouseEvents = true
+        panel.ignoresMouseEvents = false
+        panel.isMovableByWindowBackground = true
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .ignoresCycle]
         updatePanelContent(panel)
         return panel
@@ -266,15 +355,26 @@ final class VoiceLevelOverlayController {
             self.showsPreviewSpace = showsPreviewSpace
             updatePanelContent(panel)
         }
-        panel.setContentSize(VoiceLevelOverlayLayout.panelSize(showsPreviewSpace: showsPreviewSpace))
-        position(panel)
+        resize(panel, to: VoiceLevelOverlayLayout.panelSize(showsPreviewSpace: showsPreviewSpace))
+    }
+
+    private func resize(_ panel: NSPanel, to size: NSSize) {
+        let origin = panel.frame.origin
+        panel.setContentSize(size)
+        if hasPositioned {
+            panel.setFrameOrigin(origin)
+        } else {
+            position(panel)
+            hasPositioned = true
+        }
     }
 
     private func updatePanelContent(_ panel: NSPanel) {
         panel.contentView = NSHostingView(rootView: VoiceLevelOverlayView(
             meter: VoiceLevelMeter.shared,
             preview: LiveTranscriptionPreview.shared,
-            showsPreviewSpace: showsPreviewSpace
+            showsPreviewSpace: showsPreviewSpace,
+            minimize: { [weak self] in self?.minimize() }
         ))
     }
 
