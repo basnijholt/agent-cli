@@ -487,6 +487,12 @@ struct AgentRuntime {
         force: Bool = false,
         progress: AgentBootstrapProgress
     ) -> CommandResult {
+        // The user's CLI owns its provider and endpoint configuration. Automatic
+        // local service setup and model warm-up only belong to the bundled runtime.
+        if usesUserInstalledAgentCLI {
+            return ensureInstalled(force: force, progress: progress)
+        }
+
         switch requirement {
         case .cliRuntime:
             return ensureInstalled(force: force, progress: progress)

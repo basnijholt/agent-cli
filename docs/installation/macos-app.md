@@ -63,7 +63,7 @@ This setting is off by default. When enabled, AgentCLI writes rolling preview ev
 
 By default, the app manages its own private `agent-cli` install so the menu bar workflow is zero-config and does not depend on your shell PATH.
 
-If you already manage `agent-cli` yourself, enable **Use my installed agent-cli** in **Settings… > Advanced**. AgentCLI will then run the `agent-cli` executable found on PATH and use your normal configuration.
+If you already manage `agent-cli` yourself, enable **Use my installed agent-cli** in **Settings… > Advanced**. AgentCLI will then run the `agent-cli` executable found on PATH and use your normal configuration. In this mode, startup and recording check that the CLI is available without automatically installing a local voice service or warming a local speech model. Your CLI configuration controls the speech provider and server.
 
 ## Updates
 
