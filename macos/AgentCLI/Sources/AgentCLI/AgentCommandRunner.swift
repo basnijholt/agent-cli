@@ -246,7 +246,7 @@ final class AgentCommandRunner: ObservableObject {
         let shouldStartRecording = command.showsRecordingIndicator && !isStopRequest
         guard !shouldStartRecording || ensureMicrophonePermission() else { return false }
         if shouldStartRecording && bootstrapPhase.isPreparing {
-            VoiceLevelOverlayController.shared.showPreparation(bootstrapPhase)
+            VoiceLevelOverlayController.shared.showPreparation(bootstrapPhase, delayingPresentation: true)
             statusMessage = "Voice setup is still in progress. Try recording again when ready."
             return false
         }
@@ -256,15 +256,15 @@ final class AgentCommandRunner: ObservableObject {
             return false
         }
 
+        let recordingRequestID = shouldStartRecording ? UUID() : nil
+        if let recordingRequestID {
+            pendingRecordingStarts[command.identifier] = recordingRequestID
+            VoiceLevelOverlayController.shared.showPreparation(.checkingRuntime, delayingPresentation: true)
+        }
         let bootstrapRequestID = beginBootstrap(
             initialPhase: shouldStartRecording ? .checkingRuntime : .idle,
             preparesVoice: command.bootstrapRequirement != .cliRuntime
         )
-        let recordingRequestID = shouldStartRecording ? UUID() : nil
-        if let recordingRequestID {
-            pendingRecordingStarts[command.identifier] = recordingRequestID
-            VoiceLevelOverlayController.shared.showPreparation(.checkingRuntime)
-        }
 
         if isStopRequest {
             markStopRequested(for: command)
