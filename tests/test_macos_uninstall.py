@@ -15,21 +15,27 @@ pytestmark = pytest.mark.skipif(sys.platform != "darwin", reason="Requires macOS
 
 
 @pytest.mark.parametrize(
-    ("owner", "loaded", "bootout_status", "removed", "expected_status"),
+    ("owner", "loaded_owner", "print_status", "bootout_status", "removed", "expected_status"),
     [
-        ("this-app", True, 0, True, 0),
-        ("this-app", False, 0, True, 0),
-        ("this-app", True, 5, False, 5),
-        ("standalone", True, 0, False, 0),
-        ("other-app", True, 0, False, 0),
-        ("missing", True, 0, False, 0),
-        ("malformed", True, 0, False, 0),
+        ("this-app", "this-app", 0, 0, True, 0),
+        ("this-app", "absent", 113, 0, True, 0),
+        ("this-app", "this-app", 0, 5, False, 5),
+        ("standalone", "standalone", 0, 0, False, 0),
+        ("other-app", "other-app", 0, 0, False, 0),
+        ("missing", "this-app", 0, 0, False, 0),
+        ("malformed", "this-app", 0, 0, False, 0),
+        ("this-app", "standalone", 0, 0, False, 1),
+        ("this-app", "other-app", 0, 0, False, 1),
+        ("this-app", "malformed", 0, 0, False, 1),
+        ("this-app", "inherited-only", 0, 0, False, 1),
+        ("this-app", "this-app", 5, 0, False, 5),
     ],
 )
 def test_uninstall_preserves_independent_services(
     tmp_path: Path,
     owner: str,
-    loaded: bool,
+    loaded_owner: str,
+    print_status: int,
     bootout_status: int,
     removed: bool,
     expected_status: int,
@@ -38,6 +44,9 @@ def test_uninstall_preserves_independent_services(
 
     PlistBuddy and filesystem operations are real. Only launchctl is substituted:
     running it against the shared label could stop the developer's live daemon.
+    launchctl(1) documents print output as unstable; unknown output must preserve
+    the service. The current tab-indented fields were verified on macOS, and
+    `launchctl error 113` identifies the service-not-found status.
     """
     resources = tmp_path / "Applications with spaces" / "AgentCLI.app/Contents/Resources"
     resources.mkdir(parents=True)
@@ -67,13 +76,35 @@ def test_uninstall_preserves_independent_services(
                 )
             )
     before = plist.read_bytes() if plist.exists() else None
+    loaded_uv = {
+        "this-app": str(resources / "bin/uv"),
+        "inherited-only": str(resources / "bin/uv"),
+        "other-app": "/Applications/Other.app/Contents/Resources/bin/uv",
+    }.get(loaded_owner, "/usr/local/bin/uv")
+    output = tmp_path / "launchctl-output"
+    output.write_text(
+        f"gui/{os.getuid()}/com.agent_cli.whisper = {{\n"
+        f"\tprogram = {loaded_uv}\n"
+        "\tinherited environment = {\n"
+        f"\t\tAGENTCLI_BUNDLED_UV => {resources / 'bin/uv'}\n"
+        "\t}\n"
+        "\tenvironment = {\n"
+        + (
+            f"\t\tAGENTCLI_BUNDLED_UV => {loaded_uv}\n"
+            if loaded_owner not in {"standalone", "inherited-only"}
+            else ""
+        )
+        + "\t}\n}\n"
+    )
+    if loaded_owner == "malformed":
+        output.write_text("unexpected output")
     calls = tmp_path / "launchctl-calls"
     launchctl = tmp_path / "launchctl"
     launchctl.write_text(
         "#!/bin/sh\n"
         'printf "%s\\n" "$*" >> "$CALL_LOG"\n'
         'case "$1" in\n'
-        '  print) exit "$PRINT_STATUS" ;;\n'
+        '  print) /bin/cat "$PRINT_OUTPUT"; exit "$PRINT_STATUS" ;;\n'
         '  bootout) exit "$BOOTOUT_STATUS" ;;\n'
         "  *) exit 99 ;;\n"
         "esac\n"
@@ -89,7 +120,8 @@ def test_uninstall_preserves_independent_services(
             **os.environ,
             "HOME": str(home),
             "CALL_LOG": str(calls),
-            "PRINT_STATUS": "0" if loaded else "113",
+            "PRINT_STATUS": str(print_status),
+            "PRINT_OUTPUT": str(output),
             "BOOTOUT_STATUS": str(bootout_status),
         },
         capture_output=True,
@@ -106,6 +138,6 @@ def test_uninstall_preserves_independent_services(
     expected_calls = []
     if owner == "this-app":
         expected_calls = [f"print {service}"]
-        if loaded:
+        if print_status == 0 and loaded_owner == "this-app":
             expected_calls.append(f"bootout {service}")
     assert (calls.read_text().splitlines() if calls.exists() else []) == expected_calls

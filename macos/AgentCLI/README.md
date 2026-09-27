@@ -74,8 +74,10 @@ Quit Agent CLI, then run the bundled cleanup helper before removing the app:
 Run it as your normal user, without `sudo`. It stops and removes the Whisper
 launch agent only when that service belongs to this copy of the app. Services
 installed through the standalone CLI or another app copy are left intact.
-If stopping the service fails, the helper returns an error and keeps its plist
-so cleanup can be retried. It does not remove the app, preferences, or models.
+If the loaded service's ownership cannot be confirmed, querying launchd fails,
+or stopping the service fails, the helper returns an error and keeps its plist
+so cleanup can be retried. This includes unfamiliar launchd output after an OS
+update. It does not remove the app, preferences, or models.
 
 ## Build
 
