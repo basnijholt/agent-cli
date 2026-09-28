@@ -2,16 +2,64 @@
 
 from __future__ import annotations
 
+import importlib
 import sys
 from pathlib import Path
 from typing import Annotated, Any
 
 import typer
 from rich.table import Table
+from typer.core import TyperGroup
+from typer.main import get_command
 
 from .config import load_config, normalize_provider_defaults
 from .core.process import set_process_title
 from .core.utils import console
+
+_COMMAND_MODULES = {
+    "assistant": "agent_cli.agents.assistant",
+    "autocorrect": "agent_cli.agents.autocorrect",
+    "chat": "agent_cli.agents.chat",
+    "config": "agent_cli.config_cmd",
+    "daemon": "agent_cli.daemon.cli",
+    "dev": "agent_cli.dev.cli",
+    "diarize-live-session": "agent_cli.agents.diarize_live_session",
+    "install-extras": "agent_cli.install.extras",
+    "install-hotkeys": "agent_cli.install.hotkeys",
+    "install-services": "agent_cli.install.services",
+    "memory": "agent_cli.agents.memory",
+    "rag-proxy": "agent_cli.agents.rag_proxy",
+    "server": "agent_cli.server.cli",
+    "speak": "agent_cli.agents.speak",
+    "speakers": "agent_cli.agents.speakers",
+    "start-services": "agent_cli.install.services",
+    "transcribe": "agent_cli.agents.transcribe",
+    "transcribe-live": "agent_cli.agents.transcribe_live",
+    "voice-edit": "agent_cli.agents.voice_edit",
+}
+
+
+class _LazyCommandGroup(TyperGroup):
+    """Build command options only when selected, including help and completion."""
+
+    def list_commands(self, ctx: typer.Context) -> list[str]:
+        # Help and shell completion need the complete command catalogue.
+        for module in dict.fromkeys(_COMMAND_MODULES.values()):
+            importlib.import_module(module)
+        return sorted(set(super().list_commands(ctx)) | _COMMAND_MODULES.keys())
+
+    def get_command(self, ctx: typer.Context, cmd_name: str) -> Any:
+        command = super().get_command(ctx, cmd_name)
+        if command is None and (module := _COMMAND_MODULES.get(cmd_name)):
+            importlib.import_module(module)
+            # Command decorators register on app. Rebuild only the loaded subset,
+            # then cache its commands on this invocation's Click group.
+            group = get_command(app)
+            assert isinstance(group, TyperGroup)
+            self.commands.update(group.commands)
+            command = super().get_command(ctx, cmd_name)
+        return command
+
 
 _HELP = """\
 AI-powered voice, text, and development tools.
@@ -37,6 +85,7 @@ Run `agent-cli <command> --help` for detailed command documentation.
 """
 
 app = typer.Typer(
+    cls=_LazyCommandGroup,
     name="agent-cli",
     help=_HELP,
     context_settings={"help_option_names": ["-h", "--help"]},
@@ -116,24 +165,3 @@ def set_config_defaults(ctx: typer.Context, config_file: str | None) -> dict[str
     command_config = normalize_provider_defaults(config.get(command_key, {}))
     ctx.default_map = {**wildcard_config, **parent_config, **command_config}
     return config
-
-
-# Import commands from other modules to register them
-from . import config_cmd  # noqa: E402, F401
-from .agents import (  # noqa: E402, F401
-    assistant,
-    autocorrect,
-    chat,
-    diarize_live_session,
-    memory,
-    rag_proxy,
-    speak,
-    speakers,
-    transcribe,
-    transcribe_live,
-    voice_edit,
-)
-from .daemon import cli as daemon_cli  # noqa: E402, F401
-from .dev import cli as dev_cli  # noqa: E402, F401
-from .install import extras, hotkeys, services  # noqa: E402, F401
-from .server import cli as server_cli  # noqa: E402, F401
