@@ -14,6 +14,13 @@ SCRIPT = Path(__file__).resolve().parents[1] / "macos" / "uninstall-macos-app.sh
 pytestmark = pytest.mark.skipif(sys.platform != "darwin", reason="Requires macOS PlistBuddy")
 
 
+def _executable(path: Path, contents: str) -> Path:
+    """Create an executable test command."""
+    path.write_text(contents)
+    path.chmod(0o755)
+    return path
+
+
 @pytest.mark.parametrize(
     (
         "owner",
@@ -22,25 +29,27 @@ pytestmark = pytest.mark.skipif(sys.platform != "darwin", reason="Requires macOS
         "bootout_status",
         "shutdown_polls",
         "shutdown_status",
+        "query_seconds",
         "removed",
         "expected_status",
     ),
     [
-        ("this-app", "this-app", 0, 0, 0, 113, True, 0),
-        ("this-app", "absent", 113, 0, 0, 113, True, 0),
-        ("this-app", "this-app", 0, 5, 0, 113, False, 5),
-        ("standalone", "standalone", 0, 0, 0, 113, False, 0),
-        ("other-app", "other-app", 0, 0, 0, 113, False, 0),
-        ("missing", "this-app", 0, 0, 0, 113, False, 0),
-        ("malformed", "this-app", 0, 0, 0, 113, False, 0),
-        ("this-app", "standalone", 0, 0, 0, 113, False, 1),
-        ("this-app", "other-app", 0, 0, 0, 113, False, 1),
-        ("this-app", "malformed", 0, 0, 0, 113, False, 1),
-        ("this-app", "inherited-only", 0, 0, 0, 113, False, 1),
-        ("this-app", "this-app", 5, 0, 0, 113, False, 5),
-        ("this-app", "this-app", 0, 0, 2, 113, True, 0),
-        ("this-app", "this-app", 0, 0, 99, 113, False, 1),
-        ("this-app", "this-app", 0, 0, 0, 5, False, 5),
+        ("this-app", "this-app", 0, 0, 0, 113, 0, True, 0),
+        ("this-app", "absent", 113, 0, 0, 113, 0, True, 0),
+        ("this-app", "this-app", 0, 5, 0, 113, 0, False, 5),
+        ("standalone", "standalone", 0, 0, 0, 113, 0, False, 0),
+        ("other-app", "other-app", 0, 0, 0, 113, 0, False, 0),
+        ("missing", "this-app", 0, 0, 0, 113, 0, False, 0),
+        ("malformed", "this-app", 0, 0, 0, 113, 0, False, 0),
+        ("this-app", "standalone", 0, 0, 0, 113, 0, False, 1),
+        ("this-app", "other-app", 0, 0, 0, 113, 0, False, 1),
+        ("this-app", "malformed", 0, 0, 0, 113, 0, False, 1),
+        ("this-app", "inherited-only", 0, 0, 0, 113, 0, False, 1),
+        ("this-app", "this-app", 5, 0, 0, 113, 0, False, 5),
+        ("this-app", "this-app", 0, 0, 2, 113, 0, True, 0),
+        ("this-app", "this-app", 0, 0, 99, 113, 0, False, 1),
+        ("this-app", "this-app", 0, 0, 0, 5, 0, False, 5),
+        ("this-app", "this-app", 0, 0, 5, 113, 10, False, 1),
     ],
 )
 def test_uninstall_preserves_independent_services(
@@ -51,6 +60,7 @@ def test_uninstall_preserves_independent_services(
     bootout_status: int,
     shutdown_polls: int,
     shutdown_status: int,
+    query_seconds: int,
     removed: bool,
     expected_status: int,
 ) -> None:
@@ -112,14 +122,18 @@ def test_uninstall_preserves_independent_services(
     )
     if loaded_owner == "malformed":
         output.write_text("unexpected output")
+    clock = tmp_path / "clock"
+    clock.write_text("0")
     calls = tmp_path / "launchctl-calls"
-    launchctl = tmp_path / "launchctl"
-    launchctl.write_text(
+    launchctl = _executable(
+        tmp_path / "launchctl",
         "#!/bin/sh\n"
         'printf "%s\\n" "$*" >> "$CALL_LOG"\n'
         'case "$1" in\n'
         "  print)\n"
         '    if [ -f "$STOP_STATE" ]; then\n'
+        '      now=$(/bin/cat "$CLOCK_STATE")\n'
+        '      printf "%s" "$((now + QUERY_SECONDS))" > "$CLOCK_STATE"\n'
         '      count=$(/bin/cat "$STOP_STATE")\n'
         '      printf "%s" "$((count + 1))" > "$STOP_STATE"\n'
         '      [ "$count" -lt "$SHUTDOWN_POLLS" ] && exit 0\n'
@@ -130,19 +144,23 @@ def test_uninstall_preserves_independent_services(
         '    [ "$BOOTOUT_STATUS" -eq 0 ] && printf 0 > "$STOP_STATE"\n'
         '    exit "$BOOTOUT_STATUS" ;;\n'
         "  *) exit 99 ;;\n"
-        "esac\n"
+        "esac\n",
     )
-    launchctl.chmod(0o755)
-    sleep = tmp_path / "sleep"
-    sleep.write_text("#!/bin/sh\nexit 0\n")
-    sleep.chmod(0o755)
-    helper = resources / "uninstall.sh"
-    helper.write_text(
+    sleep = _executable(
+        tmp_path / "sleep",
+        "#!/bin/sh\n"
+        'printf "sleep %s\\n" "$*" >> "$CALL_LOG"\n'
+        'now=$(/bin/cat "$CLOCK_STATE")\n'
+        'printf "%s" "$((now + $1))" > "$CLOCK_STATE"\n',
+    )
+    date = _executable(tmp_path / "date", '#!/bin/sh\n/bin/cat "$CLOCK_STATE"\n')
+    helper = _executable(
+        resources / "uninstall.sh",
         SCRIPT.read_text()
         .replace("/bin/launchctl", f'"{launchctl}"')
         .replace("/bin/sleep", f'"{sleep}"')
+        .replace("/bin/date", f'"{date}"'),
     )
-    helper.chmod(0o755)
     result = subprocess.run(
         [str(helper)],
         cwd=tmp_path,
@@ -156,6 +174,8 @@ def test_uninstall_preserves_independent_services(
             "STOP_STATE": str(tmp_path / "stopping"),
             "SHUTDOWN_POLLS": str(shutdown_polls),
             "SHUTDOWN_STATUS": str(shutdown_status),
+            "CLOCK_STATE": str(clock),
+            "QUERY_SECONDS": str(query_seconds),
         },
         capture_output=True,
         text=True,
@@ -174,7 +194,11 @@ def test_uninstall_preserves_independent_services(
         if print_status == 0 and loaded_owner == "this-app":
             expected_calls.append(f"bootout {service}")
             if bootout_status == 0:
-                expected_calls += [f"print {service}"] * (
-                    31 if shutdown_polls == 99 else shutdown_polls + 1
+                # Two slow queries and sleeps consume 22s; the third query
+                # crosses the 30s deadline, so there must be no fourth query.
+                sleeps = (
+                    2 if query_seconds == 10 else (30 if shutdown_polls == 99 else shutdown_polls)
                 )
+                expected_calls += [f"print {service}", "sleep 1"] * sleeps
+                expected_calls.append(f"print {service}")
     assert (calls.read_text().splitlines() if calls.exists() else []) == expected_calls
