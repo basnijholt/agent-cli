@@ -114,6 +114,7 @@ UV_BINARY="$FAKE_UV" INSTALL_DIR="$INSTALL_DIR" AGENTCLI_SKIP_OPEN=1 \
 
 test -x "$APP/Contents/MacOS/AgentCLI"
 test -x "$APP/Contents/Resources/bin/uv"
+test -x "$APP/Contents/Resources/uninstall.sh"
 test -f "$APP/Contents/Resources/logo-avatar.svg"
 test -f "$APP/Contents/Resources/logo-avatar.png"
 test -f "$APP/Contents/Resources/AgentCLI.icns"
