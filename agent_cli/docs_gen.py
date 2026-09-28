@@ -18,6 +18,7 @@ from __future__ import annotations
 
 from typing import Any, get_origin
 
+from typer import Context
 from typer.core import TyperCommand, TyperGroup, TyperOption
 from typer.main import get_command
 
@@ -67,7 +68,7 @@ def _get_click_command(command_path: str) -> TyperCommand | TyperGroup | None:
     cmd = click_app
     for part in parts:
         if isinstance(cmd, TyperGroup):
-            cmd = cmd.commands.get(part)  # type: ignore[assignment]
+            cmd = cmd.get_command(Context(cmd), part)  # type: ignore[assignment]
             if cmd is None:
                 return None
         else:
@@ -214,7 +215,9 @@ def _list_commands() -> list[str]:
 
     def _walk(cmd: TyperCommand | TyperGroup, prefix: str = "") -> None:
         if isinstance(cmd, TyperGroup):
-            for name, subcmd in cmd.commands.items():
+            ctx = Context(cmd)
+            for name in cmd.list_commands(ctx):
+                subcmd = cmd.get_command(ctx, name)
                 path = f"{prefix}.{name}" if prefix else name
                 if isinstance(subcmd, TyperGroup):
                     _walk(subcmd, path)
