@@ -5,6 +5,24 @@
         <link>https://github.com/basnijholt/agent-cli</link>
         <description>Signed Agent CLI macOS app updates.</description>
         <item>
+            <title>0.108.3</title>
+            <pubDate>Mon, 28 Sep 2026 00:15:28 +0000</pubDate>
+            <link>https://github.com/basnijholt/agent-cli</link>
+            <sparkle:version>213</sparkle:version>
+            <sparkle:shortVersionString>0.108.3</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[## Fixes
+
+- Bundle a macOS uninstall helper so package managers can clean up the app's Whisper service without embedding custom logic.
+- Preserve services managed by the standalone CLI or another app copy. Cleanup stops safely if service ownership cannot be confirmed or launchd returns an error.
+
+The helper is included in the signed macOS app at `Contents/Resources/uninstall.sh`. It leaves preferences and downloaded models intact.
+
+]]></description>
+            <enclosure url="https://github.com/basnijholt/agent-cli/releases/download/v0.108.3/AgentCLI.zip" length="19071039" type="application/octet-stream" sparkle:edSignature="Js/Rmv6borDKG7C4UyzsGBzi26mTAPTteb2xWfrw5c+KxOVJyIy9/OldZbkujKVMeMOrC1tse/r+aPj784sFDQ=="/>
+        </item>
+        <item>
             <title>0.108.2</title>
             <pubDate>Fri, 25 Sep 2026 02:27:22 +0000</pubDate>
             <link>https://github.com/basnijholt/agent-cli</link>
@@ -199,25 +217,6 @@ The audio-shutdown timeout itself is unchanged; this release corrects how its di
 
 ]]></description>
             <enclosure url="https://github.com/basnijholt/agent-cli/releases/download/v0.105.0/AgentCLI.zip" length="18454913" type="application/octet-stream" sparkle:edSignature="Z3253GuNAV6GC2V4Qib0Bm7m8bSdlWHPiXeHIZNa06qAJaY+qRXzrSPRyT8iZW5GnkZOJHciIbqvkkoJ9/DoCw=="/>
-        </item>
-        <item>
-            <title>0.104.0</title>
-            <pubDate>Mon, 07 Sep 2026 21:38:19 +0000</pubDate>
-            <link>https://github.com/basnijholt/agent-cli</link>
-            <sparkle:version>203</sparkle:version>
-            <sparkle:shortVersionString>0.104.0</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[## What’s Changed
-
-* Add speaker diarization API and Docker image (#639) @basnijholt
-* Fix Docker image publishing and runtime extras (#638) @basnijholt
-* ⬆️ Update actions/deploy-pages action to v5.0.1 (#637) [@renovate[bot]](https://github.com/apps/renovate)
-* ⬆️ Update docker/setup-buildx-action action to v4.3.0 (#635) [@renovate[bot]](https://github.com/apps/renovate)
-
-
-]]></description>
-            <enclosure url="https://github.com/basnijholt/agent-cli/releases/download/v0.104.0/AgentCLI.zip" length="18454336" type="application/octet-stream" sparkle:edSignature="p7BVeR6YS/LBGO61o0xR8GE9beHf+4uaz0c28HrHX4oyWjVZSBgwI6jIjR2Mn23HNLS65CfECbp2NSJoIc+ABw=="/>
         </item>
     </channel>
 </rss>
