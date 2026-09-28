@@ -15,20 +15,32 @@ pytestmark = pytest.mark.skipif(sys.platform != "darwin", reason="Requires macOS
 
 
 @pytest.mark.parametrize(
-    ("owner", "loaded_owner", "print_status", "bootout_status", "removed", "expected_status"),
+    (
+        "owner",
+        "loaded_owner",
+        "print_status",
+        "bootout_status",
+        "shutdown_polls",
+        "shutdown_status",
+        "removed",
+        "expected_status",
+    ),
     [
-        ("this-app", "this-app", 0, 0, True, 0),
-        ("this-app", "absent", 113, 0, True, 0),
-        ("this-app", "this-app", 0, 5, False, 5),
-        ("standalone", "standalone", 0, 0, False, 0),
-        ("other-app", "other-app", 0, 0, False, 0),
-        ("missing", "this-app", 0, 0, False, 0),
-        ("malformed", "this-app", 0, 0, False, 0),
-        ("this-app", "standalone", 0, 0, False, 1),
-        ("this-app", "other-app", 0, 0, False, 1),
-        ("this-app", "malformed", 0, 0, False, 1),
-        ("this-app", "inherited-only", 0, 0, False, 1),
-        ("this-app", "this-app", 5, 0, False, 5),
+        ("this-app", "this-app", 0, 0, 0, 113, True, 0),
+        ("this-app", "absent", 113, 0, 0, 113, True, 0),
+        ("this-app", "this-app", 0, 5, 0, 113, False, 5),
+        ("standalone", "standalone", 0, 0, 0, 113, False, 0),
+        ("other-app", "other-app", 0, 0, 0, 113, False, 0),
+        ("missing", "this-app", 0, 0, 0, 113, False, 0),
+        ("malformed", "this-app", 0, 0, 0, 113, False, 0),
+        ("this-app", "standalone", 0, 0, 0, 113, False, 1),
+        ("this-app", "other-app", 0, 0, 0, 113, False, 1),
+        ("this-app", "malformed", 0, 0, 0, 113, False, 1),
+        ("this-app", "inherited-only", 0, 0, 0, 113, False, 1),
+        ("this-app", "this-app", 5, 0, 0, 113, False, 5),
+        ("this-app", "this-app", 0, 0, 2, 113, True, 0),
+        ("this-app", "this-app", 0, 0, 99, 113, False, 1),
+        ("this-app", "this-app", 0, 0, 0, 5, False, 5),
     ],
 )
 def test_uninstall_preserves_independent_services(
@@ -37,12 +49,14 @@ def test_uninstall_preserves_independent_services(
     loaded_owner: str,
     print_status: int,
     bootout_status: int,
+    shutdown_polls: int,
+    shutdown_status: int,
     removed: bool,
     expected_status: int,
 ) -> None:
     """Only this bundle's service is removed, and only after a successful shutdown.
 
-    PlistBuddy and filesystem operations are real. Only launchctl is substituted:
+    PlistBuddy and filesystem operations are real. Launchctl and its polling delay are substituted:
     running it against the shared label could stop the developer's live daemon.
     launchctl(1) documents print output as unstable; unknown output must preserve
     the service. The current tab-indented fields were verified on macOS, and
@@ -104,14 +118,30 @@ def test_uninstall_preserves_independent_services(
         "#!/bin/sh\n"
         'printf "%s\\n" "$*" >> "$CALL_LOG"\n'
         'case "$1" in\n'
-        '  print) /bin/cat "$PRINT_OUTPUT"; exit "$PRINT_STATUS" ;;\n'
-        '  bootout) exit "$BOOTOUT_STATUS" ;;\n'
+        "  print)\n"
+        '    if [ -f "$STOP_STATE" ]; then\n'
+        '      count=$(/bin/cat "$STOP_STATE")\n'
+        '      printf "%s" "$((count + 1))" > "$STOP_STATE"\n'
+        '      [ "$count" -lt "$SHUTDOWN_POLLS" ] && exit 0\n'
+        '      exit "$SHUTDOWN_STATUS"\n'
+        "    fi\n"
+        '    /bin/cat "$PRINT_OUTPUT"; exit "$PRINT_STATUS" ;;\n'
+        "  bootout)\n"
+        '    [ "$BOOTOUT_STATUS" -eq 0 ] && printf 0 > "$STOP_STATE"\n'
+        '    exit "$BOOTOUT_STATUS" ;;\n'
         "  *) exit 99 ;;\n"
         "esac\n"
     )
     launchctl.chmod(0o755)
+    sleep = tmp_path / "sleep"
+    sleep.write_text("#!/bin/sh\nexit 0\n")
+    sleep.chmod(0o755)
     helper = resources / "uninstall.sh"
-    helper.write_text(SCRIPT.read_text().replace("/bin/launchctl", f'"{launchctl}"'))
+    helper.write_text(
+        SCRIPT.read_text()
+        .replace("/bin/launchctl", f'"{launchctl}"')
+        .replace("/bin/sleep", f'"{sleep}"')
+    )
     helper.chmod(0o755)
     result = subprocess.run(
         [str(helper)],
@@ -123,6 +153,9 @@ def test_uninstall_preserves_independent_services(
             "PRINT_STATUS": str(print_status),
             "PRINT_OUTPUT": str(output),
             "BOOTOUT_STATUS": str(bootout_status),
+            "STOP_STATE": str(tmp_path / "stopping"),
+            "SHUTDOWN_POLLS": str(shutdown_polls),
+            "SHUTDOWN_STATUS": str(shutdown_status),
         },
         capture_output=True,
         text=True,
@@ -140,4 +173,8 @@ def test_uninstall_preserves_independent_services(
         expected_calls = [f"print {service}"]
         if print_status == 0 and loaded_owner == "this-app":
             expected_calls.append(f"bootout {service}")
+            if bootout_status == 0:
+                expected_calls += [f"print {service}"] * (
+                    31 if shutdown_polls == 99 else shutdown_polls + 1
+                )
     assert (calls.read_text().splitlines() if calls.exists() else []) == expected_calls

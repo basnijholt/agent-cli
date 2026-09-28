@@ -30,6 +30,24 @@ if job=$(/bin/launchctl print "$service" 2>/dev/null); then
         exit 1
     fi
     /bin/launchctl bootout "$service" || exit $?
+    # bootout returns before a slow process has finished handling SIGTERM.
+    # Keep the plist until launchd confirms that the job has disappeared.
+    remaining=30
+    while :; do
+        if /bin/launchctl print "$service" >/dev/null 2>&1; then
+            if [ "$remaining" -eq 0 ]; then
+                echo "Whisper service did not stop within 30 seconds; leaving its plist intact." >&2
+                exit 1
+            fi
+            remaining=$((remaining - 1))
+            /bin/sleep 1
+        else
+            status=$?
+            [ "$status" -eq 113 ] && break
+            echo "Cannot verify Whisper service shutdown; leaving its plist intact." >&2
+            exit "$status"
+        fi
+    done
 else
     status=$?
     # launchctl error 113: Could not find specified service.
