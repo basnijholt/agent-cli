@@ -195,6 +195,7 @@ final class VoiceLevelOverlayController {
     private var isTranscribing = false
     private(set) var preparationPhase: BootstrapPhase?
     private var preparationStartedAt = Date()
+    private var showPreparationWorkItem: DispatchWorkItem?
     private var dismissPreparationWorkItem: DispatchWorkItem?
     private var isMinimized = false
     private var hasPositioned = false
@@ -238,12 +239,28 @@ final class VoiceLevelOverlayController {
         if !isMinimized { panel.orderFrontRegardless() }
     }
 
-    func showPreparation(_ phase: BootstrapPhase, restoring: Bool = false) {
+    func showPreparation(_ phase: BootstrapPhase, restoring: Bool = false, delayingPresentation: Bool = false) {
         guard !isRecording, !isTranscribing else { return }
-        if restoring { isMinimized = false }
-        if preparationPhase == nil {
+        if restoring {
+            isMinimized = false
+            showPreparationWorkItem?.cancel()
+            showPreparationWorkItem = nil
+        }
+        if preparationPhase == nil || (delayingPresentation && phase.isPreparing && preparationPhase?.isPreparing == false) {
             preparationStartedAt = Date()
             preparationPhase = phase
+            if delayingPresentation && phase.isPreparing {
+                panel?.orderOut(nil)
+                // Cached checks usually finish immediately. Do not flash a setup
+                // card before Connecting, but keep real waits visible.
+                let work = DispatchWorkItem { [weak self] in
+                    guard let self, let phase = self.preparationPhase else { return }
+                    self.showPreparationWorkItem = nil
+                    self.updatePreparation(phase)
+                }
+                showPreparationWorkItem = work
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2, execute: work)
+            }
         }
         updatePreparation(phase)
     }
@@ -272,6 +289,16 @@ final class VoiceLevelOverlayController {
         }
         dismissPreparationWorkItem?.cancel()
         preparationPhase = phase
+        if showPreparationWorkItem != nil {
+            if phase.isPreparing { return }
+            showPreparationWorkItem?.cancel()
+            showPreparationWorkItem = nil
+            if phase == .idle {
+                clearPreparation()
+                return
+            }
+            // Failures need immediate recovery controls, even during a quick check.
+        }
         let panel = panel ?? makePanel()
         self.panel = panel
         panel.ignoresMouseEvents = false
@@ -298,6 +325,8 @@ final class VoiceLevelOverlayController {
     }
 
     private func clearPreparation() {
+        showPreparationWorkItem?.cancel()
+        showPreparationWorkItem = nil
         dismissPreparationWorkItem?.cancel()
         dismissPreparationWorkItem = nil
         preparationPhase = nil
