@@ -694,7 +694,7 @@ final class AgentCommandTests: XCTestCase {
         )
         XCTAssertEqual(
             BootstrapPhase.warmingWhisperModel.statusMessage(animationTick: 3, elapsedSeconds: 4),
-            "Warming Whisper model ◒ (00:04)"
+            "Preparing speech model ◒ (00:04)"
         )
     }
 

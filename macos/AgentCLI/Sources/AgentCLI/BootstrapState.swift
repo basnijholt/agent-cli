@@ -37,7 +37,7 @@ enum BootstrapPhase: Equatable {
         case .waitingForVoiceService:
             return "Waiting for voice service..."
         case .warmingWhisperModel:
-            return "Warming Whisper model..."
+            return "Preparing speech model..."
         case .failed:
             return "Voice service warm-up failed"
         }
@@ -67,7 +67,7 @@ enum BootstrapPhase: Equatable {
         case .waitingForVoiceService:
             return "Waiting for voice service"
         case .warmingWhisperModel:
-            return "Warming Whisper model"
+            return "Preparing speech model"
         case .idle, .failed:
             return statusMessage
         }

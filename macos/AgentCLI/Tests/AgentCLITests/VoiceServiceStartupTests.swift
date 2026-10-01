@@ -4,6 +4,50 @@ import XCTest
 @testable import AgentCLI
 
 final class VoiceServiceStartupTests: XCTestCase {
+    func testSwitchingToQwenInstallsTransformersServiceAndWarmsModelOnce() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let suite = "AgentCLITests.qwen-bootstrap.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        defaults.set("large-v3", forKey: TranscriptionSettings.transcriptionModelKey)
+        var installs: [[String]] = []
+        var warmUps: [[String]] = []
+        let runtime = AgentRuntime(
+            environment: ["AGENTCLI_APP_SUPPORT_DIR": root.path, "SHELL": "/no/such/shell"],
+            userDefaults: defaults,
+            processRunner: { _, arguments, _ in
+                if arguments.starts(with: ["daemon", "install", "whisper"]) {
+                    installs.append(arguments)
+                } else if arguments.contains("--from-file") {
+                    warmUps.append(arguments)
+                } else {
+                    XCTFail("Unexpected setup command: \(arguments)")
+                }
+                return CommandResult(exitCode: 0, output: "")
+            },
+            localhostConnector: { _ in true },
+            whisperReadyTimeout: 0.01,
+            voiceServiceLogURL: root.appendingPathComponent("stderr.log")
+        )
+        try prepareBundledCLI(runtime)
+        XCTAssertEqual(runtime.ensureReady(for: .transcriptionModel).exitCode, 0)
+
+        // Switching engines must replace the existing service and resolve the old
+        // Whisper selection to Qwen's default before the settings view normalizes it.
+        defaults.set("qwen", forKey: TranscriptionSettings.transcriptionBackendKey)
+        XCTAssertEqual(runtime.ensureReady(for: .transcriptionModel).exitCode, 0)
+        XCTAssertEqual(runtime.ensureReady(for: .transcriptionModel).exitCode, 0)
+        XCTAssertEqual(installs, [
+            ["daemon", "install", "whisper", "-y", "--", "--backend", "auto",
+             "--model", "large-v3", "--ttl", "300"],
+            ["daemon", "install", "whisper", "-y", "--", "--backend", "transformers",
+             "--model", "Qwen/Qwen3-ASR-1.7B-hf", "--ttl", "300"],
+        ])
+        XCTAssertEqual(warmUps.count, 2, "Each engine must be prepared once before recording.")
+        XCTAssertTrue(warmUps.allSatisfy { $0.contains("wyoming") && $0.contains("10300") })
+    }
+
     func testUserInstalledVoiceBootstrapOnlyChecksCLIAvailability() throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: root) }

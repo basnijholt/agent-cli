@@ -8,6 +8,7 @@ struct TranscriptionModelOption: Identifiable, Equatable {
 enum TranscriptionBackend: String, CaseIterable, Identifiable {
     case whisper
     case nemo
+    case qwen
 
     var id: String {
         rawValue
@@ -19,6 +20,8 @@ enum TranscriptionBackend: String, CaseIterable, Identifiable {
             return "Whisper"
         case .nemo:
             return "NeMo"
+        case .qwen:
+            return "Qwen3 ASR"
         }
     }
 
@@ -28,6 +31,8 @@ enum TranscriptionBackend: String, CaseIterable, Identifiable {
             return "auto"
         case .nemo:
             return "nemo"
+        case .qwen:
+            return "transformers"
         }
     }
 
@@ -48,6 +53,10 @@ enum TranscriptionBackend: String, CaseIterable, Identifiable {
                 TranscriptionModelOption(id: "parakeet-unified-en-0.6b", title: "Parakeet Unified 0.6B"),
                 TranscriptionModelOption(id: "parakeet-tdt-0.6b-v3", title: "Parakeet TDT 0.6B v3"),
                 TranscriptionModelOption(id: "parakeet-tdt_ctc-110m", title: "Parakeet TDT CTC 110M"),
+            ]
+        case .qwen:
+            return [
+                TranscriptionModelOption(id: "Qwen/Qwen3-ASR-1.7B-hf", title: "Qwen3 ASR 1.7B"),
             ]
         }
     }
