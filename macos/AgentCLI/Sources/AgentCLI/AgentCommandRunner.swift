@@ -31,7 +31,7 @@ final class AgentCommandRunner: ObservableObject {
     @Published private(set) var bootstrapPhase: BootstrapPhase = .idle
     @Published private var activeCommandCount = 0
     private var recordingIndicator = RecordingIndicatorController()
-    private let pasteController: TranscriptPasteController
+    private let pasteController: any TranscriptPasting
     private let bootstrap: AgentBootstrap
     private let recordingPermissionCheck: @MainActor () -> Bool
     private let showPermissionSettings: @MainActor () -> Void
@@ -79,7 +79,7 @@ final class AgentCommandRunner: ObservableObject {
     }
 
     init(
-        pasteController: TranscriptPasteController = TranscriptPasteController(),
+        pasteController: any TranscriptPasting = TranscriptPasteController(),
         bootstrap: @escaping AgentBootstrap = { requirement, force, progress in
             AgentRuntime.shared.ensureReady(for: requirement, force: force, progress: progress)
         },
@@ -184,7 +184,7 @@ final class AgentCommandRunner: ObservableObject {
     }
 
     @discardableResult
-    func beginHoldToTranscribe() -> Bool {
+    func beginHoldToTranscribe(fromBareFunctionKey: Bool = false) -> Bool {
         guard holdTranscriptionState == .idle else {
             if holdTranscriptionState.isFinishing {
                 statusMessage = "Finishing previous hold-to-transcribe request"
@@ -192,13 +192,23 @@ final class AgentCommandRunner: ObservableObject {
             return false
         }
         guard !recordingIndicator.isRecordingCommand(.toggleTranscription), !isStopPending(for: .toggleTranscription) else {
-            statusMessage = "Transcription is already recording"
+            // Releasing bare Fn stops the toggle recording; see stopTranscriptionFromFunctionKeyIfNeeded.
+            statusMessage = fromBareFunctionKey && !isStopPending(for: .toggleTranscription)
+                ? "Release Fn to stop transcription"
+                : "Transcription is already recording"
             return false
         }
         guard run(.toggleTranscription) else { return false }
         holdTranscriptionState = .preparing
         holdToTranscribePasteTarget = FocusedTextTarget.capture()
         pasteAfterRecordingCommands.insert(AgentCommand.toggleTranscription.identifier)
+        return true
+    }
+
+    func latchHoldToTranscribe() -> Bool {
+        guard holdTranscriptionState == .preparing || holdTranscriptionState == .recording else { return false }
+        holdTranscriptionState = .idle
+        clearPasteAfterRecording(for: .toggleTranscription)
         return true
     }
 

@@ -3,42 +3,40 @@ import Carbon.HIToolbox
 import Foundation
 import KeyboardShortcuts
 
-enum HoldToTranscribeStopDecision: Equatable {
+enum HoldToTranscribeAction: Equatable {
     case none
     case deferUntilStartCompletes
     case stopNow
+    case stopExistingFunctionRecording
+    case promoteToToggle
+    case toggleNormally
 }
 
 struct HoldToTranscribeKeyState {
     private enum State {
         case idle
-        case startPending(releaseRequested: Bool)
+        case startPending(releaseRequested: Bool, toggleRequested: Bool, stopExistingOnFailure: Bool)
         case recording
     }
 
     private var state: State = .idle
 
-    var isStartPendingOrRecording: Bool {
-        switch state {
-        case .idle:
-            return false
-        case .startPending, .recording:
-            return true
-        }
-    }
-
     mutating func requestStart() -> Bool {
         guard case .idle = state else { return false }
-        state = .startPending(releaseRequested: false)
+        state = .startPending(releaseRequested: false, toggleRequested: false, stopExistingOnFailure: false)
         return true
     }
 
-    mutating func releaseKey() -> HoldToTranscribeStopDecision {
+    mutating func releaseKey(stopExistingFunctionRecording: Bool = false) -> HoldToTranscribeAction {
         switch state {
         case .idle:
-            return .none
-        case .startPending:
-            state = .startPending(releaseRequested: true)
+            return stopExistingFunctionRecording ? .stopExistingFunctionRecording : .none
+        case let .startPending(_, toggleRequested, stopExistingOnFailure):
+            state = .startPending(
+                releaseRequested: true,
+                toggleRequested: toggleRequested,
+                stopExistingOnFailure: stopExistingOnFailure || stopExistingFunctionRecording
+            )
             return .deferUntilStartCompletes
         case .recording:
             state = .idle
@@ -46,11 +44,32 @@ struct HoldToTranscribeKeyState {
         }
     }
 
-    mutating func completeStart(started: Bool) -> HoldToTranscribeStopDecision {
-        guard case let .startPending(releaseRequested) = state else { return .none }
+    mutating func requestToggle() -> HoldToTranscribeAction {
+        switch state {
+        case .idle:
+            return .toggleNormally
+        case let .startPending(releaseRequested, _, stopExistingOnFailure):
+            state = .startPending(
+                releaseRequested: releaseRequested,
+                toggleRequested: true,
+                stopExistingOnFailure: stopExistingOnFailure
+            )
+            return .none
+        case .recording:
+            state = .idle
+            return .promoteToToggle
+        }
+    }
+
+    mutating func completeStart(started: Bool) -> HoldToTranscribeAction {
+        guard case let .startPending(releaseRequested, toggleRequested, stopExistingOnFailure) = state else { return .none }
+        if toggleRequested {
+            state = .idle
+            return started ? .promoteToToggle : .toggleNormally
+        }
         guard started else {
             state = .idle
-            return .none
+            return stopExistingOnFailure ? .stopExistingFunctionRecording : .none
         }
 
         if releaseRequested {
@@ -83,7 +102,9 @@ final class ConfigurableHotkeyController {
     private let accessibilityRetryInterval: TimeInterval = 1
     private let accessibilityRetryTimeout: TimeInterval = 120
 
-    private init() {}
+    init(runner: AgentCommandRunner? = nil) {
+        self.runner = runner
+    }
 
     func registerDefaultHotkeys(runner: AgentCommandRunner) {
         guard !registered else { return }
@@ -207,7 +228,7 @@ final class ConfigurableHotkeyController {
         registerFunctionAwareTranscriptionHotkeys(runner: runner)
     }
 
-    private func handleFunctionAwareHotkey(type: CGEventType, event: CGEvent) -> Unmanaged<CGEvent>? {
+    func handleFunctionAwareHotkey(type: CGEventType, event: CGEvent) -> Unmanaged<CGEvent>? {
         switch type {
         case .tapDisabledByTimeout, .tapDisabledByUserInput:
             if let eventTap {
@@ -245,12 +266,10 @@ final class ConfigurableHotkeyController {
 
         if type == .keyDown {
             cancelPendingHoldToTranscribe()
-            suppressNextFunctionKeyRelease = usesFunctionShortcut(shortcut)
 
-            if !isAutorepeat(event) && !holdToTranscribeKeyState.isStartPendingOrRecording {
-                Task { @MainActor in
-                    self.runner?.run(.toggleTranscription)
-                }
+            if !isAutorepeat(event) {
+                suppressNextFunctionKeyRelease = true
+                performHoldToTranscribeAction(holdToTranscribeKeyState.requestToggle())
             }
         }
 
@@ -305,7 +324,7 @@ final class ConfigurableHotkeyController {
             return true
         }
 
-        releaseHoldToTranscribeKey(stopExistingFunctionRecordingIfIdle: true)
+        releaseHoldToTranscribeKey(stopExistingFunctionRecording: true)
 
         return true
     }
@@ -321,7 +340,9 @@ final class ConfigurableHotkeyController {
             }
 
             self.pendingHoldToTranscribeWorkItem = nil
-            self.requestHoldToTranscribeStart(stopExistingFunctionRecordingFirst: true)
+            // A following Space may still turn this Fn press into a toggle chord.
+            // Stop an existing toggle recording only on bare Fn release.
+            self.requestHoldToTranscribeStart(fromBareFunctionKey: true)
         }
 
         pendingHoldToTranscribeWorkItem = workItem
@@ -375,53 +396,55 @@ final class ConfigurableHotkeyController {
 
     private func requestHoldToTranscribeStart(
         preferredRunner: AgentCommandRunner? = nil,
-        stopExistingFunctionRecordingFirst: Bool = false
+        fromBareFunctionKey: Bool = false
     ) {
         guard holdToTranscribeKeyState.requestStart() else { return }
         Task { @MainActor in
-            if stopExistingFunctionRecordingFirst,
-               self.runner?.stopTranscriptionFromFunctionKeyIfNeeded() == true {
-                _ = self.holdToTranscribeKeyState.completeStart(started: false)
-                return
-            }
-
             guard let runner = preferredRunner ?? self.runner else {
                 _ = self.holdToTranscribeKeyState.completeStart(started: false)
                 return
             }
-            self.finishHoldToTranscribeStart(runner: runner)
+            self.finishHoldToTranscribeStart(runner: runner, fromBareFunctionKey: fromBareFunctionKey)
         }
     }
 
     @MainActor
-    private func finishHoldToTranscribeStart(runner: AgentCommandRunner) {
-        let started = runner.beginHoldToTranscribe()
+    private func finishHoldToTranscribeStart(runner: AgentCommandRunner, fromBareFunctionKey: Bool) {
+        let started = runner.beginHoldToTranscribe(fromBareFunctionKey: fromBareFunctionKey)
         let action = holdToTranscribeKeyState.completeStart(started: started)
-        if action == .stopNow {
-            runner.endHoldToTranscribe()
-        }
+        applyHoldToTranscribeAction(action, runner: runner)
     }
 
-    private func releaseHoldToTranscribeKey(stopExistingFunctionRecordingIfIdle: Bool = false) {
-        switch holdToTranscribeKeyState.releaseKey() {
-        case .stopNow:
-            stopHoldToTranscribe()
-        case .none:
-            if stopExistingFunctionRecordingIfIdle {
-                Task { @MainActor in
-                    _ = self.runner?.stopTranscriptionFromFunctionKeyIfNeeded()
-                }
-            }
-        case .deferUntilStartCompletes:
-            break
-        }
-    }
-
-    private func stopHoldToTranscribe() {
+    private func performHoldToTranscribeAction(_ action: HoldToTranscribeAction) {
         Task { @MainActor in
             guard let runner = self.runner else { return }
-            runner.endHoldToTranscribe()
+            self.applyHoldToTranscribeAction(action, runner: runner)
         }
+    }
+
+    @MainActor
+    private func applyHoldToTranscribeAction(_ action: HoldToTranscribeAction, runner: AgentCommandRunner) {
+        switch action {
+        case .none, .deferUntilStartCompletes:
+            break
+        case .stopNow:
+            runner.endHoldToTranscribe()
+        case .stopExistingFunctionRecording:
+            _ = runner.stopTranscriptionFromFunctionKeyIfNeeded()
+        case .promoteToToggle:
+            // The hold can end before Space arrives, for example when recording fails.
+            if !runner.latchHoldToTranscribe() {
+                runner.run(.toggleTranscription)
+            }
+        case .toggleNormally:
+            runner.run(.toggleTranscription)
+        }
+    }
+
+    private func releaseHoldToTranscribeKey(stopExistingFunctionRecording: Bool = false) {
+        performHoldToTranscribeAction(
+            holdToTranscribeKeyState.releaseKey(stopExistingFunctionRecording: stopExistingFunctionRecording)
+        )
     }
 
     private func shortcutMatches(type: CGEventType, event: CGEvent, shortcut: KeyboardShortcuts.Shortcut) -> Bool {
