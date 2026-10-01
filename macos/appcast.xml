@@ -5,6 +5,29 @@
         <link>https://github.com/basnijholt/agent-cli</link>
         <description>Signed Agent CLI macOS app updates.</description>
         <item>
+            <title>0.108.4</title>
+            <pubDate>Thu, 01 Oct 2026 22:19:29 +0000</pubDate>
+            <link>https://github.com/basnijholt/agent-cli</link>
+            <sparkle:version>214</sparkle:version>
+            <sparkle:shortVersionString>0.108.4</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[## Fixes
+
+- Fix Fn+Space recordings getting stuck when Fn is held long enough to start hold-to-record before Space is pressed. A second Fn+Space now stops the recording reliably, including slower key presses.
+- Preserve recording setup and release requests when switching from hold-to-record to toggle mode. Toggle recordings keep their usual clipboard behavior without automatically pasting into the focused field.
+- Allow Fn+Space to start a new recording if the preceding hold recording has already failed. While holding bare Fn during a toggle recording, the app now shows “Release Fn to stop transcription”.
+
+## Performance
+
+- Load CLI commands only when selected, reducing startup overhead for dictation and other commands.
+
+**Full changelog:** https://github.com/basnijholt/agent-cli/compare/v0.108.3...v0.108.4
+
+]]></description>
+            <enclosure url="https://github.com/basnijholt/agent-cli/releases/download/v0.108.4/AgentCLI.zip" length="19084206" type="application/octet-stream" sparkle:edSignature="l5DJ5z8Ysp4LfcV/Egni6OKbsQbZGsXOg/xln79S2+tp+i8ZmzZOSYeiAr1fPH601X9H7QxBRqNjiRIp8RDLCw=="/>
+        </item>
+        <item>
             <title>0.108.3</title>
             <pubDate>Mon, 28 Sep 2026 00:15:28 +0000</pubDate>
             <link>https://github.com/basnijholt/agent-cli</link>
@@ -201,22 +224,6 @@ The audio-shutdown timeout itself is unchanged; this release corrects how its di
 
 ]]></description>
             <enclosure url="https://github.com/basnijholt/agent-cli/releases/download/v0.105.1/AgentCLI.zip" length="18455354" type="application/octet-stream" sparkle:edSignature="vZqacIut3YOxE/I4mgUeHiI9jviHLgzymE3jK8R7aLEooAPZhNqkzxTFpB95iWShRRWfR8lf9T4ztVFs0EHUDw=="/>
-        </item>
-        <item>
-            <title>0.105.0</title>
-            <pubDate>Tue, 08 Sep 2026 10:29:52 +0000</pubDate>
-            <link>https://github.com/basnijholt/agent-cli</link>
-            <sparkle:version>204</sparkle:version>
-            <sparkle:shortVersionString>0.105.0</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[## What’s Changed
-
-* Prevent Qwen long-audio truncation (#641) @basnijholt
-* Publish diarization Docker image (#640) @basnijholt
-
-]]></description>
-            <enclosure url="https://github.com/basnijholt/agent-cli/releases/download/v0.105.0/AgentCLI.zip" length="18454913" type="application/octet-stream" sparkle:edSignature="Z3253GuNAV6GC2V4Qib0Bm7m8bSdlWHPiXeHIZNa06qAJaY+qRXzrSPRyT8iZW5GnkZOJHciIbqvkkoJ9/DoCw=="/>
         </item>
     </channel>
 </rss>
