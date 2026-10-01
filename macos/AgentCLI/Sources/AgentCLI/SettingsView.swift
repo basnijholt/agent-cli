@@ -97,9 +97,11 @@ struct SettingsView: View {
     private var sidebar: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 10) {
-                Image(systemName: "waveform.circle.fill")
-                    .font(.system(size: 30))
-                    .foregroundStyle(Color.accentColor)
+                Image(nsImage: NSApplication.shared.applicationIconImage)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 32, height: 32)
+                    .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Agent CLI").font(.headline)
                     Text("Settings").font(.caption).foregroundStyle(.secondary)
