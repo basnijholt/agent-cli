@@ -5,6 +5,31 @@
         <link>https://github.com/basnijholt/agent-cli</link>
         <description>Signed Agent CLI macOS app updates.</description>
         <item>
+            <title>0.109.0</title>
+            <pubDate>Thu, 01 Oct 2026 23:28:47 +0000</pubDate>
+            <link>https://github.com/basnijholt/agent-cli</link>
+            <sparkle:version>215</sparkle:version>
+            <sparkle:shortVersionString>0.109.0</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[## Features
+
+- Add **Qwen3 ASR 1.7B** to the macOS app. Select **Qwen3 ASR** under **Settings → Recording → Speech engine** to use `Qwen/Qwen3-ASR-1.7B-hf` locally.
+- Automatically install the required dependencies, download the model, and prepare it before recording. Qwen uses Metal acceleration on supported Apple Silicon Macs and respects the selected idle-unload interval.
+- Show “Preparing speech model” during setup and clarify automatic model setup in Settings.
+
+## Fixes
+
+- Use the actual app icon in the Settings sidebar instead of the blue waveform symbol.
+
+The first Qwen recording requires a model download and setup. No separate CLI installation steps are needed when using the app's bundled runtime.
+
+**Full changelog:** https://github.com/basnijholt/agent-cli/compare/v0.108.4...v0.109.0
+
+]]></description>
+            <enclosure url="https://github.com/basnijholt/agent-cli/releases/download/v0.109.0/AgentCLI.zip" length="19085380" type="application/octet-stream" sparkle:edSignature="o8oAdZemq11yQkkne/qoo1KSuP8Uvu2F0m+5qV8zRA2VgNhTdj89U11CzlZn6vy26GiTBrgW+k5tHp2C9sihAg=="/>
+        </item>
+        <item>
             <title>0.108.4</title>
             <pubDate>Thu, 01 Oct 2026 22:19:29 +0000</pubDate>
             <link>https://github.com/basnijholt/agent-cli</link>
@@ -206,24 +231,6 @@ The audio-shutdown timeout itself is unchanged; this release corrects how its di
 
 ]]></description>
             <enclosure url="https://github.com/basnijholt/agent-cli/releases/download/v0.105.2/AgentCLI.zip" length="18490908" type="application/octet-stream" sparkle:edSignature="DQiGmgOiPGeI4S/4tQdoA7mgsAlgN3qHh2Z4SyLpN70Tv/qr7MjBNM1r+FPn6gYdRYhaaK/XcKfWaX01H8F0Bw=="/>
-        </item>
-        <item>
-            <title>0.105.1</title>
-            <pubDate>Tue, 08 Sep 2026 13:10:30 +0000</pubDate>
-            <link>https://github.com/basnijholt/agent-cli</link>
-            <sparkle:version>205</sparkle:version>
-            <sparkle:shortVersionString>0.105.1</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[## Bug fixes
-
-- Release unused CUDA cache after each transcription in the transformers ASR backend, keeping model weights loaded for the next request. Long recordings no longer leave their peak temporary GPU allocation reserved throughout the idle timeout. In a Qwen3-ASR test, idle process VRAM dropped from 10.89 GiB to 4.13 GiB. (#642)
-- Clear temporary tensor references held by failed-request tracebacks, including chained and grouped exceptions, before releasing CUDA cache. CPU and MPS behavior is unchanged. (#642)
-
-**Full changelog:** https://github.com/basnijholt/agent-cli/compare/v0.105.0...v0.105.1
-
-]]></description>
-            <enclosure url="https://github.com/basnijholt/agent-cli/releases/download/v0.105.1/AgentCLI.zip" length="18455354" type="application/octet-stream" sparkle:edSignature="vZqacIut3YOxE/I4mgUeHiI9jviHLgzymE3jK8R7aLEooAPZhNqkzxTFpB95iWShRRWfR8lf9T4ztVFs0EHUDw=="/>
         </item>
     </channel>
 </rss>
