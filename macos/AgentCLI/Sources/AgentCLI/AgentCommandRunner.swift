@@ -202,6 +202,12 @@ final class AgentCommandRunner: ObservableObject {
         return true
     }
 
+    func latchHoldToTranscribe() {
+        guard holdTranscriptionState == .preparing || holdTranscriptionState == .recording else { return }
+        holdTranscriptionState = .idle
+        clearPasteAfterRecording(for: .toggleTranscription)
+    }
+
     func endHoldToTranscribe() {
         if holdTranscriptionState == .preparing {
             pendingRecordingStarts.removeValue(forKey: AgentCommand.toggleTranscription.identifier)

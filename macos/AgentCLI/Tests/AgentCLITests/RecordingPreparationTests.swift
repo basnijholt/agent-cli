@@ -6,6 +6,33 @@ import XCTest
 
 final class RecordingPreparationTests: XCTestCase {
     @MainActor
+    func testLatchedHoldSurvivesKeyReleaseDuringSetup() async {
+        let setup = PreparationGate(phase: .warmingWhisperModel)
+        let launched = XCTestExpectation(description: "latched recording launched after setup")
+        let runner = AgentCommandRunner(
+            bootstrap: setup.bootstrap,
+            recordingPermissionCheck: { true },
+            sendNotification: { _ in },
+            runCommand: { arguments in
+                XCTAssertEqual(arguments.first, "transcribe")
+                XCTAssertTrue(arguments.contains("--toggle"))
+                launched.fulfill()
+                return CommandResult(exitCode: 0, output: "Fixture transcript")
+            }
+        )
+        defer { setup.finish(); VoiceLevelOverlayController.shared.hide() }
+        XCTAssertTrue(runner.beginHoldToTranscribe())
+        await fulfillment(of: [setup.started], timeout: 2)
+        runner.latchHoldToTranscribe()
+        runner.endHoldToTranscribe()
+        setup.finish()
+        await fulfillment(of: [launched], timeout: 2)
+        await waitUntilFinished(runner)
+        XCTAssertEqual(setup.callCount, 1)
+        XCTAssertFalse(runner.isRecording)
+    }
+
+    @MainActor
     func testReleasingHoldDuringSetupNeverLaunchesRecordingOrStop() async {
         let setup = PreparationGate(phase: .warmingWhisperModel)
         let runner = makeRunner(setup: setup)
