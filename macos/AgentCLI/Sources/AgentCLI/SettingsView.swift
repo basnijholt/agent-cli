@@ -208,7 +208,7 @@ struct SettingsView: View {
         } footer: {
             Text(useUserInstalledAgentCLI
                  ? "Your installed CLI manages these settings. Switch runtimes in Advanced to use the app's model settings."
-                 : "Free memory after this much idle time. Choose Never to keep the model loaded. Changes apply the next time the voice service is prepared.")
+                 : "The selected model is downloaded and set up automatically before your next recording. Free memory after this much idle time, or choose Never to keep the model loaded.")
         }
         .disabled(useUserInstalledAgentCLI)
         Section {
@@ -221,7 +221,7 @@ struct SettingsView: View {
             Text("Vocabulary & Instructions")
         } footer: {
             Text(backend == .nemo && !useUserInstalledAgentCLI
-                 ? "The bundled NeMo engine does not use text instructions. Your instructions are kept for Whisper."
+                 ? "The bundled NeMo engine does not use text instructions. Your instructions are kept for Whisper and Qwen3 ASR."
                  : "Add names, technical terms, or context to help the speech model. For example: “Kubernetes, Nijholt, Agent CLI.”")
         }
     }
