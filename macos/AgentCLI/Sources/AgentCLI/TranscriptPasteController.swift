@@ -3,7 +3,15 @@ import ApplicationServices
 import Carbon.HIToolbox
 import Foundation
 
-struct TranscriptPasteController {
+protocol TranscriptPasting {
+    func pasteTranscriptIntoFocusedField(
+        _ transcript: String,
+        target: FocusedTextTarget?,
+        onStatus: @escaping @MainActor (String) -> Void
+    )
+}
+
+struct TranscriptPasteController: TranscriptPasting {
     func pasteTranscriptIntoFocusedField(
         _ transcript: String,
         target: FocusedTextTarget?,

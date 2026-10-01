@@ -7,6 +7,16 @@ import XCTest
 final class ConfigurableHotkeyControllerTests: XCTestCase {
     @MainActor
     func testFunctionSpaceAfterHoldStartsCanBeToggledOff() async throws {
+        try await assertLatchedHoldStops(withSpace: true)
+    }
+
+    @MainActor
+    func testBareFunctionStopsLatchedHoldRecording() async throws {
+        try await assertLatchedHoldStops(withSpace: false)
+    }
+
+    @MainActor
+    private func assertLatchedHoldStops(withSpace: Bool) async throws {
         try await withRecording { fixture, runner, controller in
             // Fn crosses the hold threshold before Space arrives.
             try send(controller, .flagsChanged, kVK_Function, [.maskSecondaryFn])
@@ -16,18 +26,40 @@ final class ConfigurableHotkeyControllerTests: XCTestCase {
             try send(controller, .keyDown, kVK_Space, [.maskSecondaryFn], autorepeat: true)
             try send(controller, .keyUp, kVK_Space, [.maskSecondaryFn])
             try send(controller, .flagsChanged, kVK_Function, [])
-            XCTAssertTrue(runner.isRecording, "Fn+Space should latch the existing recording.")
 
-            // A second chord must stop it, even after the first chord began as a hold.
+            // A second press must stop it without restarting. Bare Fn stops only toggle
+            // recordings, so stopping with it also proves that the hold was latched.
             try send(controller, .flagsChanged, kVK_Function, [.maskSecondaryFn])
-            try send(controller, .keyDown, kVK_Space, [.maskSecondaryFn])
-            try send(controller, .keyDown, kVK_Space, [.maskSecondaryFn], autorepeat: true)
-            try send(controller, .keyUp, kVK_Space, [.maskSecondaryFn])
+            if withSpace {
+                try send(controller, .keyDown, kVK_Space, [.maskSecondaryFn])
+                try send(controller, .keyDown, kVK_Space, [.maskSecondaryFn], autorepeat: true)
+                try send(controller, .keyUp, kVK_Space, [.maskSecondaryFn])
+            }
             try send(controller, .flagsChanged, kVK_Function, [])
             await fulfillment(of: [fixture.stopped], timeout: 2)
             XCTAssertEqual(fixture.commandCount, 2, "One recording start and one stop, without restarting.")
         }
     }
+
+    @MainActor
+    func testFunctionSpaceAfterFailedHoldStartsToggleRecording() async throws {
+        try await withRecording(HotkeyRecordingFixture(failsFirstStart: true)) { fixture, runner, controller in
+            // The hold recording fails while Fn is still down.
+            try send(controller, .flagsChanged, kVK_Function, [.maskSecondaryFn])
+            let deadline = Date().addingTimeInterval(2)
+            while fixture.commandCount == 0 || runner.isRunning, Date() < deadline {
+                try? await Task.sleep(nanoseconds: 10_000_000)
+            }
+            XCTAssertEqual(fixture.commandCount, 1)
+            XCTAssertFalse(runner.isRecording)
+            try send(controller, .keyDown, kVK_Space, [.maskSecondaryFn])
+            try send(controller, .keyUp, kVK_Space, [.maskSecondaryFn])
+            try send(controller, .flagsChanged, kVK_Function, [])
+            await fulfillment(of: [fixture.started], timeout: 2)
+            XCTAssertEqual(fixture.commandCount, 2, "Fn+Space must start a toggle recording once the hold ended.")
+        }
+    }
+
     @MainActor
     func testDelayedSecondFunctionSpaceStopsOnlyOnce() async throws {
         try await assertDelayedStop(withSpace: true)
@@ -47,11 +79,11 @@ final class ConfigurableHotkeyControllerTests: XCTestCase {
             // Wait for the delayed Fn action, using its observable result rather than sleeping.
             let deadline = Date().addingTimeInterval(2)
             while fixture.commandCount == 1,
-                  runner.statusMessage != "Transcription is already recording",
+                  runner.statusMessage != "Release Fn to stop transcription",
                   Date() < deadline {
                 try? await Task.sleep(nanoseconds: 10_000_000)
             }
-            XCTAssertEqual(runner.statusMessage, "Transcription is already recording")
+            XCTAssertEqual(runner.statusMessage, "Release Fn to stop transcription")
             XCTAssertEqual(fixture.commandCount, 1, "Fn must not stop before a possible Space chord.")
             XCTAssertTrue(runner.isRecording)
             if withSpace {
@@ -66,10 +98,11 @@ final class ConfigurableHotkeyControllerTests: XCTestCase {
 
     @MainActor
     private func withRecording(
+        _ fixture: HotkeyRecordingFixture = HotkeyRecordingFixture(),
         _ operation: (HotkeyRecordingFixture, AgentCommandRunner, ConfigurableHotkeyController) async throws -> Void
     ) async throws {
-        let fixture = HotkeyRecordingFixture()
         let runner = AgentCommandRunner(
+            pasteController: fixture,
             bootstrap: { _, _, _ in CommandResult(exitCode: 0, output: "") },
             recordingPermissionCheck: { true },
             sendNotification: { _ in },
@@ -98,6 +131,7 @@ final class ConfigurableHotkeyControllerTests: XCTestCase {
         }
         XCTAssertFalse(runner.isRunning)
         XCTAssertFalse(runner.isRecording)
+        XCTAssertEqual(fixture.pastedTranscripts, [], "Toggle recordings must not paste into the focused field.")
     }
 
     private func send(_ controller: ConfigurableHotkeyController, _ type: CGEventType,
@@ -143,9 +177,15 @@ final class ConfigurableHotkeyControllerTests: XCTestCase {
     func testFunctionReleaseBeforeFailedHoldStartStopsExistingToggle() {
         var state = HoldToTranscribeKeyState()
         XCTAssertTrue(state.requestStart())
-        XCTAssertEqual(state.releaseKey(stopExistingFunctionRecordingIfIdle: true), .deferUntilStartCompletes)
+        XCTAssertEqual(state.releaseKey(stopExistingFunctionRecording: true), .deferUntilStartCompletes)
         XCTAssertEqual(state.completeStart(started: false), .stopExistingFunctionRecording)
         XCTAssertTrue(state.requestStart())
+    }
+
+    func testFunctionReleaseWithoutHoldStopsExistingToggle() {
+        var state = HoldToTranscribeKeyState()
+        XCTAssertEqual(state.releaseKey(stopExistingFunctionRecording: true), .stopExistingFunctionRecording)
+        XCTAssertEqual(state.releaseKey(), .none)
     }
 
     func testToggleDuringPendingHoldPromotesAfterSuccessfulStart() {
@@ -176,13 +216,24 @@ final class ConfigurableHotkeyControllerTests: XCTestCase {
     }
 }
 
-/// Replace only the CLI process boundary; shortcut, runner and overlay state stay real.
-private final class HotkeyRecordingFixture {
+/// Replace only the CLI process and paste boundaries; shortcut, runner and overlay state stay real.
+/// Like `transcribe --toggle`, each call stops the running recording, or starts one that runs until stopped.
+private final class HotkeyRecordingFixture: TranscriptPasting {
     let started = XCTestExpectation(description: "recording process started")
     let stopped = XCTestExpectation(description: "recording process stopped")
     private let condition = NSCondition()
     private var calls = 0
+    private var failsNextStart: Bool
+    private var recording = false
     private var finished = false
+    private var pasted: [String] = []
+
+    init(failsFirstStart: Bool = false) {
+        failsNextStart = failsFirstStart
+        // Extra starts or stops must fail the count assertions, not crash the test run.
+        started.assertForOverFulfill = false
+        stopped.assertForOverFulfill = false
+    }
 
     var commandCount: Int {
         condition.lock()
@@ -190,22 +241,45 @@ private final class HotkeyRecordingFixture {
         return calls
     }
 
+    var pastedTranscripts: [String] {
+        condition.lock()
+        defer { condition.unlock() }
+        return pasted
+    }
+
     func run(_ arguments: [String]) -> CommandResult {
+        XCTAssertEqual(arguments.first, "transcribe")
         condition.lock()
         calls += 1
-        let isStart = calls == 1
-        condition.unlock()
-        XCTAssertEqual(arguments.first, "transcribe")
-        if isStart {
-            started.fulfill()
-            condition.lock()
-            while !finished { condition.wait() }
+        if recording {
+            recording = false
+            condition.broadcast()
             condition.unlock()
-            return CommandResult(exitCode: 0, output: "Fixture transcript")
+            stopped.fulfill()
+            return CommandResult(exitCode: 0, output: "")
         }
-        stopped.fulfill()
-        finish()
-        return CommandResult(exitCode: 0, output: "")
+        if failsNextStart {
+            failsNextStart = false
+            condition.unlock()
+            return CommandResult(exitCode: 1, output: "", standardOutput: "", standardError: "")
+        }
+        recording = true
+        condition.unlock()
+        started.fulfill()
+        condition.lock()
+        while recording && !finished { condition.wait() }
+        condition.unlock()
+        return CommandResult(exitCode: 0, output: "Fixture transcript")
+    }
+
+    func pasteTranscriptIntoFocusedField(
+        _ transcript: String,
+        target: FocusedTextTarget?,
+        onStatus: @escaping @MainActor (String) -> Void
+    ) {
+        condition.lock()
+        pasted.append(transcript)
+        condition.unlock()
     }
 
     func finish() {

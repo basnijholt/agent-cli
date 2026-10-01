@@ -23,7 +23,7 @@ final class RecordingPreparationTests: XCTestCase {
         defer { setup.finish(); VoiceLevelOverlayController.shared.hide() }
         XCTAssertTrue(runner.beginHoldToTranscribe())
         await fulfillment(of: [setup.started], timeout: 2)
-        runner.latchHoldToTranscribe()
+        XCTAssertTrue(runner.latchHoldToTranscribe())
         runner.endHoldToTranscribe()
         setup.finish()
         await fulfillment(of: [launched], timeout: 2)
