@@ -133,6 +133,33 @@ def test_server_whisper_command_in_cli() -> None:
     assert "nemo" in clean_output
 
 
+def test_server_asr_command_in_cli() -> None:
+    """Test that the canonical server asr command is registered in CLI."""
+    runner = CliRunner()
+    result = runner.invoke(cli_app, ["server", "asr", "--help"])
+
+    assert result.exit_code == 0
+
+    # Strip ANSI color codes for more reliable testing
+    clean_output = re.sub(r"\x1b\[[0-9;]*m", "", result.stdout)
+    assert "--model" in clean_output
+    assert "--ttl" in clean_output
+    assert "--wyoming-port" in clean_output
+    assert "--max-new-tokens" in clean_output
+    assert "nemo" in clean_output
+
+
+def test_server_whisper_deprecation_warning() -> None:
+    """Invoking server whisper should show a deprecation notice and delegate to asr."""
+    runner = CliRunner()
+    with patch("agent_cli.server.cli.asr_cmd") as mock_asr:
+        result = runner.invoke(cli_app, ["server", "whisper", "--download-only"])
+        clean_output = re.sub(r"\x1b\[[0-9;]*m", "", result.output)
+        assert "deprecated" in clean_output.lower()
+        assert "server asr" in clean_output
+        mock_asr.assert_called_once()
+
+
 @patch("uvicorn.run")
 def test_server_whisper_propagates_max_new_tokens(mock_uvicorn_run: MagicMock) -> None:
     """Whisper server should propagate the generation limit to model config."""
