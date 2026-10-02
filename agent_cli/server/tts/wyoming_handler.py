@@ -12,6 +12,7 @@ from wyoming.server import AsyncEventHandler, AsyncServer
 from wyoming.tts import Synthesize
 
 from agent_cli import constants
+from agent_cli.server.common import run_wyoming_server
 
 if TYPE_CHECKING:
     from wyoming.event import Event
@@ -292,4 +293,4 @@ async def start_wyoming_server(
     # Create handler factory with registry
     handler_factory = partial(WyomingTTSHandler, registry)
 
-    await server.run(handler_factory)
+    await run_wyoming_server(server, handler_factory)

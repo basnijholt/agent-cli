@@ -293,8 +293,8 @@ requires-dist = [
     { name = "watchfiles", marker = "extra == 'memory'", specifier = ">=0.21.0" },
     { name = "watchfiles", marker = "extra == 'rag'", specifier = ">=0.21.0" },
     { name = "watchfiles", marker = "extra == 'vectordb'", specifier = ">=0.21.0" },
-    { name = "wyoming", marker = "extra == 'audio'", specifier = ">=1.5.2" },
-    { name = "wyoming", marker = "extra == 'wyoming'", specifier = ">=1.5.2" },
+    { name = "wyoming", marker = "extra == 'audio'", specifier = ">=1.6.0" },
+    { name = "wyoming", marker = "extra == 'wyoming'", specifier = ">=1.6.0" },
     { name = "zensical", marker = "extra == 'dev'" },
 ]
 provides-extras = ["audio", "dev", "diarization", "faster-whisper", "kokoro", "llm", "memory", "mlx-whisper", "nemo-whisper", "piper", "rag", "server", "speed", "test", "vad", "vectordb", "whisper-transformers", "wyoming"]
@@ -10766,11 +10766,11 @@ wheels = [
 
 [[package]]
 name = "wyoming"
-version = "1.9.0"
+version = "1.10.2"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/0d/35/cdb33395d434a48995005778660929f8625c05333c143a3aba834b41d582/wyoming-1.9.0.tar.gz", hash = "sha256:4f2a5aa24c221d08af20edbdf8267e4d78bf994e128f3b3cd9a82bb859bc36fb", size = 39186, upload-time = "2026-05-14T15:53:12.352Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/de/37/bfc5d51c916c4bdab16cb7eb62556d3eaaa8b5f8eba33dbe992780dc4a46/wyoming-1.10.2.tar.gz", hash = "sha256:2a84035d9e51f4be68b27c9791273c5bce29f79f0c37137ea49cc417294f9080", size = 45540, upload-time = "2026-08-27T16:30:49.154Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/8f/04/14dec9ad93de23ea1cd4b570b239ac95805e21dd02022a15886a3b3c194b/wyoming-1.9.0-py3-none-any.whl", hash = "sha256:73ad50384d4a3bc7be70cbadfd3ba34902b4a7d94d8b02e59d4ae7a271b93c0b", size = 40520, upload-time = "2026-05-14T15:53:11.1Z" },
+    { url = "https://files.pythonhosted.org/packages/08/98/512f8d7d95eeedbf157994c39572822e3f8ae724ccbb5ae027caa09cf707/wyoming-1.10.2-py3-none-any.whl", hash = "sha256:08aec17ccad4d72fc3f919ab741beacf3f23a1df24c8b9a317ebc6e02d2b227c", size = 44869, upload-time = "2026-08-27T16:30:47.72Z" },
 ]
 
 [[package]]

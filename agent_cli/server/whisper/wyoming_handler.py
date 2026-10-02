@@ -12,6 +12,7 @@ from wyoming.info import AsrModel, AsrProgram, Attribution, Describe, Info
 from wyoming.server import AsyncEventHandler, AsyncServer
 
 from agent_cli import constants
+from agent_cli.server.common import run_wyoming_server
 from agent_cli.server.whisper.languages import WHISPER_LANGUAGE_CODES
 from agent_cli.services import pcm_to_wav
 
@@ -200,4 +201,4 @@ async def start_wyoming_server(
     # Create handler factory with registry
     handler_factory = partial(WyomingWhisperHandler, registry)
 
-    await server.run(handler_factory)
+    await run_wyoming_server(server, handler_factory)

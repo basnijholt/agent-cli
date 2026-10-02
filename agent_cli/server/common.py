@@ -20,8 +20,28 @@ if TYPE_CHECKING:
     from contextlib import AbstractAsyncContextManager
 
     from fastapi import FastAPI, Request
+    from wyoming.server import AsyncServer, HandlerFactory
 
 logger = logging.getLogger(__name__)
+
+
+async def run_wyoming_server(server: AsyncServer, handler_factory: HandlerFactory) -> None:
+    """Keep network transports under the host's lifecycle and signal handlers."""
+    from wyoming.server import AsyncStdioServer  # noqa: PLC0415
+
+    if isinstance(server, AsyncStdioServer):
+        # The stdio transport has no start()/stop() implementation. Preserve its
+        # blocking API; the HTTP server commands only expose TCP listeners.
+        await server.run(handler_factory)
+        return
+
+    # Wyoming's run() installs SIGTERM handlers meant for standalone servers.
+    # Uvicorn owns shutdown here, including the HTTP listener and model registry.
+    try:
+        await server.start(handler_factory)
+        await asyncio.Future()
+    finally:
+        await server.stop()
 
 
 class RegistryProtocol(Protocol):
