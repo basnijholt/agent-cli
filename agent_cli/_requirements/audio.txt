@@ -68,5 +68,5 @@ typing-extensions==4.15.0
     #   typing-inspection
 typing-inspection==0.4.2
     # via pydantic
-wyoming==1.9.0
+wyoming==1.10.2
     # via agent-cli
