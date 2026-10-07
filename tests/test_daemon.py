@@ -13,6 +13,7 @@ from typer.testing import CliRunner
 
 from agent_cli.cli import app
 from agent_cli.core import deps
+from agent_cli.docs_gen import _get_click_command
 from agent_cli.install import launchd as launchd_module
 from agent_cli.install.launchd import _generate_plist as launchd_generate_plist
 from agent_cli.install.launchd import _get_log_command as launchd_get_log_command
@@ -56,6 +57,18 @@ class TestServiceConfig:
         assert "transcription-proxy" in SERVICES
         assert "memory" in SERVICES
         assert "rag" in SERVICES
+
+    @pytest.mark.parametrize("service_key", list(SERVICES))
+    def test_service_runs_existing_command_with_its_extras(self, service_key: str) -> None:
+        """Each daemon must run a real CLI command and install the extras it requires."""
+        service = SERVICES[service_key]
+        command_path = service.command or ["server", service.name]
+        command = _get_click_command(".".join(command_path))
+
+        assert command is not None, f"agent-cli {' '.join(command_path)} does not exist"
+        installed = set(service.extra.split(","))
+        for required in command.callback._required_extras:  # type: ignore[union-attr]
+            assert installed & set(required.split("|")), f"{service_key} lacks {required}"
 
     def test_service_config_fields(self) -> None:
         """Test ServiceConfig has required fields."""
