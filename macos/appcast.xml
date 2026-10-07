@@ -5,6 +5,26 @@
         <link>https://github.com/basnijholt/agent-cli</link>
         <description>Signed Agent CLI macOS app updates.</description>
         <item>
+            <title>0.110.1</title>
+            <pubDate>Wed, 07 Oct 2026 23:50:32 +0000</pubDate>
+            <link>https://github.com/basnijholt/agent-cli</link>
+            <sparkle:version>218</sparkle:version>
+            <sparkle:shortVersionString>0.110.1</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[## Fixes
+
+- Fix `agent-cli daemon install transcription-proxy` installing a service that could never start. It ran `agent-cli server transcription-proxy`, which does not exist; it now runs `agent-cli server transcribe-proxy`. (#673)
+- The transcription-proxy service now installs all the extras the proxy needs (`server`, `wyoming`, `llm`), not just `server`.
+
+If you installed the transcription-proxy service before, reinstall it with `agent-cli daemon install transcription-proxy`.
+
+**Full changelog:** https://github.com/basnijholt/agent-cli/compare/v0.110.0...v0.110.1
+
+]]></description>
+            <enclosure url="https://github.com/basnijholt/agent-cli/releases/download/v0.110.1/AgentCLI.zip" length="19133936" type="application/octet-stream" sparkle:edSignature="76o5/SZ0I+r0KAaQxxnO/vTrs0GX7KqLLMHj5oWTj5DRf/JlKAPWMYcKy2CqV62G4clfdCS2VsFMmtwZshNUCg=="/>
+        </item>
+        <item>
             <title>0.110.0</title>
             <pubDate>Wed, 07 Oct 2026 23:43:05 +0000</pubDate>
             <link>https://github.com/basnijholt/agent-cli</link>
@@ -206,29 +226,6 @@ The audio-shutdown timeout itself is unchanged; this release corrects how its di
 
 ]]></description>
             <enclosure url="https://github.com/basnijholt/agent-cli/releases/download/v0.107.1/AgentCLI.zip" length="18877548" type="application/octet-stream" sparkle:edSignature="IZhh4XcF6cUkyu6LxDK3B0xYbl2k/juow6Xm4jw8aOvxU8VZcxpz60tnY22lVBjqXpv3kxhHJcy167oREmLWCA=="/>
-        </item>
-        <item>
-            <title>0.107.0</title>
-            <pubDate>Mon, 21 Sep 2026 18:53:01 +0000</pubDate>
-            <link>https://github.com/basnijholt/agent-cli</link>
-            <sparkle:version>208</sparkle:version>
-            <sparkle:shortVersionString>0.107.0</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[## Features
-
-- **See transcription progress after releasing the key.** The macOS overlay stays visible with a blue spinner and “Transcribing…” label until the request completes or fails. A separate MM:SS timer shows elapsed transcription time, starting from zero when processing begins. (#651)
-- **A fuller recording waveform.** The recording timer sits closer to the left edge, and wider, taller waveform bars fill the remaining pill space. (#651)
-
-## Bug fixes
-
-- Keep the transcription pill compact after live-preview recordings, and restore the preview layout if a failed toggle-stop request returns to recording. (#651)
-- Preserve overlay visibility across overlapping recording and transcription activity. Ignore duplicate recording-completion events so they cannot stop another active recording indicator. (#651)
-
-**Full changelog:** https://github.com/basnijholt/agent-cli/compare/v0.106.0...v0.107.0
-
-]]></description>
-            <enclosure url="https://github.com/basnijholt/agent-cli/releases/download/v0.107.0/AgentCLI.zip" length="18871107" type="application/octet-stream" sparkle:edSignature="NBfAeYMwnrVy3ageqaHEyepstJ6EBHI6tJgwqf3UrdOH0u8zEx0pWWuKzNgv+Tq2Uu2rn6PMeiUSfuUpHl8WCw=="/>
         </item>
     </channel>
 </rss>
