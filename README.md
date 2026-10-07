@@ -365,12 +365,12 @@ Our installation scripts automatically handle all dependencies:
 |---------|---------|-----------------|
 | **[Ollama](https://ollama.ai/)** | Local LLM for text processing | ✅ Yes, with default model |
 | **[Wyoming Faster Whisper](https://github.com/rhasspy/wyoming-faster-whisper)** | Speech-to-text | ✅ Yes, via `uvx` |
-| **[`agent-cli server whisper`](docs/commands/server/whisper.md)** | Speech-to-text (alternative) | ✅ Built-in, `pip install "agent-cli[faster-whisper]"` |
+| **[`agent-cli server asr`](docs/commands/server/asr.md)** | Speech-to-text (alternative) | ✅ Built-in, `pip install "agent-cli[faster-whisper]"` |
 | **[Wyoming Piper](https://github.com/rhasspy/wyoming-piper)** | Text-to-speech | ✅ Yes, via `uvx` |
 | **[Kokoro-FastAPI](https://github.com/remsky/Kokoro-FastAPI)** | Premium TTS (optional) | ⚙️ Can be added later |
 | **[Wyoming openWakeWord](https://github.com/rhasspy/wyoming-openwakeword)** | Wake word detection | ✅ Yes, for `assistant` |
 
-> **Why `agent-cli server whisper`?** The built-in Whisper server offers an OpenAI-compatible API (drop-in replacement), Wyoming protocol for Home Assistant, TTL-based VRAM management (auto-unloads idle models), and auto-selects the optimal backend ([MLX](https://github.com/ml-explore/mlx-examples/tree/main/whisper) on Apple Silicon, [faster-whisper](https://github.com/SYSTRAN/faster-whisper) on Linux/CUDA). Docker images available at `ghcr.io/basnijholt/agent-cli-whisper`.
+> **Why `agent-cli server asr`?** The built-in ASR server offers an OpenAI-compatible API (drop-in replacement), Wyoming protocol for Home Assistant, TTL-based VRAM management (auto-unloads idle models), and auto-selects the optimal backend ([MLX](https://github.com/ml-explore/mlx-examples/tree/main/whisper) on Apple Silicon, [faster-whisper](https://github.com/SYSTRAN/faster-whisper) on Linux/CUDA). Docker images available at `ghcr.io/basnijholt/agent-cli-whisper`.
 
 #### Alternative Cloud Services (Optional)
 

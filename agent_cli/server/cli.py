@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import asyncio
+import functools
 import logging
 from importlib.util import find_spec
 from pathlib import Path  # noqa: TC003 - Path needed at runtime for typer annotations
-from typing import Annotated
+from typing import Annotated, Any
 
 import typer
 
@@ -47,15 +48,15 @@ app = typer.Typer(
 
 | Server | Backends | Default Ports |
 |--------|----------|---------------|
-| `whisper` | faster-whisper, MLX, transformers, NeMo | HTTP: 10301, Wyoming: 10300 |
+| `asr` | faster-whisper, MLX, transformers, NeMo | HTTP: 10301, Wyoming: 10300 |
 | `tts` | Piper (CPU), Kokoro (GPU) | HTTP: 10201, Wyoming: 10200 |
 | `transcribe-proxy` | OpenAI-compatible, Gemini, Wyoming | HTTP: 61337 |
 
 **Examples:**
 
 ```bash
-# Run local Whisper server (lazy loads large-v3 by default)
-agent-cli server whisper
+# Run local ASR server (lazy loads large-v3 by default)
+agent-cli server asr
 
 # Run local TTS with Kokoro backend (GPU-accelerated)
 agent-cli server tts --backend kokoro
@@ -324,21 +325,21 @@ def _client_host_for_usage(host: str) -> str:
     return "localhost" if host in {"0.0.0.0", "::"} else host  # noqa: S104
 
 
-@app.command("whisper")
+@app.command("asr")
 @requires_extras(
     "server",
     "faster-whisper|mlx-whisper|whisper-transformers|nemo-whisper",
     "wyoming",
     resolve_extras=_resolve_whisper_required_extras,
 )
-def whisper_cmd(  # noqa: C901, PLR0912, PLR0915
+def asr_cmd(  # noqa: C901, PLR0912, PLR0915
     model: Annotated[
         list[str] | None,
         typer.Option(
             "--model",
             "-m",
             help=(
-                "Whisper model(s) to load. Common models: `tiny`, `base`, `small`, "
+                "ASR model(s) to load. Common models: `tiny`, `base`, `small`, "
                 "`medium`, `large-v3`, `distil-large-v3`, `parakeet-tdt-0.6b-v3`, "
                 "`parakeet-unified-en-0.6b` "
                 "(NeMo backend). Can specify multiple for different "
@@ -487,7 +488,7 @@ def whisper_cmd(  # noqa: C901, PLR0912, PLR0915
         ),
     ] = "auto",
 ) -> None:
-    """Run Whisper ASR server with TTL-based model unloading.
+    """Run ASR (Automatic Speech Recognition) server with TTL-based model unloading.
 
     The server provides:
     - OpenAI-compatible /v1/audio/transcriptions endpoint
@@ -500,19 +501,19 @@ def whisper_cmd(  # noqa: C901, PLR0912, PLR0915
     **Examples:**
 
         # Run with default large-v3 model
-        agent-cli server whisper
+        agent-cli server asr
 
         # Run with specific model and 10-minute TTL
-        agent-cli server whisper --model large-v3 --ttl 600
+        agent-cli server asr --model large-v3 --ttl 600
 
         # Run multiple models with different configs
-        agent-cli server whisper --model large-v3 --model small
+        agent-cli server asr --model large-v3 --model small
 
         # Run NVIDIA Parakeet with NeMo backend
-        agent-cli server whisper --backend nemo
+        agent-cli server asr --backend nemo
 
         # Download model without starting server
-        agent-cli server whisper --model large-v3 --download-only
+        agent-cli server asr --model large-v3 --download-only
     """
     # Setup Rich logging for consistent output
     setup_rich_logging(log_level)
@@ -632,7 +633,7 @@ def whisper_cmd(  # noqa: C901, PLR0912, PLR0915
 
     # Print startup info
     console.print()
-    console.print("[bold green]Starting Whisper ASR Server[/bold green]")
+    console.print("[bold green]Starting ASR Server[/bold green]")
     console.print()
     console.print("[dim]Configuration:[/dim]")
     console.print(f"  Backend: [cyan]{actual_backend}[/cyan]")
@@ -683,6 +684,16 @@ def whisper_cmd(  # noqa: C901, PLR0912, PLR0915
         port=port,
         log_level=log_level.lower(),
     )
+
+
+@app.command("whisper", help="Deprecated alias for `agent-cli server asr`.")
+@functools.wraps(asr_cmd)
+def whisper_cmd(**kwargs: Any) -> None:  # noqa: D103 - help comes from @app.command
+    err_console.print(
+        "[yellow]Warning: 'agent-cli server whisper' is deprecated and will be removed "
+        "in a future release. Use 'agent-cli server asr' instead.[/yellow]",
+    )
+    asr_cmd(**kwargs)
 
 
 @app.command("transcribe-proxy")

@@ -25,7 +25,7 @@ Daemons run via `uv tool run` and start automatically at login.
 
 | Daemon | Description | Ports |
 |--------|-------------|-------|
-| `whisper` | Speech-to-text ASR server | 10300/10301 |
+| `whisper` | Speech-to-text ASR server (runs `agent-cli server asr`) | 10300/10301 |
 | `tts-kokoro` | Text-to-speech with Kokoro (GPU) | 10200/10201 |
 | `tts-piper` | Text-to-speech with Piper (CPU) | 10200/10201 |
 | `transcription-proxy` | ASR provider proxy | 61337 |

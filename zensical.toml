@@ -43,7 +43,7 @@ nav = [
       { "memory" = "commands/memory.md" },
       { "server" = [
         { "Overview" = "commands/server/index.md" },
-        { "whisper" = "commands/server/whisper.md" },
+        { "asr" = "commands/server/asr.md" },
         { "tts" = "commands/server/tts.md" },
         { "transcribe-proxy" = "commands/server/transcribe-proxy.md" },
       ] },

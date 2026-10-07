@@ -90,7 +90,7 @@ Use the runtime installer for NVIDIA NeMo support:
 
 ```bash
 agent-cli install-extras nemo-whisper wyoming
-agent-cli server whisper --backend nemo
+agent-cli server asr --backend nemo
 ```
 
 This matters on Python 3.14. Plain `pip install "agent-cli[nemo-whisper]"` uses

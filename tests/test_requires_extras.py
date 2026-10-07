@@ -340,7 +340,7 @@ class TestCheckAndInstallExtras:
         monkeypatch.setattr("agent_cli.core.deps.os.execvpe", fake_execvpe)
         monkeypatch.setattr(
             "sys.argv",
-            ["agent-cli", "server", "whisper", "--backend", "nemo"],
+            ["agent-cli", "server", "asr", "--backend", "nemo"],
         )
 
         _maybe_reexec_with_uvx(["server", "nemo-whisper", "wyoming"])
@@ -356,7 +356,7 @@ class TestCheckAndInstallExtras:
             in cmd[cmd.index("--with") + 1]
         )
         assert cmd[cmd.index("--from") + 1] == f"{package_source}[server,nemo-whisper,wyoming]"
-        assert cmd[-4:] == ["server", "whisper", "--backend", "nemo"]
+        assert cmd[-4:] == ["server", "asr", "--backend", "nemo"]
 
     def test_uv_pip_install_uses_nemo_git_override(self) -> None:
         """Uv pip installs NeMo from a pinned Git revision with the kaldialign override."""

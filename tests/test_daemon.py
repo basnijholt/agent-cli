@@ -90,6 +90,16 @@ class TestServiceConfig:
 
         assert f"agent-cli[server,{backend_extra},wyoming]" in command
 
+    def test_build_service_command_whisper_runs_server_asr(self, tmp_path: Path) -> None:
+        """The whisper daemon should run the canonical server asr command."""
+        command = build_service_command(
+            SERVICES["whisper"],
+            tmp_path / "uv",
+            extra_command_args=["--ttl", "0"],
+        )
+
+        assert command[-5:] == ["agent-cli", "server", "asr", "--ttl", "0"]
+
     def test_build_service_command(self, tmp_path: Path) -> None:
         """Test building service command for uv tool run."""
         uv_path = tmp_path / "uv"

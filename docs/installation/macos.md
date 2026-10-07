@@ -104,7 +104,7 @@ agent-cli daemon install whisper     # Install whisper daemon
 agent-cli daemon install tts-kokoro  # Install TTS daemon
 
 # Or run in foreground (without daemon):
-agent-cli server whisper
+agent-cli server asr
 agent-cli server tts --backend kokoro
 
 # OpenWakeWord

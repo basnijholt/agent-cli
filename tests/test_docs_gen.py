@@ -87,11 +87,11 @@ def test_get_command_options_dev_new_uses_start_agent_and_agent_name() -> None:
 
 def test_get_command_options_server_wyoming_ports_include_aliases() -> None:
     """Server port docs should show canonical flags and client-style aliases."""
-    whisper_names = {opt["name"] for opt in _get_command_options("server.whisper")}
+    asr_names = {opt["name"] for opt in _get_command_options("server.asr")}
     tts_names = {opt["name"] for opt in _get_command_options("server.tts")}
 
-    assert "--port, --asr-openai-port, -p" in whisper_names
-    assert "--wyoming-port, --asr-wyoming-port" in whisper_names
+    assert "--port, --asr-openai-port, -p" in asr_names
+    assert "--wyoming-port, --asr-wyoming-port" in asr_names
     assert "--port, --tts-openai-port, -p" in tts_names
     assert "--wyoming-port, --tts-wyoming-port" in tts_names
 
@@ -309,5 +309,5 @@ def test_config_example_subcommand_section() -> None:
 
 def test_config_example_uses_primary_option_name_for_aliases() -> None:
     """Aliased options should use the first flag as the config key."""
-    config = config_example("server.whisper")
+    config = config_example("server.asr")
     assert "# wyoming_port = 10300" in config

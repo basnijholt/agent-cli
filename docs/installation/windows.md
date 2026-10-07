@@ -103,7 +103,7 @@ If you prefer manual setup:
    ollama serve
 
    # Terminal 2: Whisper
-   agent-cli server whisper
+   agent-cli server asr
 
    # Terminal 3: Piper
    agent-cli server tts --backend piper

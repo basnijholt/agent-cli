@@ -16,17 +16,17 @@ agent-cli server [COMMAND] [OPTIONS]
 
 | Server | Description | Default Port |
 |--------|-------------|--------------|
-| [whisper](whisper.md) | Local Whisper ASR server with GPU acceleration and TTL-based memory management | 10301 (HTTP), 10300 (Wyoming) |
+| [asr](asr.md) | Local ASR server (faster-whisper, MLX, transformers, NeMo) with GPU acceleration and TTL-based memory management | 10301 (HTTP), 10300 (Wyoming) |
 | [tts](tts.md) | Local TTS server with Kokoro (GPU) or Piper (CPU) backends | 10201 (HTTP), 10200 (Wyoming) |
 | [transcribe-proxy](transcribe-proxy.md) | Proxy server that forwards to configured ASR providers | 61337 |
 
 ## Quick Start
 
-=== "Whisper (Speech-to-Text)"
+=== "ASR (Speech-to-Text)"
 
     ```bash
     pip install "agent-cli[faster-whisper]"
-    agent-cli server whisper
+    agent-cli server asr
     ```
 
     Server runs at `http://localhost:10301` with OpenAI-compatible API.
@@ -75,13 +75,13 @@ All servers share these capabilities:
 
 | Use Case | Recommended |
 |----------|-------------|
-| Local GPU-accelerated transcription | [whisper](whisper.md) |
+| Local GPU-accelerated transcription | [asr](asr.md) |
 | High-quality GPU TTS | [tts](tts.md) `--backend kokoro` |
 | CPU-friendly TTS | [tts](tts.md) `--backend piper` |
-| Home Assistant voice integration | [whisper](whisper.md) + [tts](tts.md) (both have Wyoming protocol) |
+| Home Assistant voice integration | [asr](asr.md) + [tts](tts.md) (both have Wyoming protocol) |
 | iOS Shortcuts integration | [transcribe-proxy](transcribe-proxy.md) |
 | Forwarding to cloud providers | [transcribe-proxy](transcribe-proxy.md) |
-| Privacy-focused (no cloud) | [whisper](whisper.md) + [tts](tts.md) |
+| Privacy-focused (no cloud) | [asr](asr.md) + [tts](tts.md) |
 | Memory-constrained system | Both servers support TTL unloading; use smaller whisper models or [tts](tts.md) `--backend piper` (CPU-only) |
 
 ## Architecture Overview
