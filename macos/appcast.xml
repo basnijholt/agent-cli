@@ -5,6 +5,30 @@
         <link>https://github.com/basnijholt/agent-cli</link>
         <description>Signed Agent CLI macOS app updates.</description>
         <item>
+            <title>0.110.0</title>
+            <pubDate>Wed, 07 Oct 2026 23:43:05 +0000</pubDate>
+            <link>https://github.com/basnijholt/agent-cli</link>
+            <sparkle:version>217</sparkle:version>
+            <sparkle:shortVersionString>0.110.0</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[## Features
+
+- Add `agent-cli server asr` as the main command for the local speech-recognition server. It runs the same server as before, with all its backends (faster-whisper, MLX, transformers, and NeMo/Parakeet) and the same options. (#669)
+- `agent-cli daemon install whisper` now installs the background service with `agent-cli server asr`. The service is still called `whisper`, so existing `daemon status/ensure/uninstall whisper` commands and the macOS app keep working.
+- Docker images, setup scripts, and docs now use `server asr`.
+
+## Deprecations
+
+- `agent-cli server whisper` is deprecated. It still works with the same options, but prints a warning and will be removed in a future release. Switch to `agent-cli server asr`.
+- Background services installed by older versions keep running `server whisper` (and log the warning) until you reinstall them. Reinstall with the same extra arguments you used originally, for example `agent-cli daemon install whisper -- --backend nemo --ttl 0`.
+
+**Full changelog:** https://github.com/basnijholt/agent-cli/compare/v0.109.1...v0.110.0
+
+]]></description>
+            <enclosure url="https://github.com/basnijholt/agent-cli/releases/download/v0.110.0/AgentCLI.zip" length="19133966" type="application/octet-stream" sparkle:edSignature="1D5ENYIBfZECIG2nRitzZBoE24ro/hrFcLv5IDIX9C8dMGZBqnD1VRyY3CQNlNTr2AFGpUsQ8lbxyT5JjWn+Bw=="/>
+        </item>
+        <item>
             <title>0.109.1</title>
             <pubDate>Fri, 02 Oct 2026 17:48:55 +0000</pubDate>
             <link>https://github.com/basnijholt/agent-cli</link>
@@ -205,33 +229,6 @@ The audio-shutdown timeout itself is unchanged; this release corrects how its di
 
 ]]></description>
             <enclosure url="https://github.com/basnijholt/agent-cli/releases/download/v0.107.0/AgentCLI.zip" length="18871107" type="application/octet-stream" sparkle:edSignature="NBfAeYMwnrVy3ageqaHEyepstJ6EBHI6tJgwqf3UrdOH0u8zEx0pWWuKzNgv+Tq2Uu2rn6PMeiUSfuUpHl8WCw=="/>
-        </item>
-        <item>
-            <title>0.106.0</title>
-            <pubDate>Mon, 21 Sep 2026 16:57:54 +0000</pubDate>
-            <link>https://github.com/basnijholt/agent-cli</link>
-            <sparkle:version>207</sparkle:version>
-            <sparkle:shortVersionString>0.106.0</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[## Features
-
-- **Know when recording really starts.** The macOS overlay now shows an amber “Connecting…” indicator while capture starts, then a green waveform once audio arrives. If audio samples stop arriving, it switches to “Waiting for audio…”. Silence still counts as active recording. (#650)
-- **See elapsed recording time.** A compact MM:SS timer sits beside the waveform. It starts with the first audio sample, excludes connection delay, and resets for each recording. (#650)
-
-## Fixes
-
-- **No more false success for empty transcriptions.** Empty or whitespace-only results now produce a clear error with recovery guidance instead of “Transcription Finished” and an empty paste. The macOS check also covers older user-installed CLI versions. (#649)
-- **Keep recognized speech when cleanup fails.** If LLM cleanup returns blank text, the CLI preserves the raw transcription on the clipboard and identifies cleanup as the failed step. Empty speech-recognition results leave the clipboard unchanged. (#649)
-
-## Maintenance
-
-- Update Docker build actions and Codecov integration. (#645, #646, #647, #648)
-
-**Full changelog:** https://github.com/basnijholt/agent-cli/compare/v0.105.2...v0.106.0
-
-]]></description>
-            <enclosure url="https://github.com/basnijholt/agent-cli/releases/download/v0.106.0/AgentCLI.zip" length="18866625" type="application/octet-stream" sparkle:edSignature="yrWDCZXck8LWQYTTdtjMI4rk9cqUtHaxL0zHi6nJl4MZWx6pkkU3u5PqULflm3GkMPfwisscZlX6E21H2JxHAg=="/>
         </item>
     </channel>
 </rss>
