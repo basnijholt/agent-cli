@@ -688,8 +688,7 @@ def asr_cmd(  # noqa: C901, PLR0912, PLR0915
 
 @app.command("whisper", help="Deprecated alias for `agent-cli server asr`.")
 @functools.wraps(asr_cmd)
-def whisper_cmd(**kwargs: Any) -> None:
-    """Warn about the deprecated command name and run `server asr`."""
+def whisper_cmd(**kwargs: Any) -> None:  # noqa: D103 - help comes from @app.command
     err_console.print(
         "[yellow]Warning: 'agent-cli server whisper' is deprecated and will be removed "
         "in a future release. Use 'agent-cli server asr' instead.[/yellow]",

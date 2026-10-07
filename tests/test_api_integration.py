@@ -136,7 +136,7 @@ def test_server_asr_command_in_cli(command: str) -> None:
 
 @pytest.mark.parametrize(("command", "deprecated"), [("asr", False), ("whisper", True)])
 @patch("uvicorn.run")
-def test_server_whisper_alias_warns_and_forwards_options(
+def test_server_asr_and_whisper_alias_forward_options(
     mock_uvicorn_run: MagicMock,
     command: str,
     deprecated: bool,
