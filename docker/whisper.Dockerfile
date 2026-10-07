@@ -71,7 +71,7 @@ ENV WHISPER_HOST=0.0.0.0 \
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD /app/.venv/bin/python -c "import urllib.request; urllib.request.urlopen('http://localhost:${WHISPER_PORT}/health')" || exit 1
 
-ENTRYPOINT ["sh", "-c", "agent-cli server whisper \
+ENTRYPOINT ["sh", "-c", "agent-cli server asr \
     --host ${WHISPER_HOST} \
     --port ${WHISPER_PORT} \
     --wyoming-port ${WHISPER_WYOMING_PORT} \
@@ -119,7 +119,7 @@ ENV WHISPER_HOST=0.0.0.0 \
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:${WHISPER_PORT}/health')" || exit 1
 
-ENTRYPOINT ["sh", "-c", "agent-cli server whisper \
+ENTRYPOINT ["sh", "-c", "agent-cli server asr \
     --host ${WHISPER_HOST} \
     --port ${WHISPER_PORT} \
     --wyoming-port ${WHISPER_WYOMING_PORT} \

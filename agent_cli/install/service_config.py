@@ -85,6 +85,7 @@ SERVICES: dict[str, ServiceConfig] = {
         command_args=[],
         python_version="3.13",  # onnxruntime lacks py3.14 wheels (Linux only)
         macos_extra="server,mlx-whisper,wyoming",
+        command=["server", "asr"],
     ),
     "tts-kokoro": ServiceConfig(
         name="tts",  # Server command is still "tts"
@@ -331,7 +332,7 @@ def get_service_manager() -> ServiceManager:
         "systemd (Linux). Windows is not currently supported.\n\n"
         "Alternatives:\n"
         "  - Run servers manually: agent-cli server <name>\n"
-        "  - Use Docker: docker run -p 10300:10300 agent-cli server whisper\n\n"
+        "  - Use Docker: docker run -p 10300:10300 agent-cli server asr\n\n"
         "See: https://agent-cli.nijho.lt/installation/docker/"
     )
     raise RuntimeError(msg)

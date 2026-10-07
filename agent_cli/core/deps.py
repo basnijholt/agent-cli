@@ -445,7 +445,7 @@ def _python_incompatibility_message(extras: list[str]) -> str:
         "Install uv, or use Python 3.13 for this backend, for example:\n"
         "  CMAKE_POLICY_VERSION_MINIMUM=3.5 \\\n"
         "  uv run --python 3.13 --extra server --extra nemo-whisper \\\n"
-        "    agent-cli server whisper --backend nemo --model parakeet-tdt-0.6b-v3"
+        "    agent-cli server asr --backend nemo --model parakeet-tdt-0.6b-v3"
     )
 
 

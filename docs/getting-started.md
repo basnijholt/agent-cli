@@ -47,14 +47,14 @@ For a complete local setup with all AI services:
 > **Have a GPU?** Skip the setup below and run your own Whisper server in one command:
 > ```bash
 > pip install "agent-cli[faster-whisper]"
-> agent-cli server whisper
+> agent-cli server asr
 > ```
 > Apple Silicon MLX-only setup:
 > ```bash
 > pip install "agent-cli[mlx-whisper]"
-> agent-cli server whisper --backend mlx
+> agent-cli server asr --backend mlx
 > ```
-> See [Local Whisper Server](commands/server/whisper.md) for details.
+> See [Local Whisper Server](commands/server/asr.md) for details.
 
 === "Using CLI Commands"
 

@@ -19,7 +19,7 @@ if ($UseWindowsTerminal) {
     # Start Windows Terminal with multiple tabs
     wt --title "agent-cli services" `
         new-tab --title "Ollama" powershell -NoExit -Command "ollama serve" `; `
-        new-tab --title "Whisper" powershell -NoExit -Command "agent-cli server whisper" `; `
+        new-tab --title "ASR" powershell -NoExit -Command "agent-cli server asr" `; `
         new-tab --title "Piper" powershell -NoExit -Command "agent-cli server tts --backend piper"
 
     Write-Host ""
@@ -33,7 +33,7 @@ if ($UseWindowsTerminal) {
 
     # Start each service in a new PowerShell window
     Start-Process powershell -ArgumentList "-NoExit", "-Command", "Write-Host 'Ollama' -ForegroundColor Cyan; ollama serve"
-    Start-Process powershell -ArgumentList "-NoExit", "-Command", "Write-Host 'Whisper' -ForegroundColor Cyan; agent-cli server whisper"
+    Start-Process powershell -ArgumentList "-NoExit", "-Command", "Write-Host 'ASR' -ForegroundColor Cyan; agent-cli server asr"
     Start-Process powershell -ArgumentList "-NoExit", "-Command", "Write-Host 'Piper' -ForegroundColor Cyan; agent-cli server tts --backend piper"
 
     Write-Host ""

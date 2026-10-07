@@ -226,7 +226,7 @@ Run your own GPU-accelerated Whisper server for free, private, offline transcrip
 
 ```bash
 # Terminal 1: Start the server
-agent-cli server whisper
+agent-cli server asr
 
 # Terminal 2: Transcribe using local server (Wyoming streams audio in real-time)
 agent-cli transcribe --asr-provider wyoming --asr-wyoming-port 10300
@@ -259,7 +259,7 @@ Now just run `agent-cli transcribe` - it automatically uses your local server.
 
 > [!TIP]
 > **OpenAI SDK users:** The server also exposes an OpenAI-compatible API on port 10301.
-> See [server whisper docs](commands/server/whisper.md) for all options.
+> See [server asr docs](commands/server/asr.md) for all options.
 
 ### NVIDIA Parakeet via NeMo
 
@@ -267,7 +267,7 @@ Start a Parakeet server:
 
 ```bash
 agent-cli install-extras nemo-whisper wyoming
-agent-cli server whisper --backend nemo --ttl 0
+agent-cli server asr --backend nemo --ttl 0
 ```
 
 `--backend nemo` defaults to `parakeet-unified-en-0.6b`. `--ttl 0` keeps the

@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import asyncio
+import functools
 import logging
 from importlib.util import find_spec
 from pathlib import Path  # noqa: TC003 - Path needed at runtime for typer annotations
-from typing import Annotated
+from typing import Annotated, Any
 
 import typer
 
@@ -48,7 +49,6 @@ app = typer.Typer(
 | Server | Backends | Default Ports |
 |--------|----------|---------------|
 | `asr` | faster-whisper, MLX, transformers, NeMo | HTTP: 10301, Wyoming: 10300 |
-| `whisper` | (Deprecated alias for `asr`) | HTTP: 10301, Wyoming: 10300 |
 | `tts` | Piper (CPU), Kokoro (GPU) | HTTP: 10201, Wyoming: 10200 |
 | `transcribe-proxy` | OpenAI-compatible, Gemini, Wyoming | HTTP: 61337 |
 
@@ -339,7 +339,7 @@ def asr_cmd(  # noqa: C901, PLR0912, PLR0915
             "--model",
             "-m",
             help=(
-                "Whisper model(s) to load. Common models: `tiny`, `base`, `small`, "
+                "ASR model(s) to load. Common models: `tiny`, `base`, `small`, "
                 "`medium`, `large-v3`, `distil-large-v3`, `parakeet-tdt-0.6b-v3`, "
                 "`parakeet-unified-en-0.6b` "
                 "(NeMo backend). Can specify multiple for different "
@@ -633,7 +633,7 @@ def asr_cmd(  # noqa: C901, PLR0912, PLR0915
 
     # Print startup info
     console.print()
-    console.print("[bold green]Starting Whisper ASR Server[/bold green]")
+    console.print("[bold green]Starting ASR Server[/bold green]")
     console.print()
     console.print("[dim]Configuration:[/dim]")
     console.print(f"  Backend: [cyan]{actual_backend}[/cyan]")
@@ -686,196 +686,15 @@ def asr_cmd(  # noqa: C901, PLR0912, PLR0915
     )
 
 
-@app.command(
-    "whisper",
-    help="[Deprecated: use 'server asr'] Run Whisper ASR server with TTL-based model unloading.",
-)
-@requires_extras(
-    "server",
-    "faster-whisper|mlx-whisper|whisper-transformers|nemo-whisper",
-    "wyoming",
-    resolve_extras=_resolve_whisper_required_extras,
-)
-def whisper_cmd(
-    model: Annotated[
-        list[str] | None,
-        typer.Option(
-            "--model",
-            "-m",
-            help=(
-                "Whisper model(s) to load. Common models: `tiny`, `base`, `small`, "
-                "`medium`, `large-v3`, `distil-large-v3`, `parakeet-tdt-0.6b-v3`, "
-                "`parakeet-unified-en-0.6b` "
-                "(NeMo backend). Can specify multiple for different "
-                "accuracy/speed tradeoffs. Default: `large-v3` "
-                "(`parakeet-unified-en-0.6b` with `--backend nemo`)"
-            ),
-        ),
-    ] = None,
-    default_model: Annotated[
-        str | None,
-        typer.Option(
-            "--default-model",
-            help="Model to use when client doesn't specify one. Must be in the `--model` list",
-        ),
-    ] = None,
-    device: Annotated[
-        str,
-        typer.Option(
-            "--device",
-            "-d",
-            help=(
-                "Compute device: `auto` (detect GPU), `cuda`, `cuda:0`, `mps`, `cpu`. "
-                "MLX backend always uses Apple Silicon"
-            ),
-        ),
-    ] = "auto",
-    compute_type: Annotated[
-        str,
-        typer.Option(
-            "--compute-type",
-            help=(
-                "Precision for faster-whisper: `auto`, `float16`, `int8`, `int8_float16`. "
-                "Lower precision = faster + less VRAM"
-            ),
-        ),
-    ] = "auto",
-    cache_dir: Annotated[
-        Path | None,
-        typer.Option(
-            "--cache-dir",
-            help="Custom directory for downloaded models (default: HuggingFace cache)",
-        ),
-    ] = None,
-    default_language: Annotated[
-        str | None,
-        typer.Option(
-            "--default-language",
-            help=(
-                "Fallback language code for requests that omit `language`. "
-                "Required for models that do not support language auto-detection "
-                "(for example Cohere Transcribe)."
-            ),
-        ),
-    ] = None,
-    trust_remote_code: Annotated[
-        bool,
-        typer.Option(
-            "--trust-remote-code",
-            help=(
-                "Allow Hugging Face model repositories to execute custom Python code. "
-                "Known supported remote-code ASR models are trusted automatically."
-            ),
-        ),
-    ] = False,
-    max_new_tokens: Annotated[
-        int,
-        typer.Option(
-            "--max-new-tokens",
-            min=1,
-            help=(
-                "Maximum output tokens for autoregressive transformers ASR models. "
-                "Increase for unusually long audio"
-            ),
-        ),
-    ] = 4096,
-    ttl: Annotated[
-        int,
-        typer.Option(
-            "--ttl",
-            help=(
-                "Seconds of inactivity before unloading model from memory. "
-                "Set to 0 to keep loaded indefinitely"
-            ),
-        ),
-    ] = 300,
-    preload: Annotated[
-        bool,
-        typer.Option(
-            "--preload",
-            help=(
-                "Load model(s) immediately at startup instead of on first request. "
-                "Useful for reducing first-request latency"
-            ),
-        ),
-    ] = False,
-    host: Annotated[
-        str,
-        typer.Option(
-            "--host",
-            help="Network interface to bind. Use `0.0.0.0` for all interfaces",
-        ),
-    ] = "0.0.0.0",  # noqa: S104
-    port: Annotated[
-        int,
-        typer.Option(
-            "--port",
-            "--asr-openai-port",
-            "-p",
-            help="Port for OpenAI-compatible HTTP API (`/v1/audio/transcriptions`)",
-        ),
-    ] = 10301,
-    wyoming_port: Annotated[
-        int,
-        typer.Option(
-            "--wyoming-port",
-            "--asr-wyoming-port",
-            help="Port for Wyoming protocol (Home Assistant integration)",
-        ),
-    ] = 10300,
-    no_wyoming: Annotated[
-        bool,
-        typer.Option(
-            "--no-wyoming",
-            help="Disable Wyoming protocol server (only run HTTP API)",
-        ),
-    ] = False,
-    download_only: Annotated[
-        bool,
-        typer.Option(
-            "--download-only",
-            help="Download model(s) to cache and exit. Useful for Docker builds",
-        ),
-    ] = False,
-    log_level: opts.LogLevel = opts.SERVER_LOG_LEVEL,
-    backend: Annotated[
-        str,
-        typer.Option(
-            "--backend",
-            "-b",
-            help=(
-                "Inference backend: `auto` (faster-whisper on CUDA/CPU, MLX on Apple Silicon), "
-                "`faster-whisper`, `mlx`, `transformers` (HuggingFace, supports safetensors "
-                "and known remote-code ASR models), "
-                "`nemo` (NVIDIA NeMo, supports Parakeet models)"
-            ),
-        ),
-    ] = "auto",
-) -> None:
-    """[Deprecated] Run Whisper ASR server. Use 'agent-cli server asr' instead."""
+@app.command("whisper", help="Deprecated alias for `agent-cli server asr`.")
+@functools.wraps(asr_cmd)
+def whisper_cmd(**kwargs: Any) -> None:
+    """Warn about the deprecated command name and run `server asr`."""
     err_console.print(
-        "[yellow]Warning: 'agent-cli server whisper' is deprecated and will be removed in a future release. "
-        "Use 'agent-cli server asr' instead.[/yellow]"
+        "[yellow]Warning: 'agent-cli server whisper' is deprecated and will be removed "
+        "in a future release. Use 'agent-cli server asr' instead.[/yellow]",
     )
-    asr_cmd(
-        model=model,
-        default_model=default_model,
-        device=device,
-        compute_type=compute_type,
-        cache_dir=cache_dir,
-        default_language=default_language,
-        trust_remote_code=trust_remote_code,
-        max_new_tokens=max_new_tokens,
-        ttl=ttl,
-        preload=preload,
-        host=host,
-        port=port,
-        wyoming_port=wyoming_port,
-        no_wyoming=no_wyoming,
-        download_only=download_only,
-        log_level=log_level,
-        backend=backend,
-    )
+    asr_cmd(**kwargs)
 
 
 @app.command("transcribe-proxy")

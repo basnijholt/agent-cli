@@ -117,10 +117,11 @@ def test_server_transcribe_proxy_command_in_cli() -> None:
     assert "--reload" in clean_output
 
 
-def test_server_whisper_command_in_cli() -> None:
-    """Test that the server whisper command is registered in CLI."""
+@pytest.mark.parametrize("command", ["asr", "whisper"])
+def test_server_asr_command_in_cli(command: str) -> None:
+    """Test that server asr and its deprecated whisper alias expose the same options."""
     runner = CliRunner()
-    result = runner.invoke(cli_app, ["server", "whisper", "--help"])
+    result = runner.invoke(cli_app, ["server", command, "--help"])
 
     assert result.exit_code == 0
 
@@ -133,36 +134,48 @@ def test_server_whisper_command_in_cli() -> None:
     assert "nemo" in clean_output
 
 
-def test_server_asr_command_in_cli() -> None:
-    """Test that the canonical server asr command is registered in CLI."""
+@pytest.mark.parametrize(("command", "deprecated"), [("asr", False), ("whisper", True)])
+@patch("uvicorn.run")
+def test_server_whisper_alias_warns_and_forwards_options(
+    mock_uvicorn_run: MagicMock,
+    command: str,
+    deprecated: bool,
+) -> None:
+    """The whisper alias should warn and run asr with the same options."""
     runner = CliRunner()
-    result = runner.invoke(cli_app, ["server", "asr", "--help"])
+    with (
+        patch("agent_cli.core.deps._check_and_install_extras", return_value=[]),
+        patch("agent_cli.server.cli._check_whisper_deps"),
+    ):
+        result = runner.invoke(
+            cli_app,
+            [
+                "server",
+                command,
+                "--model",
+                "tiny",
+                "--backend",
+                "faster-whisper",
+                "--no-wyoming",
+                "--port",
+                "10303",
+            ],
+        )
 
     assert result.exit_code == 0
-
-    # Strip ANSI color codes for more reliable testing
-    clean_output = re.sub(r"\x1b\[[0-9;]*m", "", result.stdout)
-    assert "--model" in clean_output
-    assert "--ttl" in clean_output
-    assert "--wyoming-port" in clean_output
-    assert "--max-new-tokens" in clean_output
-    assert "nemo" in clean_output
-
-
-def test_server_whisper_deprecation_warning() -> None:
-    """Invoking server whisper should show a deprecation notice and delegate to asr."""
-    runner = CliRunner()
-    with patch("agent_cli.server.cli.asr_cmd") as mock_asr:
-        result = runner.invoke(cli_app, ["server", "whisper", "--download-only"])
-        clean_output = re.sub(r"\x1b\[[0-9;]*m", "", result.output)
-        assert "deprecated" in clean_output.lower()
-        assert "server asr" in clean_output
-        mock_asr.assert_called_once()
+    mock_uvicorn_run.assert_called_once()
+    assert mock_uvicorn_run.call_args.kwargs["port"] == 10303
+    output = " ".join(re.sub(r"\x1b\[[0-9;]*m", "", result.output).split())
+    warning = (
+        "'agent-cli server whisper' is deprecated and will be removed in a future release. "
+        "Use 'agent-cli server asr' instead."
+    )
+    assert (warning in output) is deprecated
 
 
 @patch("uvicorn.run")
-def test_server_whisper_propagates_max_new_tokens(mock_uvicorn_run: MagicMock) -> None:
-    """Whisper server should propagate the generation limit to model config."""
+def test_server_asr_propagates_max_new_tokens(mock_uvicorn_run: MagicMock) -> None:
+    """ASR server should propagate the generation limit to model config."""
     runner = CliRunner()
     registry = MagicMock()
     registry.default_model = "Qwen/Qwen3-ASR-1.7B-hf"
@@ -180,7 +193,7 @@ def test_server_whisper_propagates_max_new_tokens(mock_uvicorn_run: MagicMock) -
             cli_app,
             [
                 "server",
-                "whisper",
+                "asr",
                 "--model",
                 "Qwen/Qwen3-ASR-1.7B-hf",
                 "--backend",
@@ -198,8 +211,8 @@ def test_server_whisper_propagates_max_new_tokens(mock_uvicorn_run: MagicMock) -
 
 
 @patch("uvicorn.run")
-def test_server_whisper_accepts_asr_wyoming_port_alias(mock_uvicorn_run: MagicMock) -> None:
-    """Whisper server should accept the client-style ASR Wyoming port alias."""
+def test_server_asr_accepts_asr_wyoming_port_alias(mock_uvicorn_run: MagicMock) -> None:
+    """ASR server should accept the client-style ASR Wyoming port alias."""
     runner = CliRunner()
     with (
         patch("agent_cli.core.deps._check_and_install_extras", return_value=[]),
@@ -209,7 +222,7 @@ def test_server_whisper_accepts_asr_wyoming_port_alias(mock_uvicorn_run: MagicMo
             cli_app,
             [
                 "server",
-                "whisper",
+                "asr",
                 "--model",
                 "tiny",
                 "--backend",
@@ -225,8 +238,8 @@ def test_server_whisper_accepts_asr_wyoming_port_alias(mock_uvicorn_run: MagicMo
 
 
 @patch("uvicorn.run")
-def test_server_whisper_accepts_asr_openai_port_alias(mock_uvicorn_run: MagicMock) -> None:
-    """Whisper server should accept the client-style ASR OpenAI-compatible port alias."""
+def test_server_asr_accepts_asr_openai_port_alias(mock_uvicorn_run: MagicMock) -> None:
+    """ASR server should accept the client-style ASR OpenAI-compatible port alias."""
     runner = CliRunner()
     with (
         patch("agent_cli.core.deps._check_and_install_extras", return_value=[]),
@@ -236,7 +249,7 @@ def test_server_whisper_accepts_asr_openai_port_alias(mock_uvicorn_run: MagicMoc
             cli_app,
             [
                 "server",
-                "whisper",
+                "asr",
                 "--model",
                 "tiny",
                 "--backend",
@@ -253,7 +266,7 @@ def test_server_whisper_accepts_asr_openai_port_alias(mock_uvicorn_run: MagicMoc
 
 
 @patch("uvicorn.run")
-def test_server_whisper_backend_nemo_defaults_to_unified_parakeet(
+def test_server_asr_backend_nemo_defaults_to_unified_parakeet(
     mock_uvicorn_run: MagicMock,
 ) -> None:
     """NeMo backend should default to the unified Parakeet model."""
@@ -273,7 +286,7 @@ def test_server_whisper_backend_nemo_defaults_to_unified_parakeet(
             cli_app,
             [
                 "server",
-                "whisper",
+                "asr",
                 "--backend",
                 "nemo",
                 "--no-wyoming",

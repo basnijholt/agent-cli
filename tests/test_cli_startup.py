@@ -84,6 +84,7 @@ print(json.dumps(report))
             "dev.new",
             "memory.proxy",
             "daemon.status",
+            "server.asr",
             "server.whisper",
             "config.show",
             "install-services",
