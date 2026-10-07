@@ -106,8 +106,9 @@ SERVICES: dict[str, ServiceConfig] = {
         name="transcription-proxy",
         display_name="Transcription Proxy",
         description="Proxy server for ASR providers (port 61337)",
-        extra="server",
+        extra="server,wyoming,llm",
         command_args=[],
+        command=["server", "transcribe-proxy"],
     ),
     "memory": ServiceConfig(
         name="memory",
