@@ -740,16 +740,24 @@ final class AgentCommandTests: XCTestCase {
             MenuActivityStatus.active(title: "Autocorrect Clipboard", startedAt: startedAt, now: now)
         )
 
-        tracker.beginRecording(at: startedAt.addingTimeInterval(10))
+        tracker.beginRecording(identifier: "transcribe", action: "Record to Clipboard", at: startedAt.addingTimeInterval(10))
         XCTAssertEqual(
             tracker.status(now: now, fallback: fallback),
-            MenuActivityStatus.active(title: "Recording", startedAt: startedAt.addingTimeInterval(10), now: now)
+            MenuActivityStatus.active(
+                title: "Record to Clipboard — Recording",
+                startedAt: startedAt.addingTimeInterval(10),
+                now: now
+            )
         )
 
-        tracker.beginTranscribing(at: startedAt.addingTimeInterval(20))
+        tracker.beginTranscribing(identifier: "transcribe", action: "Record to Clipboard", at: startedAt.addingTimeInterval(20))
         XCTAssertEqual(
             tracker.status(now: now, fallback: fallback),
-            MenuActivityStatus.active(title: "Transcribing", startedAt: startedAt.addingTimeInterval(20), now: now)
+            MenuActivityStatus.active(
+                title: "Record to Clipboard — Transcribing",
+                startedAt: startedAt.addingTimeInterval(20),
+                now: now
+            )
         )
 
         tracker.beginBootstrap(title: "Installing CLI runtime", at: startedAt.addingTimeInterval(30))
@@ -765,14 +773,60 @@ final class AgentCommandTests: XCTestCase {
         tracker.finishBootstrap()
         XCTAssertEqual(
             tracker.status(now: now, fallback: fallback),
-            MenuActivityStatus.active(title: "Transcribing", startedAt: startedAt.addingTimeInterval(20), now: now)
+            MenuActivityStatus.active(
+                title: "Record to Clipboard — Transcribing",
+                startedAt: startedAt.addingTimeInterval(20),
+                now: now
+            )
         )
 
-        tracker.finishTranscribing()
-        tracker.finishRecording()
+        tracker.finishTranscribing(identifier: "transcribe")
+        tracker.finishRecording(identifier: "transcribe")
         tracker.finishCommand(identifier: "autocorrect")
 
         XCTAssertEqual(tracker.status(now: now, fallback: fallback), fallback)
+    }
+
+    func testMenuActivityTrackerRenamesRecordingActionWithoutRestartingTimer() {
+        var tracker = MenuActivityTracker()
+        let startedAt = Date(timeIntervalSinceReferenceDate: 3_000)
+        let now = startedAt.addingTimeInterval(7)
+        let fallback = MenuActivityStatus.completed(title: "Ready")
+
+        tracker.beginRecording(identifier: "transcribe", action: "Hold to Transcribe", at: startedAt)
+        // Latching a hold turns it into a clipboard recording that is still running.
+        tracker.beginRecording(identifier: "transcribe", action: "Record to Clipboard", at: startedAt.addingTimeInterval(5))
+
+        XCTAssertEqual(
+            tracker.status(now: now, fallback: fallback),
+            MenuActivityStatus.active(title: "Record to Clipboard — Recording", startedAt: startedAt, now: now)
+        )
+    }
+
+    func testMenuActivityTrackerShowsRecordingThatIsStillRunning() {
+        var tracker = MenuActivityTracker()
+        let startedAt = Date(timeIntervalSinceReferenceDate: 4_000)
+        let now = startedAt.addingTimeInterval(9)
+        let fallback = MenuActivityStatus.completed(title: "Ready")
+
+        tracker.beginRecording(identifier: "transcribe", action: "Record to Clipboard", at: startedAt)
+        tracker.beginRecording(identifier: "voice-edit", action: "Voice Edit Clipboard", at: startedAt.addingTimeInterval(3))
+        tracker.finishRecording(identifier: "voice-edit")
+        XCTAssertEqual(
+            tracker.status(now: now, fallback: fallback),
+            MenuActivityStatus.active(title: "Record to Clipboard — Recording", startedAt: startedAt, now: now)
+        )
+
+        tracker.beginRecording(identifier: "voice-edit", action: "Voice Edit Clipboard", at: startedAt.addingTimeInterval(4))
+        tracker.finishRecording(identifier: "transcribe")
+        XCTAssertEqual(
+            tracker.status(now: now, fallback: fallback),
+            MenuActivityStatus.active(
+                title: "Voice Edit Clipboard — Recording",
+                startedAt: startedAt.addingTimeInterval(4),
+                now: now
+            )
+        )
     }
 
     func testMenuActivityTrackerRestoresPreviousCommandWhenLatestFinishes() {

@@ -13,6 +13,8 @@ private extension String {
 struct AgentCommand {
     let identifier: String
     let title: String
+    /// Names the running action in the menu bar status.
+    let menuActivityTitle: String
     let arguments: [String]
     let appliesTranscriptionExtraInstructions: Bool
     let appliesTranscriptionDaemonSettings: Bool
@@ -27,6 +29,7 @@ struct AgentCommand {
     init(
         identifier: String,
         title: String,
+        menuActivityTitle: String? = nil,
         arguments: [String],
         appliesTranscriptionExtraInstructions: Bool = false,
         appliesTranscriptionDaemonSettings: Bool = false,
@@ -40,6 +43,7 @@ struct AgentCommand {
     ) {
         self.identifier = identifier
         self.title = title
+        self.menuActivityTitle = menuActivityTitle ?? title
         self.arguments = arguments
         self.appliesTranscriptionExtraInstructions = appliesTranscriptionExtraInstructions
         self.appliesTranscriptionDaemonSettings = appliesTranscriptionDaemonSettings
@@ -82,13 +86,10 @@ struct AgentCommand {
         return resolved + ["--extra-instructions", trimmedInstructions]
     }
 
-    var menuActivityTitle: String {
-        title
-    }
-
     static let toggleTranscription = AgentCommand(
         identifier: "transcribe",
         title: "Toggle Transcription",
+        menuActivityTitle: "Record to Clipboard",
         arguments: [
             "transcribe",
             "--toggle",
