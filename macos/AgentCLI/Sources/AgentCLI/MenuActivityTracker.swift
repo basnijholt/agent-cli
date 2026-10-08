@@ -4,6 +4,7 @@ struct MenuActivityTracker {
     private struct Activity {
         let title: String
         let startedAt: Date
+        var action: String?
     }
 
     private var bootstrapActivity: Activity?
@@ -20,18 +21,25 @@ struct MenuActivityTracker {
         bootstrapActivity = nil
     }
 
-    mutating func beginRecording(at startedAt: Date = Date()) {
-        guard recordingActivity == nil else { return }
-        recordingActivity = Activity(title: "Recording", startedAt: startedAt)
+    /// Names the action that is recording; a running recording keeps its start time.
+    mutating func beginRecording(action: String, at startedAt: Date = Date()) {
+        recordingActivity = Activity(
+            title: "Recording",
+            startedAt: recordingActivity?.startedAt ?? startedAt,
+            action: action
+        )
     }
 
     mutating func finishRecording() {
         recordingActivity = nil
     }
 
-    mutating func beginTranscribing(at startedAt: Date = Date()) {
-        guard transcribingActivity == nil else { return }
-        transcribingActivity = Activity(title: "Transcribing", startedAt: startedAt)
+    mutating func beginTranscribing(action: String, at startedAt: Date = Date()) {
+        transcribingActivity = Activity(
+            title: "Transcribing",
+            startedAt: transcribingActivity?.startedAt ?? startedAt,
+            action: action
+        )
     }
 
     mutating func finishTranscribing() {
@@ -52,7 +60,8 @@ struct MenuActivityTracker {
 
     func status(now: Date = Date(), fallback: MenuActivityStatus) -> MenuActivityStatus {
         guard let activity = currentActivity else { return fallback }
-        return MenuActivityStatus.active(title: activity.title, startedAt: activity.startedAt, now: now)
+        let title = activity.action.map { "\($0) — \(activity.title)" } ?? activity.title
+        return MenuActivityStatus.active(title: title, startedAt: activity.startedAt, now: now)
     }
 
     private var currentActivity: Activity? {

@@ -40,6 +40,8 @@ First-use setup can take several minutes while AgentCLI installs its private run
 
 Choose **Details…** on the setup card to open the voice service controls and diagnostics in **Settings… > Advanced**. **Dismiss** hides the card without interrupting setup. If setup fails, the card offers the same route to the saved error and recovery controls.
 
+The top of the menu bar menu shows what is running, such as **Hold to Transcribe — Recording** or **Record to Clipboard — Transcribing**, with elapsed time. While a recording is in progress, choose **Stop Recording** there to stop it as if you had used its shortcut; the audio is still transcribed.
+
 Drag the setup card or recording/transcribing indicator to move it. The **−** button minimizes it to the menu bar without stopping the work; choose **Show Voice Setup…** or **Show Voice Activity…** from the menu to restore it. Progress updates keep your chosen position and do not reopen a minimized card.
 
 ## Default Shortcuts

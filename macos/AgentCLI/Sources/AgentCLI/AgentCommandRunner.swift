@@ -207,8 +207,13 @@ final class AgentCommandRunner: ObservableObject {
 
     func latchHoldToTranscribe() -> Bool {
         guard holdTranscriptionState == .preparing || holdTranscriptionState == .recording else { return false }
+        let wasRecording = holdTranscriptionState == .recording
         holdTranscriptionState = .idle
         clearPasteAfterRecording(for: .toggleTranscription)
+        if wasRecording {
+            // The latched recording now copies to the clipboard instead of inserting.
+            activityTracker.beginRecording(action: menuActivityTitle(for: .toggleTranscription))
+        }
         return true
     }
 
@@ -230,7 +235,7 @@ final class AgentCommandRunner: ObservableObject {
         } else {
             statusMessage = "Stopping transcription as soon as it starts..."
         }
-        beginTranscribingActivity()
+        beginTranscribingActivity(for: .toggleTranscription)
         stopHeldTranscriptionWhenReady()
     }
 
@@ -244,6 +249,25 @@ final class AgentCommandRunner: ObservableObject {
 
         run(.toggleTranscription)
         return true
+    }
+
+    var canStopRecording: Bool {
+        holdTranscriptionState == .recording || stoppableRecordingCommand != nil
+    }
+
+    /// Stops recording the same way its shortcut does, so the audio is still processed.
+    func stopRecording() {
+        if holdTranscriptionState == .recording {
+            endHoldToTranscribe()
+        } else if let command = stoppableRecordingCommand {
+            run(command)
+        }
+    }
+
+    private var stoppableRecordingCommand: AgentCommand? {
+        [AgentCommand.toggleTranscription, .voiceEdit].first {
+            recordingIndicator.isRecordingCommand($0) && !isStopPending(for: $0)
+        }
     }
 
     @discardableResult
@@ -278,7 +302,7 @@ final class AgentCommandRunner: ObservableObject {
 
         if isStopRequest {
             markStopRequested(for: command)
-            beginTranscribingActivity()
+            beginTranscribingActivity(for: command)
         }
 
         activeCommandCount += 1
@@ -490,8 +514,8 @@ final class AgentCommandRunner: ObservableObject {
         activityTracker.finishCommand(identifier: command.identifier)
     }
 
-    private func beginTranscribingActivity() {
-        activityTracker.beginTranscribing()
+    private func beginTranscribingActivity(for command: AgentCommand) {
+        activityTracker.beginTranscribing(action: menuActivityTitle(for: command))
         VoiceLevelOverlayController.shared.showTranscribing()
     }
 
@@ -533,9 +557,14 @@ final class AgentCommandRunner: ObservableObject {
         recordingIndicator.begin(for: command)
         isRecording = recordingIndicator.isRecording
         if !wasRecording && isRecording {
-            activityTracker.beginRecording()
+            activityTracker.beginRecording(action: menuActivityTitle(for: command))
         }
         return true
+    }
+
+    private func menuActivityTitle(for command: AgentCommand) -> String {
+        command.identifier == AgentCommand.toggleTranscription.identifier && holdTranscriptionState != .idle
+            ? "Hold to Transcribe" : command.menuActivityTitle
     }
 
     private func endRecordingIndicator(for command: AgentCommand) {

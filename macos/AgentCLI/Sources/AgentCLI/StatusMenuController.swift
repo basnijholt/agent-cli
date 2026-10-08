@@ -19,6 +19,7 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
     private let recentRecordingsMenu = NSMenu()
     private let troubleshootingMenu = NSMenu()
     private var voiceStatusItem: NSMenuItem?
+    private var stopRecordingItem: NSMenuItem?
     private var recentActivityStatusRow: MenuActivityStatusRow?
     private var troubleshootingActivityStatusRow: MenuActivityStatusRow?
     private var statusRefreshTimer: Timer?
@@ -64,14 +65,13 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
     private func rebuildRootMenu() {
         menu.removeAllItems()
 
-        menu.addItem(actionItem("Record to Clipboard", symbolName: "waveform", action: #selector(recordToClipboard)))
-        menu.addItem(actionItem("Voice Edit Clipboard", symbolName: "mic", action: #selector(voiceEditClipboard)))
-        menu.addItem(actionItem("Autocorrect Clipboard", symbolName: "text.badge.checkmark", action: #selector(autocorrectClipboard)))
-        menu.addItem(.separator())
-
         let voiceStatusItem = disabledItem("")
         menu.addItem(voiceStatusItem)
         self.voiceStatusItem = voiceStatusItem
+
+        let stopRecordingItem = actionItem("Stop Recording", symbolName: "stop.circle", action: #selector(stopRecording))
+        menu.addItem(stopRecordingItem)
+        self.stopRecordingItem = stopRecordingItem
 
         let overlay = VoiceLevelOverlayController.shared
         if runner.bootstrapPhase.isPreparing || overlay.hasActiveOverlay {
@@ -81,6 +81,11 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
                                     action: #selector(showVoiceActivity)))
         }
 
+        menu.addItem(.separator())
+
+        menu.addItem(actionItem("Record to Clipboard", symbolName: "waveform", action: #selector(recordToClipboard)))
+        menu.addItem(actionItem("Voice Edit Clipboard", symbolName: "mic", action: #selector(voiceEditClipboard)))
+        menu.addItem(actionItem("Autocorrect Clipboard", symbolName: "text.badge.checkmark", action: #selector(autocorrectClipboard)))
         menu.addItem(.separator())
 
         menu.addItem(submenuItem(
@@ -221,6 +226,7 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
     private func refreshDynamicStatus() {
         let activityStatus = runner.menuActivityStatus
         voiceStatusItem?.title = "\(Self.voiceStatusTitlePrefix)\(activityStatus.message)"
+        stopRecordingItem?.isHidden = !runner.canStopRecording
         updateSubmenuActivityStatus(activityStatus)
         if let button = statusItem?.button {
             button.image = MenuBarIconImage.logoImage(state: runner.menuBarIconState)
@@ -281,6 +287,10 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
         case .recording:
             return "Agent CLI recording"
         }
+    }
+
+    @objc private func stopRecording() {
+        runner.stopRecording()
     }
 
     @objc private func recordToClipboard() {

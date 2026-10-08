@@ -43,7 +43,7 @@ final class ConfigurableHotkeyControllerTests: XCTestCase {
 
     @MainActor
     func testFunctionSpaceAfterFailedHoldStartsToggleRecording() async throws {
-        try await withRecording(HotkeyRecordingFixture(failsFirstStart: true)) { fixture, runner, controller in
+        try await withRecording(RecordingCommandFixture(failsFirstStart: true)) { fixture, runner, controller in
             // The hold recording fails while Fn is still down.
             try send(controller, .flagsChanged, kVK_Function, [.maskSecondaryFn])
             let deadline = Date().addingTimeInterval(2)
@@ -98,8 +98,8 @@ final class ConfigurableHotkeyControllerTests: XCTestCase {
 
     @MainActor
     private func withRecording(
-        _ fixture: HotkeyRecordingFixture = HotkeyRecordingFixture(),
-        _ operation: (HotkeyRecordingFixture, AgentCommandRunner, ConfigurableHotkeyController) async throws -> Void
+        _ fixture: RecordingCommandFixture = RecordingCommandFixture(),
+        _ operation: (RecordingCommandFixture, AgentCommandRunner, ConfigurableHotkeyController) async throws -> Void
     ) async throws {
         let runner = AgentCommandRunner(
             pasteController: fixture,
@@ -213,80 +213,6 @@ final class ConfigurableHotkeyControllerTests: XCTestCase {
         XCTAssertEqual(state.requestToggle(), .promoteToToggle)
         XCTAssertEqual(state.releaseKey(), .none)
         XCTAssertEqual(state.requestToggle(), .toggleNormally)
-    }
-}
-
-/// Replace only the CLI process and paste boundaries; shortcut, runner and overlay state stay real.
-/// Like `transcribe --toggle`, each call stops the running recording, or starts one that runs until stopped.
-private final class HotkeyRecordingFixture: TranscriptPasting {
-    let started = XCTestExpectation(description: "recording process started")
-    let stopped = XCTestExpectation(description: "recording process stopped")
-    private let condition = NSCondition()
-    private var calls = 0
-    private var failsNextStart: Bool
-    private var recording = false
-    private var finished = false
-    private var pasted: [String] = []
-
-    init(failsFirstStart: Bool = false) {
-        failsNextStart = failsFirstStart
-        // Extra starts or stops must fail the count assertions, not crash the test run.
-        started.assertForOverFulfill = false
-        stopped.assertForOverFulfill = false
-    }
-
-    var commandCount: Int {
-        condition.lock()
-        defer { condition.unlock() }
-        return calls
-    }
-
-    var pastedTranscripts: [String] {
-        condition.lock()
-        defer { condition.unlock() }
-        return pasted
-    }
-
-    func run(_ arguments: [String]) -> CommandResult {
-        XCTAssertEqual(arguments.first, "transcribe")
-        condition.lock()
-        calls += 1
-        if recording {
-            recording = false
-            condition.broadcast()
-            condition.unlock()
-            stopped.fulfill()
-            return CommandResult(exitCode: 0, output: "")
-        }
-        if failsNextStart {
-            failsNextStart = false
-            condition.unlock()
-            return CommandResult(exitCode: 1, output: "", standardOutput: "", standardError: "")
-        }
-        recording = true
-        condition.unlock()
-        started.fulfill()
-        condition.lock()
-        while recording && !finished { condition.wait() }
-        condition.unlock()
-        return CommandResult(exitCode: 0, output: "Fixture transcript")
-    }
-
-    func pasteTranscriptIntoFocusedField(
-        _ transcript: String,
-        target: FocusedTextTarget?,
-        onStatus: @escaping @MainActor (String) -> Void
-    ) {
-        condition.lock()
-        pasted.append(transcript)
-        condition.unlock()
-    }
-
-    func finish() {
-        condition.lock()
-        finished = true
-        condition.broadcast()
-        condition.unlock()
     }
 }
 #endif
