@@ -3,8 +3,8 @@
 #
 # Build examples:
 #   docker build -f docker/whisper.Dockerfile --target cuda -t agent-cli-whisper:cuda .
-#   docker build -f docker/whisper.Dockerfile --target cpu -t agent-cli-whisper:cpu .
 #   docker build -f docker/whisper.Dockerfile --target cuda-transformers -t agent-cli-whisper:cuda-transformers .
+#   docker build -f docker/whisper.Dockerfile --target cpu -t agent-cli-whisper:cpu .
 #
 # Run examples:
 #   docker run -p 10300:10300 -p 10301:10301 --gpus all agent-cli-whisper:cuda

@@ -444,8 +444,8 @@ Configure via environment variables:
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `WHISPER_MODEL` | `large-v3` | Model to load |
+| `WHISPER_MODEL` | `large-v3` (`Qwen/Qwen3-ASR-1.7B-hf` on `cuda-transformers`) | Model to load |
 | `WHISPER_TTL` | `300` | Seconds before unloading idle model |
 | `WHISPER_DEVICE` | `cuda`/`cpu` | Device (set by target) |
 | `WHISPER_LOG_LEVEL` | `info` | Logging level |
-| `WHISPER_EXTRA_ARGS` | - | Additional CLI arguments |
+| `WHISPER_EXTRA_ARGS` | - (`--backend transformers` on `cuda-transformers`; keep it when overriding) | Additional CLI arguments |
