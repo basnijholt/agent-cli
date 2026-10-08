@@ -3,6 +3,7 @@
 #
 # Build examples:
 #   docker build -f docker/whisper.Dockerfile --target cuda -t agent-cli-whisper:cuda .
+#   docker build -f docker/whisper.Dockerfile --target cuda-transformers -t agent-cli-whisper:cuda-transformers .
 #   docker build -f docker/whisper.Dockerfile --target cpu -t agent-cli-whisper:cpu .
 #
 # Run examples:
@@ -80,6 +81,16 @@ ENTRYPOINT ["sh", "-c", "agent-cli server asr \
     --device ${WHISPER_DEVICE} \
     --log-level ${WHISPER_LOG_LEVEL} \
     ${WHISPER_EXTRA_ARGS:-}"]
+
+# =============================================================================
+# CUDA transformers target: CUDA target plus HuggingFace transformers (Qwen3-ASR)
+# =============================================================================
+FROM cuda AS cuda-transformers
+
+RUN UV_NO_CACHE=1 agent-cli install-extras whisper-transformers
+
+ENV WHISPER_MODEL=Qwen/Qwen3-ASR-1.7B-hf \
+    WHISPER_EXTRA_ARGS="--backend transformers"
 
 # =============================================================================
 # CPU target: CPU-only with faster-whisper

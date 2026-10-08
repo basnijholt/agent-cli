@@ -411,6 +411,9 @@ Pre-built images are available from GitHub Container Registry:
 # Run with GPU support
 docker run -p 10300:10300 -p 10301:10301 --gpus all ghcr.io/basnijholt/agent-cli-whisper:latest-cuda
 
+# Run Qwen3-ASR with the transformers backend (GPU)
+docker run -p 10300:10300 -p 10301:10301 --gpus all ghcr.io/basnijholt/agent-cli-whisper:latest-cuda-transformers
+
 # Run CPU-only
 docker run -p 10300:10300 -p 10301:10301 ghcr.io/basnijholt/agent-cli-whisper:latest-cpu
 ```
@@ -441,8 +444,8 @@ Configure via environment variables:
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `WHISPER_MODEL` | `large-v3` | Model to load |
+| `WHISPER_MODEL` | `large-v3` (`Qwen/Qwen3-ASR-1.7B-hf` on `cuda-transformers`) | Model to load |
 | `WHISPER_TTL` | `300` | Seconds before unloading idle model |
 | `WHISPER_DEVICE` | `cuda`/`cpu` | Device (set by target) |
 | `WHISPER_LOG_LEVEL` | `info` | Logging level |
-| `WHISPER_EXTRA_ARGS` | - | Additional CLI arguments |
+| `WHISPER_EXTRA_ARGS` | - (`--backend transformers` on `cuda-transformers`; keep it when overriding) | Additional CLI arguments |

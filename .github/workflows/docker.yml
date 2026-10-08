@@ -25,6 +25,10 @@ jobs:
             suffix: cuda
           - image: whisper
             dockerfile: docker/whisper.Dockerfile
+            target: cuda-transformers
+            suffix: cuda-transformers
+          - image: whisper
+            dockerfile: docker/whisper.Dockerfile
             target: cpu
             suffix: cpu
           - image: tts
