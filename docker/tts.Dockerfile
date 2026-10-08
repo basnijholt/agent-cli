@@ -51,11 +51,8 @@ RUN uv sync --frozen --no-dev --no-editable --extra server --extra piper --extra
 # =============================================================================
 # CUDA target: GPU-accelerated with Kokoro TTS
 # =============================================================================
-# torch ships its own CUDA libraries, so a plain Python base is enough (the host
-# only needs the NVIDIA driver).
+# torch wheels bundle CUDA 13 and cuDNN, so no CUDA base image is needed (host driver >= 580).
 FROM python:3.13-slim AS cuda
-
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
