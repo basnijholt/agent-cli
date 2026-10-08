@@ -5,6 +5,29 @@
         <link>https://github.com/basnijholt/agent-cli</link>
         <description>Signed Agent CLI macOS app updates.</description>
         <item>
+            <title>0.111.0</title>
+            <pubDate>Thu, 08 Oct 2026 03:49:21 +0000</pubDate>
+            <link>https://github.com/basnijholt/agent-cli</link>
+            <sparkle:version>219</sparkle:version>
+            <sparkle:shortVersionString>0.111.0</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[## Features
+
+- Publish a GPU Docker image for the ASR server with the transformers backend: `ghcr.io/basnijholt/agent-cli-whisper:0.111.0-cuda-transformers` (also `latest-cuda-transformers`). It includes torch and transformers and runs Qwen3-ASR out of the box (`Qwen/Qwen3-ASR-1.7B-hf` with `--backend transformers` by default), so you no longer need a custom image or a multi-GB download on every container start. (#674)
+
+```bash
+docker run -p 10300:10300 -p 10301:10301 --gpus all ghcr.io/basnijholt/agent-cli-whisper:latest-cuda-transformers
+```
+
+If you override `WHISPER_EXTRA_ARGS`, keep `--backend transformers` in it.
+
+**Full changelog:** https://github.com/basnijholt/agent-cli/compare/v0.110.1...v0.111.0
+
+]]></description>
+            <enclosure url="https://github.com/basnijholt/agent-cli/releases/download/v0.111.0/AgentCLI.zip" length="19133978" type="application/octet-stream" sparkle:edSignature="reZTqGD1DYODI+9QoDt5XvFbndwIydEmRLnocivkAKwtZa8smyM0DmHgUSSZKKEvxrkmUdyLTVXlv9c5m1GPCQ=="/>
+        </item>
+        <item>
             <title>0.110.1</title>
             <pubDate>Wed, 07 Oct 2026 23:50:32 +0000</pubDate>
             <link>https://github.com/basnijholt/agent-cli</link>
@@ -199,33 +222,6 @@ Accessibility recovery now requires confirmation, is unavailable during active w
 
 ]]></description>
             <enclosure url="https://github.com/basnijholt/agent-cli/releases/download/v0.108.0/AgentCLI.zip" length="19000403" type="application/octet-stream" sparkle:edSignature="DooP01BCKOTuO1YTyskLLAJ5or87E0GLFt/MC4WWraOeivWfn5Otsojf9s8xesxBLDrA/o6k1nAlhIcNDO+jDQ=="/>
-        </item>
-        <item>
-            <title>0.107.1</title>
-            <pubDate>Mon, 21 Sep 2026 22:49:11 +0000</pubDate>
-            <link>https://github.com/basnijholt/agent-cli</link>
-            <sparkle:version>209</sparkle:version>
-            <sparkle:shortVersionString>0.107.1</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[## Bug fixes
-
-- **Keep diagnostics out of dictated text.** The macOS app now captures stdout and stderr separately, so audio-shutdown warnings no longer appear before a successful transcription. Nonempty stdout is pasted on its own. (#652)
-- **Keep errors available when no text is returned.** If stdout is empty, the app pastes stderr instead while preserving the failure notification. If both streams are empty, it reports the missing transcript without pasting anything. (#652)
-- Drain stderr concurrently to avoid blocking on verbose diagnostics, and keep shell startup warnings out of executable-path discovery. (#652)
-
-## Maintenance
-
-- Update Sparkle to 2.9.6. (#631)
-- Update the Whisper and TTS CUDA container bases to 12.9.2. (#485)
-- Update setup-uv to v10, docker/login-action to v4.5.2, and release-drafter to v7.7.0. (#633, #628, #629)
-
-The audio-shutdown timeout itself is unchanged; this release corrects how its diagnostic output is handled.
-
-**Full changelog:** https://github.com/basnijholt/agent-cli/compare/v0.107.0...v0.107.1
-
-]]></description>
-            <enclosure url="https://github.com/basnijholt/agent-cli/releases/download/v0.107.1/AgentCLI.zip" length="18877548" type="application/octet-stream" sparkle:edSignature="IZhh4XcF6cUkyu6LxDK3B0xYbl2k/juow6Xm4jw8aOvxU8VZcxpz60tnY22lVBjqXpv3kxhHJcy167oREmLWCA=="/>
         </item>
     </channel>
 </rss>
