@@ -51,9 +51,8 @@ RUN uv sync --frozen --no-dev --no-editable --extra server --extra piper --extra
 # =============================================================================
 # CUDA target: GPU-accelerated with Kokoro TTS
 # =============================================================================
-FROM nvcr.io/nvidia/cuda:12.9.2-cudnn-runtime-ubuntu24.04 AS cuda
-
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+# torch wheels bundle CUDA 13 and cuDNN, so no CUDA base image is needed (host driver >= 580).
+FROM python:3.13-slim AS cuda
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
@@ -62,20 +61,13 @@ RUN apt-get update && \
         libsndfile1 \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-ENV UV_PYTHON_INSTALL_DIR=/opt/python
-RUN uv python install 3.13
-
-# Delete pre-existing ubuntu user (UID 1000) and create tts user for uniformity with CPU target
-RUN userdel -r ubuntu && \
-    groupadd -g 1000 tts && \
-    useradd -m -u 1000 -g 1000 tts
+RUN groupadd -g 1000 tts && useradd -m -u 1000 -g 1000 tts
 
 WORKDIR /app
 
 COPY --from=builder-cuda /app/.venv /app/.venv
 
-RUN ln -sf $(uv python find 3.13) /app/.venv/bin/python && \
-    ln -s /app/.venv/bin/agent-cli /usr/local/bin/agent-cli && \
+RUN ln -s /app/.venv/bin/agent-cli /usr/local/bin/agent-cli && \
     mkdir -p /home/tts/.cache && chown -R tts:tts /home/tts
 
 USER tts
