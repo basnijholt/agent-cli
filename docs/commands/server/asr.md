@@ -411,6 +411,9 @@ Pre-built images are available from GitHub Container Registry:
 # Run with GPU support
 docker run -p 10300:10300 -p 10301:10301 --gpus all ghcr.io/basnijholt/agent-cli-whisper:latest-cuda
 
+# Run Qwen3-ASR with the transformers backend (GPU)
+docker run -p 10300:10300 -p 10301:10301 --gpus all ghcr.io/basnijholt/agent-cli-whisper:latest-cuda-transformers
+
 # Run CPU-only
 docker run -p 10300:10300 -p 10301:10301 ghcr.io/basnijholt/agent-cli-whisper:latest-cpu
 ```
