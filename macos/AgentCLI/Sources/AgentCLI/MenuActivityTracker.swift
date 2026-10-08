@@ -7,11 +7,36 @@ struct MenuActivityTracker {
         var action: String?
     }
 
+    /// Activities keyed by command; the most recently started one is shown.
+    private struct ActivityGroup {
+        private var activities: [String: Activity] = [:]
+        private var order: [String] = []
+
+        var latest: Activity? {
+            order.last.flatMap { activities[$0] }
+        }
+
+        func startedAt(_ identifier: String) -> Date? {
+            activities[identifier]?.startedAt
+        }
+
+        mutating func begin(_ identifier: String, _ activity: Activity) {
+            if activities[identifier] == nil {
+                order.append(identifier)
+            }
+            activities[identifier] = activity
+        }
+
+        mutating func finish(_ identifier: String) {
+            activities.removeValue(forKey: identifier)
+            order.removeAll { $0 == identifier }
+        }
+    }
+
     private var bootstrapActivity: Activity?
-    private var recordingActivity: Activity?
-    private var transcribingActivity: Activity?
-    private var commandActivities: [String: Activity] = [:]
-    private var commandActivityOrder: [String] = []
+    private var recordingActivities = ActivityGroup()
+    private var transcribingActivities = ActivityGroup()
+    private var commandActivities = ActivityGroup()
 
     mutating func beginBootstrap(title: String, at startedAt: Date = Date()) {
         bootstrapActivity = Activity(title: title, startedAt: startedAt)
@@ -22,40 +47,36 @@ struct MenuActivityTracker {
     }
 
     /// Names the action that is recording; a running recording keeps its start time.
-    mutating func beginRecording(action: String, at startedAt: Date = Date()) {
-        recordingActivity = Activity(
+    mutating func beginRecording(identifier: String, action: String, at startedAt: Date = Date()) {
+        recordingActivities.begin(identifier, Activity(
             title: "Recording",
-            startedAt: recordingActivity?.startedAt ?? startedAt,
+            startedAt: recordingActivities.startedAt(identifier) ?? startedAt,
             action: action
-        )
+        ))
     }
 
-    mutating func finishRecording() {
-        recordingActivity = nil
+    mutating func finishRecording(identifier: String) {
+        recordingActivities.finish(identifier)
     }
 
-    mutating func beginTranscribing(action: String, at startedAt: Date = Date()) {
-        transcribingActivity = Activity(
+    mutating func beginTranscribing(identifier: String, action: String, at startedAt: Date = Date()) {
+        transcribingActivities.begin(identifier, Activity(
             title: "Transcribing",
-            startedAt: transcribingActivity?.startedAt ?? startedAt,
+            startedAt: transcribingActivities.startedAt(identifier) ?? startedAt,
             action: action
-        )
+        ))
     }
 
-    mutating func finishTranscribing() {
-        transcribingActivity = nil
+    mutating func finishTranscribing(identifier: String) {
+        transcribingActivities.finish(identifier)
     }
 
     mutating func beginCommand(identifier: String, title: String, at startedAt: Date = Date()) {
-        if commandActivities[identifier] == nil {
-            commandActivityOrder.append(identifier)
-        }
-        commandActivities[identifier] = Activity(title: title, startedAt: startedAt)
+        commandActivities.begin(identifier, Activity(title: title, startedAt: startedAt))
     }
 
     mutating func finishCommand(identifier: String) {
-        commandActivities.removeValue(forKey: identifier)
-        commandActivityOrder.removeAll { $0 == identifier }
+        commandActivities.finish(identifier)
     }
 
     func status(now: Date = Date(), fallback: MenuActivityStatus) -> MenuActivityStatus {
@@ -66,8 +87,8 @@ struct MenuActivityTracker {
 
     private var currentActivity: Activity? {
         bootstrapActivity
-            ?? transcribingActivity
-            ?? recordingActivity
-            ?? commandActivityOrder.reversed().compactMap { commandActivities[$0] }.first
+            ?? transcribingActivities.latest
+            ?? recordingActivities.latest
+            ?? commandActivities.latest
     }
 }

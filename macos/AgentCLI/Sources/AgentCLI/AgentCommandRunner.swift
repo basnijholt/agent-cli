@@ -212,7 +212,10 @@ final class AgentCommandRunner: ObservableObject {
         clearPasteAfterRecording(for: .toggleTranscription)
         if wasRecording {
             // The latched recording now copies to the clipboard instead of inserting.
-            activityTracker.beginRecording(action: menuActivityTitle(for: .toggleTranscription))
+            activityTracker.beginRecording(
+                identifier: AgentCommand.toggleTranscription.identifier,
+                action: menuActivityTitle(for: .toggleTranscription)
+            )
         }
         return true
     }
@@ -341,7 +344,7 @@ final class AgentCommandRunner: ObservableObject {
                         self.clearPasteAfterRecording(for: command)
                     }
                     self.clearHoldTranscriptionState(for: command)
-                    self.clearTranscribingActivityIfFinished()
+                    self.clearTranscribingActivityIfFinished(for: command)
                     self.finishCommandActivity(for: command)
                     self.activeCommandCount = max(0, self.activeCommandCount - 1)
                     self.lastOutput = bootstrapResult.output
@@ -402,7 +405,7 @@ final class AgentCommandRunner: ObservableObject {
                         }
                     }
                     self.clearPasteAfterRecording(for: command)
-                    self.clearTranscribingActivityIfFinished()
+                    self.clearTranscribingActivityIfFinished(for: command)
                 }
                 self.finishCommandActivity(for: command)
                 self.activeCommandCount = max(0, self.activeCommandCount - 1)
@@ -417,7 +420,7 @@ final class AgentCommandRunner: ObservableObject {
 
                 if isStopRequest {
                     self.clearStopRequested(for: command)
-                    self.clearTranscribingActivityIfFinished()
+                    self.clearTranscribingActivityIfFinished(for: command)
                 }
                 self.lastOutput = result.output
                 if result.exitCode != 0 {
@@ -455,7 +458,7 @@ final class AgentCommandRunner: ObservableObject {
                 Task { @MainActor in
                     self.finishBootstrap(bootstrapRequestID, failed: true)
                     self.holdTranscriptionState = .idle
-                    self.clearTranscribingActivityIfFinished()
+                    self.clearTranscribingActivityIfFinished(for: .toggleTranscription)
                     self.lastOutput = bootstrapResult.output
                     self.recordFailure(command: AgentCommand.stopTranscription, result: bootstrapResult)
                     self.statusMessage = message
@@ -482,7 +485,7 @@ final class AgentCommandRunner: ObservableObject {
                 }
 
                 self.holdTranscriptionState = .idle
-                self.clearTranscribingActivityIfFinished()
+                self.clearTranscribingActivityIfFinished(for: .toggleTranscription)
                 let message = result.output.isEmpty
                     ? "Toggle Transcription stop failed with exit code \(result.exitCode)"
                     : "Toggle Transcription stop failed: \(result.output)"
@@ -515,13 +518,17 @@ final class AgentCommandRunner: ObservableObject {
     }
 
     private func beginTranscribingActivity(for command: AgentCommand) {
-        activityTracker.beginTranscribing(action: menuActivityTitle(for: command))
+        activityTracker.beginTranscribing(identifier: command.identifier, action: menuActivityTitle(for: command))
         VoiceLevelOverlayController.shared.showTranscribing()
     }
 
-    private func clearTranscribingActivityIfFinished() {
+    private func clearTranscribingActivityIfFinished(for command: AgentCommand) {
+        let isHoldFinishing = command.identifier == AgentCommand.toggleTranscription.identifier
+            && holdTranscriptionState.isFinishing
+        if !isStopPending(for: command) && !isHoldFinishing {
+            activityTracker.finishTranscribing(identifier: command.identifier)
+        }
         if pendingStopRecordingCommands.isEmpty && !holdTranscriptionState.isFinishing {
-            activityTracker.finishTranscribing()
             VoiceLevelOverlayController.shared.finishTranscribing()
         }
     }
@@ -553,12 +560,9 @@ final class AgentCommandRunner: ObservableObject {
             holdTranscriptionState = .recording
         }
 
-        let wasRecording = isRecording
         recordingIndicator.begin(for: command)
         isRecording = recordingIndicator.isRecording
-        if !wasRecording && isRecording {
-            activityTracker.beginRecording(action: menuActivityTitle(for: command))
-        }
+        activityTracker.beginRecording(identifier: command.identifier, action: menuActivityTitle(for: command))
         return true
     }
 
@@ -570,8 +574,8 @@ final class AgentCommandRunner: ObservableObject {
     private func endRecordingIndicator(for command: AgentCommand) {
         recordingIndicator.end(for: command)
         isRecording = recordingIndicator.isRecording
-        if !isRecording {
-            activityTracker.finishRecording()
+        if !recordingIndicator.isRecordingCommand(command) {
+            activityTracker.finishRecording(identifier: command.identifier)
         }
     }
 
