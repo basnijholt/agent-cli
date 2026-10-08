@@ -5,6 +5,25 @@
         <link>https://github.com/basnijholt/agent-cli</link>
         <description>Signed Agent CLI macOS app updates.</description>
         <item>
+            <title>0.111.1</title>
+            <pubDate>Thu, 08 Oct 2026 15:38:57 +0000</pubDate>
+            <link>https://github.com/basnijholt/agent-cli</link>
+            <sparkle:version>220</sparkle:version>
+            <sparkle:shortVersionString>0.111.1</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[## Improvements
+
+- The CUDA TTS Docker image (`agent-cli-tts:<version>-cuda`, `latest-cuda`) is about half the size: 6.3 GB instead of 12.4 GB. It now builds on `python:3.13-slim` instead of NVIDIA's CUDA base image, whose CUDA 12.9 and cuDNN libraries were unused because torch bundles its own CUDA 13 libraries. (#675)
+
+GPU use needs an NVIDIA driver that supports CUDA 13 (>= 580), as the `cuda-transformers` ASR image already does. Running with `--gpus`, compose `deploy.resources.reservations.devices`, or CDI devices works as before; setups that relied on `runtime: nvidia` without requesting a GPU now need to request one.
+
+**Full changelog:** https://github.com/basnijholt/agent-cli/compare/v0.111.0...v0.111.1
+
+]]></description>
+            <enclosure url="https://github.com/basnijholt/agent-cli/releases/download/v0.111.1/AgentCLI.zip" length="19133952" type="application/octet-stream" sparkle:edSignature="0t1qbnHexeRK4Dp+BfozQmhmOuwU9j+FMbImu6taSAibpgGVoMZEQ8Tn1iEtyxwgV0IDF/+mqNNQ9QS0D1f5Cg=="/>
+        </item>
+        <item>
             <title>0.111.0</title>
             <pubDate>Thu, 08 Oct 2026 03:49:21 +0000</pubDate>
             <link>https://github.com/basnijholt/agent-cli</link>
@@ -196,32 +215,6 @@ The app still checks that your installed CLI is available. Bundled-runtime voice
 
 ]]></description>
             <enclosure url="https://github.com/basnijholt/agent-cli/releases/download/v0.108.1/AgentCLI.zip" length="19069810" type="application/octet-stream" sparkle:edSignature="JblU51S7hdCGjAJO+g0Ujbkx5LM766rNDeZ1paiQ0e0oySyMEdVt8AIpgWWJDwaDt0wqzS/2kdlSqPqYbFXGCA=="/>
-        </item>
-        <item>
-            <title>0.108.0</title>
-            <pubDate>Thu, 24 Sep 2026 20:07:28 +0000</pubDate>
-            <link>https://github.com/basnijholt/agent-cli</link>
-            <sparkle:version>210</sparkle:version>
-            <sparkle:shortVersionString>0.108.0</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[## macOS settings and permissions
-
-Agent CLI's macOS app now has a resizable settings window with a sidebar for General, Recording, Shortcuts, Permissions, and Advanced. Recording options, model settings, keyboard shortcuts, and diagnostics are easier to find, with help beside the controls it explains.
-
-A dedicated Permissions page shows microphone, Accessibility, and notification access. Permission checks are silent; requests happen when you choose them. Starting a recording without microphone access opens setup first. Denied access opens the relevant System Settings page, and status refreshes when you return. Notifications remain optional, and clipboard recording works without Accessibility.
-
-Accessibility recovery now requires confirmation, is unavailable during active work, and reopens setup after restart. Existing preferences and shortcuts are preserved.
-
-## Other changes
-
-- Update KeyboardShortcuts to 1.17.0.
-- Update CI dependencies and the macOS installation guide.
-
-**Full changelog:** https://github.com/basnijholt/agent-cli/compare/v0.107.1...v0.108.0
-
-]]></description>
-            <enclosure url="https://github.com/basnijholt/agent-cli/releases/download/v0.108.0/AgentCLI.zip" length="19000403" type="application/octet-stream" sparkle:edSignature="DooP01BCKOTuO1YTyskLLAJ5or87E0GLFt/MC4WWraOeivWfn5Otsojf9s8xesxBLDrA/o6k1nAlhIcNDO+jDQ=="/>
         </item>
     </channel>
 </rss>
