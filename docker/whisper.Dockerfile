@@ -13,7 +13,7 @@
 # =============================================================================
 # Builder stage - install dependencies and project
 # =============================================================================
-FROM python:3.13-slim AS builder
+FROM python:3.14-slim AS builder
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends git && \
@@ -95,7 +95,7 @@ ENV WHISPER_MODEL=Qwen/Qwen3-ASR-1.7B-hf \
 # =============================================================================
 # CPU target: CPU-only with faster-whisper
 # =============================================================================
-FROM python:3.13-slim AS cpu
+FROM python:3.14-slim AS cpu
 
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 

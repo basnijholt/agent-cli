@@ -2,7 +2,7 @@
 # docker build -f docker/diarization.Dockerfile -t agent-cli-diarization .
 # docker run --rm -p 61337:61337 -e HF_TOKEN agent-cli-diarization
 # Add --gpus all -e DIARIZATION_DEVICE=cuda to use an NVIDIA GPU.
-FROM python:3.13-slim-bookworm AS builder
+FROM python:3.14-slim-bookworm AS builder
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends git && \
@@ -20,7 +20,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-dev --no-editable \
     --extra server --extra wyoming --extra llm --extra diarization
 
-FROM python:3.13-slim-bookworm
+FROM python:3.14-slim-bookworm
 
 # PyTorch wheels include CUDA libraries and also support CPU inference.
 # FFmpeg shared libraries are needed by torchcodec, as well as audio conversion.

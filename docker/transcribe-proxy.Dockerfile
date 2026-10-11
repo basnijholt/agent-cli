@@ -24,7 +24,7 @@
 # =============================================================================
 # Builder stage - install dependencies and project
 # =============================================================================
-FROM python:3.13-alpine AS builder
+FROM python:3.14-alpine AS builder
 
 RUN apk add --no-cache git
 
@@ -41,7 +41,7 @@ RUN uv sync --frozen --no-dev --no-editable --extra server --extra wyoming --ext
 # =============================================================================
 # Runtime stage - minimal Alpine image
 # =============================================================================
-FROM python:3.13-alpine
+FROM python:3.14-alpine
 
 RUN apk add --no-cache ffmpeg
 
