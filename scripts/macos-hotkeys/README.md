@@ -15,6 +15,8 @@ System-wide hotkeys for agent-cli voice AI features on macOS.
 - **`Cmd+Shift+V`** → Toggle voice edit mode for clipboard
 
 Results appear in notifications and clipboard.
+Diagnostics are written to `~/.cache/agent-cli/transcribe-hotkey.log` and
+`~/.cache/agent-cli/transcribe-hotkey-agent.log`.
 
 > [!TIP]
 > For a persistent recording-status notification, open System Settings → Notifications → *terminal-notifier* and set the Alert style to **Persistent** (or choose **Alerts** on older macOS versions).
@@ -31,6 +33,9 @@ Results appear in notifications and clipboard.
 
 **Hotkey not working?**
 - Grant accessibility permissions in System Settings
+
+**Recording is silent?**
+- Allow microphone permissions for `skhd` in System Settings
 
 **No notifications?**
 ```bash
