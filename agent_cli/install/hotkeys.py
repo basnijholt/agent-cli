@@ -33,6 +33,7 @@ def install_hotkeys() -> None:
     2. Creates config at `~/.config/skhd/skhdrc`
     3. Starts skhd as a background service
     4. May require Accessibility permissions: System Settings → Privacy & Security → Accessibility → enable 'skhd'
+    5. May require Microphone permissions when the transcription hotkey first records
 
     **Linux** (manual DE configuration):
 
@@ -76,3 +77,7 @@ def install_hotkeys() -> None:
             "cyan",
         )
         print_with_style("  2. Add and enable 'skhd'", "cyan")
+        print_with_style(
+            "  3. Allow Microphone access for 'skhd' when prompted by the transcription hotkey",
+            "cyan",
+        )
