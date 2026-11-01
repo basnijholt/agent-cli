@@ -73,6 +73,7 @@ def rag_server() -> Callable[[Any], AbstractAsyncContextManager[str]]:
 
 
 @pytest.mark.asyncio
+@pytest.mark.timeout(30)
 async def test_rag_tool_execution_flow(
     tmp_path: Any,
     rag_server: Callable[[Any], AbstractAsyncContextManager[str]],

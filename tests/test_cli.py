@@ -58,6 +58,14 @@ def test_server_command() -> None:
     assert "transcribe-proxy" in result.stdout
 
 
+def test_transcribe_recorder_daemon_command() -> None:
+    """Test the warm transcribe recorder daemon command shows subcommands."""
+    result = runner.invoke(app, ["daemon", "transcribe-recorder", "--help"])
+    assert result.exit_code == 0
+    assert "serve" in result.stdout
+    assert "toggle" in result.stdout
+
+
 @patch("uvicorn.run")
 def test_server_transcribe_proxy_command(mock_uvicorn_run: pytest.MagicMock) -> None:
     """Test the server transcribe-proxy command."""
