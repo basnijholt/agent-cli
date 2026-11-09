@@ -51,7 +51,7 @@ with open("audio.wav", "rb") as f:
     response = requests.post(
         "http://localhost:9898/v1/audio/transcriptions",
         files={"file": f},
-        data={"model": "parakeet-tdt-0.6b-v2"}
+        data={"model": "parakeet-tdt-0.6b-v2"},
     )
 
 print(response.json()["text"])
@@ -63,10 +63,7 @@ print(response.json()["text"])
 response = requests.post(
     "http://localhost:9898/v1/audio/transcriptions",
     files={"file": open("audio.wav", "rb")},
-    data={
-        "model": "parakeet-tdt-0.6b-v2",
-        "timestamp_granularities": ["word"]
-    }
+    data={"model": "parakeet-tdt-0.6b-v2", "timestamp_granularities": ["word"]},
 )
 
 result = response.json()
