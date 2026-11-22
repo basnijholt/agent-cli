@@ -184,7 +184,7 @@ llm_gemini_model = "gemini-3-flash-preview"
 asr_gemini_model = "gemini-3-flash-preview"
 
 # TTS model and voice
-tts_gemini_model = "gemini-2.5-flash-preview-tts"
+tts_gemini_model = "gemini-3.8-flash-lite-tts"
 tts_gemini_voice = "Kore"
 
 # API key (can also use GEMINI_API_KEY env var)

@@ -1353,7 +1353,7 @@ uv tool install "agent-cli[vad]"
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Audio Output: Gemini ─────────────────────────────────────────────────────────────────╮
 │ --tts-gemini-model        TEXT  The Gemini model to use for TTS.                       │
-│                                 [default: gemini-2.5-flash-preview-tts]                │
+│                                 [default: gemini-3.8-flash-lite-tts]                   │
 │ --tts-gemini-voice        TEXT  The voice to use for Gemini TTS (e.g., 'Kore', 'Puck', │
 │                                 'Charon', 'Fenrir').                                   │
 │                                 [default: Kore]                                        │
@@ -1553,7 +1553,7 @@ uv tool install "agent-cli[vad]"
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Audio Output: Gemini ─────────────────────────────────────────────────────────────────╮
 │ --tts-gemini-model        TEXT  The Gemini model to use for TTS.                       │
-│                                 [default: gemini-2.5-flash-preview-tts]                │
+│                                 [default: gemini-3.8-flash-lite-tts]                   │
 │ --tts-gemini-voice        TEXT  The voice to use for Gemini TTS (e.g., 'Kore', 'Puck', │
 │                                 'Charon', 'Fenrir').                                   │
 │                                 [default: Kore]                                        │
@@ -1773,7 +1773,7 @@ uv tool install "agent-cli[vad]"
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Audio Output: Gemini ─────────────────────────────────────────────────────────────────╮
 │ --tts-gemini-model        TEXT  The Gemini model to use for TTS.                       │
-│                                 [default: gemini-2.5-flash-preview-tts]                │
+│                                 [default: gemini-3.8-flash-lite-tts]                   │
 │ --tts-gemini-voice        TEXT  The voice to use for Gemini TTS (e.g., 'Kore', 'Puck', │
 │                                 'Charon', 'Fenrir').                                   │
 │                                 [default: Kore]                                        │
@@ -2003,7 +2003,7 @@ uv tool install "agent-cli[vad]"
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Audio Output: Gemini ─────────────────────────────────────────────────────────────────╮
 │ --tts-gemini-model        TEXT  The Gemini model to use for TTS.                       │
-│                                 [default: gemini-2.5-flash-preview-tts]                │
+│                                 [default: gemini-3.8-flash-lite-tts]                   │
 │ --tts-gemini-voice        TEXT  The voice to use for Gemini TTS (e.g., 'Kore', 'Puck', │
 │                                 'Charon', 'Fenrir').                                   │
 │                                 [default: Kore]                                        │

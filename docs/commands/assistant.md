@@ -151,7 +151,7 @@ agent-cli assistant --wake-server-ip 192.168.1.100 --wake-server-port 10400
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--tts-gemini-model` | `gemini-2.5-flash-preview-tts` | The Gemini model to use for TTS. |
+| `--tts-gemini-model` | `gemini-3.8-flash-lite-tts` | The Gemini model to use for TTS. |
 | `--tts-gemini-voice` | `Kore` | The voice to use for Gemini TTS (e.g., 'Kore', 'Puck', 'Charon', 'Fenrir'). |
 
 ### Process Management
