@@ -312,7 +312,7 @@ TTS_KOKORO_HOST: str = typer.Option(
 
 # Gemini TTS
 TTS_GEMINI_MODEL: str = typer.Option(
-    "gemini-2.5-flash-preview-tts",
+    "gemini-3.8-flash-lite-tts",
     "--tts-gemini-model",
     help="The Gemini model to use for TTS.",
     rich_help_panel="Audio Output: Gemini",

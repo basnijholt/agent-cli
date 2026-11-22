@@ -147,7 +147,7 @@ agent-cli chat --last-n-messages 100 --history-dir ~/.my-chat-history
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--tts-gemini-model` | `gemini-2.5-flash-preview-tts` | The Gemini model to use for TTS. |
+| `--tts-gemini-model` | `gemini-3.8-flash-lite-tts` | The Gemini model to use for TTS. |
 | `--tts-gemini-voice` | `Kore` | The voice to use for Gemini TTS (e.g., 'Kore', 'Puck', 'Charon', 'Fenrir'). |
 
 ### Process Management

@@ -8,7 +8,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from agent_cli import config, constants
+from agent_cli import config, constants, opts
 from agent_cli.services import (
     _is_wav_file,
     asr,
@@ -330,46 +330,42 @@ async def test_synthesize_speech_kokoro_delegates_to_openai(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("use_default", [True, False], ids=["default-wav", "legacy-pcm"])
 @patch("agent_cli.services._get_gemini_client")
-async def test_synthesize_speech_gemini(mock_get_gemini_client: MagicMock) -> None:
-    """Test the synthesize_speech_gemini function."""
-    mock_text = "test text"
-    mock_logger = MagicMock()
+async def test_synthesize_speech_gemini(
+    mock_get_gemini_client: MagicMock,
+    *,
+    use_default: bool,
+) -> None:
+    """Gemini 3.8 returns WAV for unary requests; older models return raw PCM."""
+    text = "test text"
+    pcm = b"\x00\x00\xff\x7f" * 50
+    expected_wav = pcm_to_wav(pcm, sample_rate=24000)
+    client = mock_get_gemini_client.return_value
+    part = MagicMock()
+    part.inline_data.data = expected_wav if use_default else pcm
+    response = MagicMock()
+    response.candidates[0].content.parts = [part]
+    client.aio.models.generate_content = AsyncMock(return_value=response)
 
-    # Mock the Gemini client and response structure
-    mock_client_instance = mock_get_gemini_client.return_value
-
-    # Gemini returns raw PCM data (24kHz, 16-bit, mono)
-    mock_pcm_data = b"\x00\x00" * 100  # 100 samples of silence
-    mock_part = MagicMock()
-    mock_part.inline_data.data = mock_pcm_data
-    mock_content = MagicMock()
-    mock_content.parts = [mock_part]
-    mock_candidate = MagicMock()
-    mock_candidate.content = mock_content
-    mock_response = MagicMock()
-    mock_response.candidates = [mock_candidate]
-
-    mock_client_instance.aio.models.generate_content = AsyncMock(return_value=mock_response)
-
-    gemini_tts_cfg = config.GeminiTTS(
-        tts_gemini_model="gemini-2.5-flash-preview-tts",
+    cfg = config.GeminiTTS(
+        tts_gemini_model=opts.TTS_GEMINI_MODEL.default
+        if use_default
+        else "gemini-2.5-flash-preview-tts",
         tts_gemini_voice="Kore",
         gemini_api_key="test_api_key",
     )
 
     with patch("agent_cli.services._gemini_types_module"):
-        result = await synthesize_speech_gemini(mock_text, gemini_tts_cfg, mock_logger)
+        result = await synthesize_speech_gemini(text, cfg, MagicMock())
 
-    # Result should be WAV data (converted from PCM)
-    assert result[:4] == b"RIFF"  # WAV header
+    assert result == expected_wav
     mock_get_gemini_client.assert_called_once_with("test_api_key")
-    mock_client_instance.aio.models.generate_content.assert_called_once()
-
-    # Verify the call arguments
-    call_kwargs = mock_client_instance.aio.models.generate_content.call_args[1]
-    assert call_kwargs["model"] == "gemini-2.5-flash-preview-tts"
-    assert call_kwargs["contents"] == mock_text
+    client.aio.models.generate_content.assert_awaited_once()
+    call_kwargs = client.aio.models.generate_content.call_args.kwargs
+    expected_model = "gemini-3.8-flash-lite-tts" if use_default else "gemini-2.5-flash-preview-tts"
+    assert call_kwargs["model"] == expected_model
+    assert call_kwargs["contents"] == text
 
 
 @pytest.mark.asyncio

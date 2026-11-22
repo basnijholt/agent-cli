@@ -318,7 +318,7 @@ async def synthesize_speech_gemini(
 ) -> bytes:
     """Synthesize speech using Gemini's native TTS.
 
-    Returns WAV audio data (converted from Gemini's raw PCM output).
+    Returns WAV audio data, wrapping raw PCM from older Gemini models when needed.
     """
     if not gemini_tts_cfg.gemini_api_key:
         msg = "Gemini API key is not set."
@@ -348,6 +348,6 @@ async def synthesize_speech_gemini(
         ),
     )
 
-    # Gemini returns raw PCM: 24kHz, 16-bit, mono
-    pcm_data = response.candidates[0].content.parts[0].inline_data.data
-    return pcm_to_wav(pcm_data, sample_rate=24000)
+    # Gemini 3.8 returns WAV by default; older models return 24 kHz mono PCM.
+    audio_data = response.candidates[0].content.parts[0].inline_data.data
+    return audio_data if _is_wav_file(audio_data) else pcm_to_wav(audio_data, sample_rate=24000)
